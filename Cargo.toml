@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [workspace]
-members = ["migration"]
+members = []
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -13,12 +13,21 @@ axum = "0.7.4"
 futures = "0.3.30"
 http-body = "1.0.0"
 redis = "0.24.0"
-sea-orm = { version = "0.12.14", features = ["runtime-tokio", "macros", "sqlx-postgres", "with-chrono", "with-uuid", "with-json"] }
 serde = { version = "1.0.196", features = ["derive"] }
 tokio = { version = "1.36.0", features = ["macros", "rt-multi-thread"] }
 tokio-stream = "0.1.14"
 tracing-subscriber = "0.3.18"
-migration={path = "migration"}
 dotenv = "0.15.0"
 uuid = { version = "1.7.0", features = ["v4"] }
+bcrypt = "0.15.1"
+rand = "0.8.5"
+jsonwebtoken = "9.3.0"
+chrono = { version = "0.4.34", features = ["unstable-locales","serde"] }
+headers = "0.4.0"
+axum-extra = { version = "0.9.3", features = ["typed-header"] }
+serde_json = {version = "1.0.120"}
+sqlx = { version = "0.8.0", features = ["postgres","chrono","runtime-tokio"] }
+log = "0.4.20"
+itertools = "0.13.0"
+lettre = "0.11.7"
 

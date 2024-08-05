@@ -1,23 +1,28 @@
 use std::sync::Arc;
-use redis::{Client};
-use sea_orm::{Database, DatabaseConnection};
+
+use redis::Client;
+use sqlx::{Pool, Postgres};
+use sqlx::postgres::PgPoolOptions;
 use crate::common;
-use crate::common::redis_util::RedisUtil;
+use crate::common::redis::RedisClient;
 use crate::common::sse::sse_emitter::SseBroadcaster;
 
 #[derive(Debug, Clone)]
 pub struct AppState {
     pub sse: Arc<SseBroadcaster>,
-    pub postgres: DatabaseConnection,
-    pub redis: RedisUtil,
+    pub postgres: Pool<Postgres>,
+    pub redis: RedisClient,
 }
 
 impl AppState {
     pub async fn init() -> Self {
         let env = common::env_config::EnvConfig::init();
 
-        let mut sse = SseBroadcaster::create();
-        let postgres = Database::connect(env.postgres_url.clone()).await;
+        let sse = SseBroadcaster::create();
+        let postgres = PgPoolOptions::new()
+            .max_connections(10)
+            .connect(env.postgres_url.as_str()).await;
+
         if postgres.is_err() {
             panic!("url {} -> {}", env.postgres_url, postgres.unwrap_err())
         }
@@ -29,7 +34,7 @@ impl AppState {
         }
         let redis = redis.unwrap();
 
-        let redis_util = RedisUtil::from(redis, env.mode.clone());
+        let redis_util = RedisClient::from(redis, env.mode.clone());
 
         AppState {
             sse,

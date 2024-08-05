@@ -1,13 +1,8 @@
-use std::str::FromStr;
-
-use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait};
-use sea_orm::ActiveValue::Set;
+use sqlx::{ Executor, Pool, Postgres};
 use tokio::{self, main};
 
-use migration::{MigrationTrait, Migrator, MigratorTrait};
-
 use crate::common::app_state::AppState;
-use crate::entity::sea_orm_active_enums::{AuthProvider, UserStatus};
+use crate::entity::conversation::{Conversation };
 use crate::router::init_routes;
 
 pub mod common;
@@ -15,15 +10,16 @@ pub mod entity;
 pub mod feature;
 pub mod router;
 pub mod routes;
+pub mod seeder;
+pub mod repositories;
 
 #[main]
 async fn main() -> Result<(), ()> {
     tracing_subscriber::fmt::init();
     let app_state = AppState::init().await;
 
-    let _ = Migrator::up(&app_state.postgres, None).await;
-    let _ = Migrator::down(&app_state.postgres, None).await;
-    let _ = seeding_data(&app_state.postgres).await;
+    migrate(&app_state.postgres).await;
+    seeder::seed(&app_state.postgres).await;
 
     let app = init_routes(app_state);
 
@@ -34,31 +30,41 @@ async fn main() -> Result<(), ()> {
     Ok(())
 }
 
-async fn seeding_data(conn: &DatabaseConnection) {
-    let uuid = uuid::Uuid::from_str("1843ab6a-d56b-4427-9f84-221dcc1b582a");
-    if uuid.is_ok() {
-        let uuid = uuid.unwrap();
-        let exist = entity::user_credential::Entity::find_by_id(uuid)
-            .one(conn)
-            .await;
-        if exist.is_ok() {
-            let exist = exist.unwrap();
-            if exist.is_none() {
-                let model = entity::user_credential::ActiveModel {
-                    id: Set(uuid),
-                    username: Set("triandamai".to_string()),
-                    password: Set(
-                        "$2a$12$R0EIvnvgqZe12Gc8C3xQzu313ouJX.CsAJ6d8jZDPsTLEmBjAf6j2".to_string(),
-                    ),
-                    full_name: Set("Trian Damai".to_string()),
-                    email: Set("triandamai@gmail.com".to_string()),
-                    auth_provider: Set(AuthProvider::Basic),
-                    user_status: Set(UserStatus::Active),
-                    ..Default::default()
-                };
 
-                let _ = model.insert(conn).await;
-            }
-        }
-    }
+async fn migrate(
+    pool: &Pool<Postgres>
+) {
+    let _ = pool.execute(include_str!("../migrations/20240705123308_first_initial.sql"))
+        .await
+        .expect("Failed to initialis scheme");
+
+    let s = sqlx::query_as::<_, Conversation>(
+        r#"
+        SELECT DISTINCT conversation.* FROM conversation_member as member
+        LEFT JOIN conversation ON conversation.id = member.conversation_id
+        WHERE member.user_id = $1
+        ORDER BY conversation.id
+        "#
+    )
+        .bind(1)
+        .fetch_all(pool)
+        .await;
+
 }
+//
+// fn row_to_json(row: &PgRow) -> HashMap<String, String> {
+//     let mut result = HashMap::new();
+//     for col in row.columns() {
+//         let value = row.try_get_raw(col.ordinal()).unwrap();
+//         // let value = match value.is_null() {
+//         //     true => "NULL".to_string(),
+//         //     false => value.as_str().unwrap().to_string(),
+//         // };
+//         result.insert(
+//             col.name().to_string(),
+//             value.type_info().to_string(),
+//         );
+//     }
+//
+//     result
+// }
