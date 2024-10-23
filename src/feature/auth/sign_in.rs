@@ -1,141 +1,114 @@
 use std::cmp::PartialEq;
-use std::collections::HashMap;
-
-use axum::{extract::State, response::IntoResponse};
+use std::sync::mpsc::channel;
+use axum::extract::State;
 use axum::Json;
-use bcrypt::verify;
-use chrono::NaiveDateTime;
+use chrono::{ Utc};
 use log::info;
-use redis::{Commands, RedisResult};
-use serde_json::json;
-
-use crate::common::{api_response::ApiResponse, app_state::AppState};
+use mongodb::bson::{doc, DateTime};
+use mongodb::bson::oid::ObjectId;
+use redis::RedisResult;
+use validator::Validate;
 use crate::common::jwt::{JwtClaims, JwtUtil};
+use crate::common::{api_response::ApiResponse, app_state::AppState};
 use crate::common::smtp::SmtpClient;
-use crate::entity::user_credential::{UserCredentialSecured, UserStatus};
-use crate::feature::auth::auth_model::{ATTEMPT_KEY, AuthResponse, CheckEmailRequest, ISSUED_AT_KEY, OTP_KEY, OTP_TTL, RESEND_ATTEMPT_KEY, SignInEmailRequest, TOKEN_KEY, USER_ID_KEY, USER_UUID_KEY, VerifyOtpRequest};
-use crate::repositories;
+use crate::entity::user_credential::UserCredential;
+use crate::feature::auth::auth_model::{CheckEmailRequest, SignInEmailRequest, VerifyOtpSignInRequest, ATTEMPT_KEY, ISSUED_AT_KEY, OTP_KEY, RESEND_ATTEMPT_KEY, TOKEN_KEY, USER_ID_KEY};
 
-pub async fn check_email(
+use super::auth_model::{SignInEmailResponse, VerifyOtpSignInResponse};
+
+pub async fn check_email_exist(
     state: State<AppState>,
     body: Json<CheckEmailRequest>,
-) -> impl IntoResponse {
-    //check if email exist
-    let find_existing =
-        repositories::auth_repository::get_user_by_email(body.email.clone(), &state.postgres).await;
-
-    if find_existing.is_none() {
-        return ApiResponse::failed("Login gagal, akun tidak ditemukan".to_string());
+) -> ApiResponse<bool> {
+    let validate = body.validate();
+    if validate.is_err() {
+        return ApiResponse::failed(validate.unwrap_err().to_string());
     }
+    let exist = UserCredential::email_exist(&body.email, &state.db)
+        .await;
 
-    let user_credential = find_existing.unwrap();
-
-    if user_credential.status != UserStatus::Active {
-        let message = match user_credential.status {
-            UserStatus::Active => "",
-            UserStatus::Inactive => "Akun kamu Sudah tidak aktif",
-            UserStatus::Locked => "Akun kamu Dikunci",
-            UserStatus::Suspended => "Akun kamu Disuspen",
-            UserStatus::WaitingConfirmation => "Akun kamu Sedang Menunggu Konfirmasi",
-        };
-        info!(target: "check_email","user try to check email, status is {:?}",user_credential.status);
-        return ApiResponse::failed(message.to_string());
-    }
-
-    ApiResponse::ok("", "Akun bisa digunakan")
+    ApiResponse::ok(exist, "Akun bisa digunakan")
 }
 
 pub async fn sign_in_email(
     mut state: State<AppState>,
     body: Json<SignInEmailRequest>,
-) -> impl IntoResponse {
-    info!(target:"sign_in_email","{:?}",body.clone());
-    //check if email exist
-    let find_existing =
-        repositories::auth_repository::get_user_by_email_unsecured(body.email.clone(), &state.postgres).await;
-
-    if find_existing.is_none() {
-        return ApiResponse::failed("Login gagal, akun tidak ditemukan".to_string());
+) -> ApiResponse<SignInEmailResponse> {
+    let validate = body.validate();
+    if validate.is_err() {
+        return ApiResponse::failed(validate.unwrap_err().to_string());
     }
 
-    let user_credential = find_existing.unwrap();
+    let find_user = UserCredential::find_one(doc! {
+        "email":doc!{
+            "$eq":&body.email
+        }
+    }, &state.db).await;
 
-    if user_credential.status != UserStatus::Active {
-        let message = match user_credential.status {
-            UserStatus::Active => "",
-            UserStatus::Inactive => "Akun kamu Sudah tidak aktif",
-            UserStatus::Locked => "Akun kamu Dikunci",
-            UserStatus::Suspended => "Akun kamu Disuspen",
-            UserStatus::WaitingConfirmation => "Akun kamu Sedang Menunggu Konfirmasi",
-        };
-        return ApiResponse::failed(message.to_string());
+    if find_user.is_none() {
+        info!(target: "find user","user not found");
+        return ApiResponse::failed("Sign In gagal email atau password tidak sesuai.".to_string());
     }
+    let find_user = find_user.unwrap();
 
-    let verify_password = verify(&body.password, &user_credential.password);
-
+    let verify_password = bcrypt::verify(body.password.clone(), find_user.password.clone().as_str());
     if verify_password.is_err() {
-        return ApiResponse::un_authorized("Login gagal, invalid kredensial");
+        info!(target:"verify password","{}",verify_password.unwrap_err().to_string());
+        return ApiResponse::failed("Sign in gagal, email atau password salah.".to_string());
     }
-    //create session
-    let otp_session_key = state.redis.create_key_otp_session(&user_credential.email);
-
-    let mut otp = state.redis.generate_otp();
-
-    if body.email.eq("trian1@email.com") || body.email.eq("parzival@email.com") {
-        otp = String::from("4444");
+    let verify_password = verify_password.unwrap();
+    if !verify_password {
+        return ApiResponse::failed("Sign in gagal, email atau password salah.".to_string());
     }
-
-    let token = JwtUtil::encode(user_credential.clone().email);
-
-    if token.is_none() {
-        return ApiResponse::un_authorized("Login gagal, sesi gagal dibuat");
+    let mut generate_otp = state.redis.generate_otp();
+    if body.is_test_email() {
+        generate_otp = "4444".to_string();
     }
+    let current_time = Utc::now().timestamp();
+    let jwt = JwtUtil::encode(find_user.email.clone());
+    if jwt.is_none() {
+        return ApiResponse::failed("Gagal membuat sesi.".to_string());
+    }
+    let jwt = jwt.unwrap();
+    let save_otp_session =
+        state.redis.set_otp_session_sign_in(
+            &find_user.email.as_str(),
+            &[
+                (ATTEMPT_KEY, "0".to_string()),
+                (ISSUED_AT_KEY, format!("{}", current_time)),
+                (USER_ID_KEY, find_user.id.unwrap().to_string()),
+                (OTP_KEY, generate_otp.clone()),
+                (TOKEN_KEY, jwt.clone())
+            ],
+        );
 
-    let current_date = chrono::Utc::now();
-
-    let set_session_to_redis: RedisResult<String> = state.redis.client.hset_multiple(
-        otp_session_key.clone(),
-        &[
-            (OTP_KEY, otp.clone()),
-            (USER_ID_KEY, user_credential.clone().id.to_string()),
-            (TOKEN_KEY, token.clone().unwrap()),
-            (ATTEMPT_KEY, 0.to_string()),
-            (RESEND_ATTEMPT_KEY, 0.to_string()),
-            (ISSUED_AT_KEY, current_date.timestamp_millis().to_string()),
-        ],
-    );
-
-    if set_session_to_redis.is_err() {
-        return ApiResponse::un_authorized("Login gagal, sesi gagal dibuat");
+    if save_otp_session.is_err() {
+        return ApiResponse::failed("Gagal membuat sesi.".to_string());
     }
 
-    let _: RedisResult<String> = state.redis.client.expire(otp_session_key.clone(), OTP_TTL);
-
-    if !body.email.eq("trian1@email.com") || !body.email.eq("parzival@email.com") {
-        let send_to = format!("{} <{}>", user_credential.full_name, user_credential.email);
-        let subject = "[SIRKEL-OTP] ".to_string();
-        let body = format!("here your code: {}", otp);
-        let _ = SmtpClient::new(&send_to)
-            .send(
-                &subject,
-                &body,
-            );
+    if !body.is_test_email() {
+        let _ = SmtpClient::new(&find_user.email)
+            .send(&"[OTP] - Rahasia".to_string(), &generate_otp.clone());
     }
-    ApiResponse::ok(AuthResponse {
-        token: token.unwrap(),
-        data: None,
-    }, "Otp dikirim ke email kamu", )
+
+    ApiResponse::ok(
+        SignInEmailResponse {
+            token: jwt,
+        },
+        "Otp dikirim ke email kamu",
+    )
 }
 
-pub async fn verify_otp_sign_in_email(
+pub async fn verify_otp(
     mut state: State<AppState>,
-    header: JwtClaims,
-    body: Json<VerifyOtpRequest>,
-) -> impl IntoResponse {
-    let otp_session_key = state.redis.create_key_otp_session(&header.sub);
-
-    let get_session_from_redis: RedisResult<HashMap<String, String>> =
-        state.redis.client.hgetall(otp_session_key.clone());
+    auth: JwtClaims,
+    body: Json<VerifyOtpSignInRequest>,
+) -> ApiResponse<VerifyOtpSignInResponse> {
+    let validate = body.validate();
+    if validate.is_err() {
+        return ApiResponse::failed(validate.unwrap_err().to_string());
+    }
+    let get_session_from_redis = state.redis.get_session_otp_sign_in(&auth.sub);
 
     if get_session_from_redis.is_err() {
         return ApiResponse::un_authorized("Otp tidak valid atau sudah expired");
@@ -144,10 +117,8 @@ pub async fn verify_otp_sign_in_email(
     let session = get_session_from_redis.unwrap();
     let user_id = session
         .get(USER_ID_KEY)
-        .unwrap_or(&String::from("-1"))
-        .to_string()
-        .parse::<i32>()
-        .unwrap_or(-1);
+        .unwrap_or(&String::from("n/a"))
+        .to_string();
     let mut attempt = session
         .get(ATTEMPT_KEY)
         .unwrap_or(&String::from("0"))
@@ -157,109 +128,107 @@ pub async fn verify_otp_sign_in_email(
         .get(OTP_KEY)
         .unwrap_or(&String::from("0000"))
         .to_string();
-    let issued_at = session
-        .get(ISSUED_AT_KEY)
-        .unwrap_or(&String::from("0"))
-        .parse::<i64>()
-        .unwrap_or(0);
-    let issued_at_chrono = NaiveDateTime::from_timestamp_millis(issued_at);
-
-    if issued_at_chrono.is_none() {
-        return ApiResponse::un_authorized("Gagal memverifikasi otp, mungkin sudah kadaluarsa");
-    }
 
     if attempt > 4 {
         //block user
-        return ApiResponse::un_authorized(
-            "Kamu sudah mencoba otp terlalu sering, silahkan coba beberapa 3 jam lagi",
+        return ApiResponse::failed(
+            "Kamu sudah mencoba otp terlalu sering, silahkan coba beberapa 3 jam lagi".to_string(),
         );
     }
+    let user_id = ObjectId::parse_str(user_id.as_str());
+    if user_id.is_err() {
+        return ApiResponse::failed("Gagal menemukan sesi.".to_string());
+    }
+    let user_id = user_id.unwrap();
+    let current_time = DateTime::now();
+    if !otp.eq(&body.otp.clone()) {
+        attempt = attempt + 1;
+        let _: RedisResult<String> = state.redis.set_otp_attempt_sign_in(&auth.sub, attempt);
 
-    if attempt < 4 {
-        if !otp.eq(&body.otp.clone()) {
-            attempt = attempt + 1;
 
-            let _: RedisResult<String> = state.redis.client.hset_multiple(
-                otp_session_key.clone(),
-                &[(ATTEMPT_KEY, attempt.to_string())],
-            );
+        if attempt > 4 {
+            let _ = UserCredential::update_one(
+                doc! {"_id":user_id.clone()},
+                doc! {"$set":{
+                    "status":"Locked",
+                    "updated_at":current_time.clone()
+                }},
+                &state.db,
+            ).await;
         }
+        return ApiResponse::failed("Verifikasi otp gagal.".to_string());
     }
 
-    let find_existing =
-        repositories::auth_repository::get_user_by_id_unsecured(user_id, &state.postgres).await;
-
-    if find_existing.is_none() {
-        return ApiResponse::failed("Login gagal, akun tidak ditemukan".to_string());
+    let find_user = UserCredential::find_one(
+        doc! {
+            "_id":user_id.clone()
+        },
+        &state.db,
+    )
+        .await;
+    if find_user.is_none() {
+        return ApiResponse::failed("Tidak dapat menemukan akun.".to_string());
     }
+    let find_user = find_user.unwrap();
 
-    let user_credential = find_existing.unwrap();
-
-    let session_key = state
-        .redis
-        .create_key_sign_in_session(&user_credential.email);
-
-    let _: RedisResult<String> = state.redis.client.del(otp_session_key.clone());
-
-    let token = JwtUtil::encode(user_credential.email.clone());
-
+    let token = JwtUtil::encode(find_user.email.clone());
     if token.is_none() {
-        return ApiResponse::un_authorized("Gagal membuat sesi");
+        return ApiResponse::failed("gagal membuat sesi.".to_string());
     }
-
-    let set_session_to_redis: RedisResult<String> = state.redis.client.hset_multiple(
-        session_key.clone(),
-        &[
-            (USER_ID_KEY, user_credential.id.to_string()),
-            (USER_UUID_KEY, user_credential.uuid.to_string()),
-            (TOKEN_KEY, token.clone().unwrap()),
-        ],
-    );
-
-    if set_session_to_redis.is_err() {
-        return ApiResponse::un_authorized("Gagal membuat sesi, silahkan coba beberapa saat lagi");
-    }
+    let token = token.unwrap();
+    let current_time = Utc::now().timestamp();
+    let save_session = state
+        .redis
+        .set_session_sign_in(
+            &find_user.email.clone(),
+            &[
+                (ISSUED_AT_KEY, current_time.to_string()),
+                (USER_ID_KEY, format!("{}", user_id.clone().to_string())),
+                (TOKEN_KEY, token.clone()),
+            ],
+        );
 
     ApiResponse::ok(
-        AuthResponse {
-            token: token.unwrap(),
-            data: Some(UserCredentialSecured::from(user_credential)),
+        VerifyOtpSignInResponse {
+            token: token,
+            data: None,
         },
         "Login berhasil",
     )
 }
 
-pub async fn resend_otp_sign_in_email(
-    mut state: State<AppState>,
-    claims: JwtClaims,
-) -> impl IntoResponse {
-    let otp_session_key = state.redis.create_key_otp_session(claims.sub.as_str());
-
-    let get_session_from_redis: RedisResult<HashMap<String, String>> =
-        state.redis.client.hgetall(otp_session_key.clone().as_str());
+pub async fn resend_otp(mut state: State<AppState>, auth: JwtClaims) -> ApiResponse<String> {
+    let get_session_from_redis = state.redis.get_session_otp_sign_in(&auth.sub);
 
     if get_session_from_redis.is_err() {
-        return ApiResponse::un_authorized("Sesi tidak ditemukan, silahkan coba login ulang");
+        return ApiResponse::failed("Sesi tidak ditemukan, silahkan coba login ulang".to_string());
     }
 
     let session = get_session_from_redis.unwrap();
-    let otp_attempt = session
-        .get(ATTEMPT_KEY)
-        .unwrap_or(&String::from(""))
+    let mut resend_otp_attempt = session
+        .get(RESEND_ATTEMPT_KEY)
+        .unwrap_or(&String::from("0"))
         .parse::<i64>()
         .unwrap_or(0);
 
-    if otp_attempt > 4 {
-        return ApiResponse::un_authorized(
-            "Gagal mengirim ulang otp, kamu sudah mencoba lebih dari 3 kali",
+    if resend_otp_attempt > 4 {
+        return ApiResponse::failed(
+            "Gagal mengirim ulang otp, kamu sudah mencoba lebih dari 3 kali".to_string(),
         );
     }
 
     let generate_new_otp = state.redis.generate_otp();
-    let _set_otp_to_redis: RedisResult<String> = state
-        .redis
-        .client
-        .hset_multiple(otp_session_key.clone(), &[(OTP_KEY, generate_new_otp)]);
 
-    ApiResponse::ok(None::<String>, "Otp berhasil dikirim ulang")
+    resend_otp_attempt = resend_otp_attempt + 1;
+    let set_otp_to_redis =
+        state
+            .redis
+            .change_otp_session_sign_in(&auth.sub, generate_new_otp, resend_otp_attempt);
+
+    if set_otp_to_redis.is_err() {
+        let message = format!("{}", set_otp_to_redis.unwrap_err());
+        return ApiResponse::failed(message);
+    }
+
+    ApiResponse::ok("".to_string(), "Otp berhasil dikirim ulang")
 }

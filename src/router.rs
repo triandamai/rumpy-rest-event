@@ -1,160 +1,108 @@
 use crate::common::api_response::ApiResponse;
-use axum::extract::Query;
-use axum::response::IntoResponse;
-use axum::routing::{delete, get, post};
-use axum::Router;
-
 use crate::common::app_state::AppState;
-use crate::common::jwt::JwtUtil;
 use crate::feature;
-use crate::feature::conversation::conversation_model::GenerateToken;
 use crate::routes;
+use axum::routing::{delete, get, post, put};
+use axum::Router;
 
 pub fn init_routes(state: AppState) -> Router {
     Router::new()
         .route("/", get(routes::index::index))
-        .route("/token", get(generate_token))
-
+        //SSE
         .route("/sse/list", get(feature::sse::sse::get_active_subscriber))
         .route("/sse/register", get(feature::sse::sse::register_sse))
         .route("/sse/send-to-user", post(feature::sse::sse::send_to_user))
-        .route(
-            "/sse/send-to-user-device",
-            post(feature::sse::sse::send_to_user_device),
-        )
+        .route("/sse/send-to-user-device", post(feature::sse::sse::send_to_user_device))
         .route("/sse/broadcast", post(feature::sse::sse::send_broadcast))
+
+        .route("/sse/subscribe-topic", post(feature::sse::sse::subscribe_to_topic))
+        .route("/sse/unsubscribe-topic", post(feature::sse::sse::unsubscribe_to_topic))
+        //EMAIL-CHECK
         .route(
-            "/auth/check-email",
-            post(feature::auth::sign_in::check_email),
+            "/auth/check-email-exist",
+            post(feature::auth::sign_in::check_email_exist),
         )
+        //SIGN IN WITH EMAIL
         .route(
             "/auth/sign-in-email",
             post(feature::auth::sign_in::sign_in_email),
         )
         .route(
             "/auth/sign-in-email/verify-otp",
-            post(feature::auth::sign_in::verify_otp_sign_in_email),
+            post(feature::auth::sign_in::verify_otp),
         )
         .route(
             "/auth/sign-in-email/resend-otp",
-            post(feature::auth::sign_in::resend_otp_sign_in_email),
+            post(feature::auth::sign_in::resend_otp),
         )
+        //SIGN UP WITH EMAIL
         .route(
             "/auth/sign-up-email",
             post(feature::auth::sign_up::sign_up_email),
         )
         .route(
             "/auth/sign-up-email/verify-otp",
-            post(feature::auth::sign_up::verify_otp_sign_up_email),
+            post(feature::auth::sign_up::verify_otp),
         )
         .route(
             "/auth/sign-up-email/resend-otp",
-            post(feature::auth::sign_up::resend_otp_sign_up_email),
+            post(feature::auth::sign_up::resend_otp),
         )
         .route(
-            "/conversation/list",
-            get(feature::conversation::conversation::get_conversations),
+            "/auth/sign-up-email/complete",
+            post(feature::auth::sign_up::complete_sign_up),
+        )
+        //FORGOT - PASSWORD
+        .route(
+            "/auth/forgot-password",
+            post(feature::auth::forgot_password::forgot_password),
         )
         .route(
-            "/conversation/direct/create",
-            post(feature::conversation::conversation::create_direct_conversation),
+            "/auth/forgot-password/verify-otp",
+            post(feature::auth::forgot_password::verify_otp),
         )
         .route(
-            "/conversation/message/send-text",
-            post(feature::conversation::conversation::send_text_message),
+            "/auth/forgot-password/resend-otp",
+            post(feature::auth::forgot_password::resend_otp),
         )
         .route(
-            "/conversation/message/list/:id_conversation",
-            get(feature::conversation::conversation::get_messages),
+            "/auth/forgot-password/complete",
+            post(feature::auth::forgot_password::complete_forgot_password),
         )
+
+
         .route(
             "/user/get-list-users",
             get(feature::user::user::get_list_user_with_paging),
         )
-        .route(
-            "/user/find",
-            get(feature::user::user::get_user_by_username),
-        )
+        .route("/user/find", get(feature::user::user::get_user_by_username))
+        //threads
+        .route("/thread/all", get(feature::threads::threads::get_list_threads))
+        .route("/thread/all/filter", post(feature::threads::threads::get_list_filter_threads))
 
-        .route(
-            "/friend/get-list-friends",
-            get(feature::friend::friend::get_list_friend),
-        )
-        .route(
-            "/friend/send-friend-request",
-            post(feature::friend::friend::send_friend_request),
-        )
-        .route(
-            "/friend/cancel-friend-request",
-            post(feature::friend::friend::send_friend_request),
-        )
-        .route(
-            "/friend/accept-friend-request",
-            post(feature::friend::friend::accept_friend_request),
-        )
-        .route(
-            "/friend/reject-friend-request",
-            post(feature::friend::friend::reject_friend_request),
-        )
+        .route("/thread/current-user", get(feature::threads::threads::get_list_threads_by_current_user))
+        .route("/thread/current-user/filter", post(feature::threads::threads::get_list_filter_threads_by_current_user))
 
-        .route(
-            "/space/get-list-space",
-            get(feature::space::space::get_list_space_with_pagination),
-        )
-        .route(
-            "/space/get-following-space",
-            get(feature::space::space::get_list_following_space_current_user),
-        )
-        .route(
-            "/space/detail/:space_id",
-            get(feature::space::space::get_detail_space),
-        )
-        .route(
-            "/space/create-space",
-            post(feature::space::space::create_space),
-        )
-        .route(
-            "/space/delete-space/:space_id",
-            delete(feature::space::space::delete_space),
-        )
-        .route(
-            "/space/follow-space/:space_id",
-            post(feature::space::space::follow_space),
-        )
+        .route("/thread/detail/:thread_id", get(feature::threads::threads::get_detail_thread))
+        .route("/thread/create", post(feature::threads::threads::create_new_thread))
 
-        .route(
-            "/post/get-list-post",
-            get(feature::post::post::get_list_post_with_paging),
-        )
-        .route(
-            "/post/get-list-post-by-current-user",
-            get(feature::post::post::get_list_post_by_current_user),
-        )
-        .route(
-            "/post/get-list-post-by-space/:space_id",
-            get(feature::post::post::get_list_post_by_space),
-        )
-        .route(
-            "/post/detail/:post_id",
-            get(feature::post::post::get_detail_post),
-        )
-        .route(
-            "/post/get-list-comments/:post_id",
-            get(feature::post::post::get_list_comment_by_post),
-        )
-        .route(
-            "/post/create-thought/:post_id",
-            post(feature::post::post::create_post),
-        )
-        .route(
-            "/post/delete-thought/:post_id",
-            delete(feature::post::post::delete_post),
-        )
+        .route("/thread/send-vote", post(feature::threads::threads::send_thread_vote))
+        .route("/thread/undo-vote", post(feature::threads::threads::undo_thread_vote))
+
+        .route("/thread/comment/:thread_id", get(feature::threads::threads::get_list_comment_by_thread))
+        .route("/thread/comment/reply/:comment_id", get(feature::threads::threads::get_list_reply_comment))
+        .route("/thread/comment/create", post(feature::threads::threads::create_comment))
+
+        .route("/thread/comment/send-vote", post(feature::threads::threads::send_comment_vote))
+        .route("/thread/comment/undo-vote", post(feature::threads::threads::undo_comment_vote))
+
+        .route("/thread/attachment", post(feature::file::file::upload_thread_attachment))
+        .route("/thread/attachment/:thread_id", delete(feature::file::file::delete_thread_attachment))
+        .route("/thread/attachment", put(feature::file::file::update_thread_attachment))
+        .fallback(handle_404)
         .with_state(state)
 }
 
-async fn generate_token(query: Query<GenerateToken>) -> impl IntoResponse {
-    let token = JwtUtil::encode(query.email.clone());
-
-    ApiResponse::ok(token.unwrap(), "sas")
+async fn handle_404() -> ApiResponse<String> {
+    ApiResponse::not_found("Not found.".to_string())
 }

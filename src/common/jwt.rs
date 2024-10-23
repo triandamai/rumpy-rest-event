@@ -14,6 +14,7 @@ use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, errors::Error as JwtErro
 use serde::{Deserialize, Serialize};
 
 use crate::common::api_response::ApiResponse;
+use crate::common::env_config::EnvConfig;
 
 pub struct JwtUtil {
     pub claims: JwtClaims,
@@ -44,8 +45,7 @@ impl JwtUtil {
     pub fn encode(
         sub: String
     ) -> Option<String> {
-        let secret = std::env::var(JWT_SECRET_KEY)
-            .unwrap_or(JWT_SECRET_KEY_DEFAULT.to_string());
+        let secret = EnvConfig::init();
         let exp = Local::now().add(Duration::hours(3)).timestamp();
         let claims = JwtClaims {
             iss: ISS.to_string(),
@@ -57,7 +57,7 @@ impl JwtUtil {
         let token = jsonwebtoken::encode(
             &Header::new(Algorithm::HS256),
             &claims,
-            &EncodingKey::from_secret(secret.as_ref()),
+            &EncodingKey::from_secret(secret.jwt_secret.as_ref()),
         ).unwrap();
         Some(token)
     }
@@ -65,11 +65,10 @@ impl JwtUtil {
     pub fn decode(
         token: String
     ) -> Result<TokenData<JwtClaims>, jsonwebtoken::errors::Error> {
-        let secret = std::env::var(JWT_SECRET_KEY)
-            .unwrap_or(JWT_SECRET_KEY_DEFAULT.to_string());
+        let secret =EnvConfig::init();
         let decoded: Result<TokenData<JwtClaims>, JwtError> = jsonwebtoken::decode::<JwtClaims>(
             &token,
-            &DecodingKey::from_secret(secret.as_ref()),
+            &DecodingKey::from_secret(secret.jwt_secret.as_ref()),
             &Validation::new(Algorithm::HS256),
         );
         decoded

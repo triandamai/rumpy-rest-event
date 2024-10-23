@@ -1,7 +1,6 @@
 pub mod user_credential;
-pub mod conversation;
-pub mod message;
-pub mod friend;
-pub mod space;
-pub mod file;
-pub mod post;
+pub mod thread;
+pub mod thread_attachment;
+pub mod thread_comment;
+pub mod thread_vote;
+pub mod thread_watch;

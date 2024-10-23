@@ -10,21 +10,19 @@ use crate::common::api_response::ApiResponse;
 use crate::common::app_state::AppState;
 use crate::common::jwt::JwtClaims;
 use crate::common::sse::sse_builder::{SseBuilder, SseTarget};
-use crate::feature::sse::sse_model::{
-    RegisterSse, SendBroadcastRequest, SendToUserChannel, SendToUserRequest,
-};
+use crate::feature::sse::sse_model::{RegisterSse, SendBroadcastRequest, SendToUserChannel, SendToUserRequest, SubscribeToTopicRequest};
 
 pub async fn send_to_user(
     state: State<AppState>,
-    body: Json<SendToUserChannel>,
-) -> impl IntoResponse {
+    Json(body): Json<SendToUserChannel>,
+) -> ApiResponse<String>  {
     let _ = state
         .sse
         .send(SseBuilder::new(
             SseTarget::create()
                 .set_user_id(body.user_id.clone())
                 .set_event_name(body.event_name.clone()),
-            body.0,
+            body,
         ))
         .await;
 
@@ -33,8 +31,8 @@ pub async fn send_to_user(
 
 pub async fn send_to_user_device(
     state: State<AppState>,
-    body: Json<SendToUserRequest>,
-) -> impl IntoResponse {
+    Json(body): Json<SendToUserRequest>,
+) -> ApiResponse<String>  {
     state
         .sse
         .send(SseBuilder::new(
@@ -42,7 +40,7 @@ pub async fn send_to_user_device(
                 .set_user_id(body.user_id.clone())
                 .set_device_id(body.device_id.clone())
                 .set_event_name(body.event_name.clone()),
-            body.0,
+            body,
         ))
         .await;
 
@@ -51,17 +49,17 @@ pub async fn send_to_user_device(
 
 pub async fn send_broadcast(
     state: State<AppState>,
-    body: Json<SendBroadcastRequest>,
-) -> impl IntoResponse {
+    Json(body): Json<SendBroadcastRequest>,
+) -> ApiResponse<String>  {
     state
         .sse
         .send(SseBuilder::new(
             SseTarget::broadcast(body.event_name.clone()),
-            body.0,
+            body,
         ))
         .await;
 
-    ApiResponse::<String>::ok("subscribe".to_string(), "Berhasil mengirimkan ke topic")
+    ApiResponse::ok("subscribe".to_string(), "Berhasil mengirimkan ke topic")
 }
 
 pub async fn register_sse(
@@ -74,14 +72,34 @@ pub async fn register_sse(
         .await
 }
 
-pub async fn get_active_subscriber(
-    state: State<AppState>,
-    auth: JwtClaims,
-) -> impl IntoResponse {
-    let data = state
-        .sse
-        .get_list_client()
-        .await;
+pub async fn subscribe_to_topic(
+    mut state: State<AppState>,
+    body:Json<SubscribeToTopicRequest>
+)->ApiResponse<String>{
+
+    let subscribe = state
+        .redis
+        .subscribe_to_topic(body.topic.clone(),body.user_id.clone());
+
+    subscribe.map_or_else(|e|ApiResponse::failed(e),|message|ApiResponse::ok(message,"Berhasil subscribe ke topic"))
+
+}
+
+pub async fn unsubscribe_to_topic(
+    mut state: State<AppState>,
+    body:Json<SubscribeToTopicRequest>
+)->ApiResponse<String>{
+
+    let subscribe = state
+        .redis
+        .subscribe_to_topic(body.topic.clone(),body.user_id.clone());
+
+    subscribe.map_or_else(|e| ApiResponse::failed(e), |message|ApiResponse::ok(message,"Berhasil unsubscribe ke topic"))
+
+}
+
+pub async fn get_active_subscriber(state: State<AppState>, _: JwtClaims) -> impl IntoResponse {
+    let data = state.sse.get_list_client().await;
     if data.is_none() {
         return ApiResponse::failed("Tidak ditemukan subscriber".to_string());
     }

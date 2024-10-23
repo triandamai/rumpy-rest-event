@@ -12,11 +12,11 @@ pub struct SmtpClient {
 
 impl SmtpClient {
     pub fn new(to: &String) -> SmtpClient {
-        return SmtpClient {
+        SmtpClient {
             from: String::from("Sirkel <sirkel@gmail.com>"),
             to: to.clone(),
             reply_to: None,
-        };
+        }
     }
     pub fn new_with_reply(to: &String, reply_to: &String) -> SmtpClient {
         return SmtpClient {
@@ -48,10 +48,12 @@ impl SmtpClient {
         let url = std::env::var(URL_SMTP_VAR)
             .unwrap_or(URL_SMTP_DEV.to_string());
 
-        let mailer = SmtpTransport::from_url(url.as_str())
-            .unwrap()
-            .build();
+        let mailer = SmtpTransport::from_url(url.as_str());
+        if !mailer.is_err() {
+            let mailer = mailer.unwrap().build();
 
-        let _ = mailer.send(&message);
+            let _ = mailer.send(&message);
+        }
+
     }
 }

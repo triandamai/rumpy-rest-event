@@ -5,7 +5,7 @@ use std::time::Duration;
 
 use axum::response::sse::{Event, KeepAlive};
 use axum::response::Sse;
-use futures::{Stream};
+use futures::Stream;
 use tokio::spawn;
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::Sender;
@@ -50,7 +50,7 @@ impl SseBroadcaster {
     /// list if not.'
     fn spawn_ping(this: Arc<Self>) {
         spawn(async move {
-            let mut interval = interval(Duration::from_secs(10));
+            let mut interval = interval(Duration::from_secs(15));
             loop {
                 interval.tick().await;
                 this.remove_stale_client().await;
@@ -66,7 +66,11 @@ impl SseBroadcaster {
         for (key, users) in clients {
             let mut ok_subs: HashMap<String, Sender<Event>> = HashMap::new();
             for (device, client) in users {
-                if client.send(Event::default().comment("ping")).await.is_ok() {
+                if client
+                    .send(Event::default().event(":ping").comment("ping"))
+                    .await
+                    .is_ok()
+                {
                     ok_subs.insert(device, client);
                 }
             }
@@ -79,7 +83,7 @@ impl SseBroadcaster {
         &self,
         user_id: String,
         device_id: String,
-    ) -> Sse<impl Stream<Item=Result<Event, Infallible>>> {
+    ) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
         let (tx, rx) = mpsc::channel(10);
         let event = Event::default()
             .event("connected")
@@ -91,11 +95,15 @@ impl SseBroadcaster {
 
         let mut subs = match self.inner.lock().unwrap().clients.get(&user_id) {
             None => HashMap::new(),
-            Some(client) => client.clone()
+            Some(client) => client.clone(),
         };
 
         subs.insert(device_id.clone(), tx.clone());
-        self.inner.lock().unwrap().clients.insert(user_id.clone(), subs);
+        self.inner
+            .lock()
+            .unwrap()
+            .clients
+            .insert(user_id.clone(), subs);
 
         Sse::new(stream).keep_alive(KeepAlive::default())
     }
@@ -105,7 +113,10 @@ impl SseBroadcaster {
 
         let event = Event::default()
             .event("connection")
-            .json_data(ApiResponse::ok("Rejected".to_string(), "Failed to subscribe"))
+            .json_data(ApiResponse::ok(
+                "Rejected".to_string(),
+                "Failed to subscribe",
+            ))
             .unwrap();
 
         let _ = tx.send(event).await.unwrap();
@@ -117,10 +128,7 @@ impl SseBroadcaster {
     pub async fn send<T: serde::Serialize>(&self, builder: SseBuilder<T>) {
         let target = builder.get_target();
         if target.is_broadcast() {
-            self.broadcast(
-                &target.even_name(),
-                &builder.data,
-            ).await;
+            self.broadcast(&target.even_name(), &builder.data).await;
         } else {
             if target.is_to_device() {
                 self.send_to_user_device(
@@ -128,22 +136,16 @@ impl SseBroadcaster {
                     target.device_id(),
                     &target.even_name(),
                     &builder.data,
-                ).await;
+                )
+                .await;
             } else {
-                self.send_to_user(
-                    target.user_id(),
-                    &target.even_name(),
-                    &builder.data,
-                ).await;
+                self.send_to_user(target.user_id(), &target.even_name(), &builder.data)
+                    .await;
             }
         }
     }
 
-    async fn broadcast<T: serde::Serialize>(
-        &self,
-        event_name: &String,
-        data: &T,
-    ) {
+    async fn broadcast<T: serde::Serialize>(&self, event_name: &String, data: &T) {
         let clients = self.inner.lock().unwrap().clients.clone();
         let event = Event::default().event(event_name).json_data(data).unwrap();
 
@@ -197,22 +199,15 @@ impl SseBroadcaster {
         }
     }
 
-    pub async fn get_list_client(
-        &self
-    ) -> Option<HashMap<String, Vec<String>>> {
+    pub async fn get_list_client(&self) -> Option<HashMap<String, Vec<String>>> {
         let clients = self.inner.lock().unwrap().clients.clone();
 
         let mut data: HashMap<String, Vec<String>> = HashMap::new();
 
-        let _ = clients
-            .iter()
-            .for_each(|(key, sub)| {
-                let items = sub
-                    .iter()
-                    .map(|(key, value)| key.clone())
-                    .collect();
-                data.insert(key.clone(), items);
-            });
+        let _ = clients.iter().for_each(|(key, sub)| {
+            let items = sub.iter().map(|(key, _)| key.clone()).collect();
+            data.insert(key.clone(), items);
+        });
 
         Some(data)
     }

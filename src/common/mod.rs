@@ -5,3 +5,6 @@ pub mod env_config;
 pub mod redis;
 pub mod jwt;
 pub mod smtp;
+pub mod minio;
+pub mod utils;
+pub mod bson;

@@ -1,0 +1,25 @@
+{
+  "subscriber": [
+    {
+      "farhan": [
+        {
+          "hp" : "wesocket.Conn"
+        },
+        {
+          "web" : "wesocket.Conn"
+        }
+      ]
+    },
+    {
+      "trian": "wesocket.Conn"
+    }
+  ],
+  "room": {
+    "BPJS": ["farhan","trian"],
+    "BPJSLDC": ["farhan","trian","user1","user2"]
+  }
+}
+
+
+farhan -> BPJS -> [(farhan != sender_id)[(hp)->writeMessage,(web)->writeMessage],(trian != sender_id)->writeMessage]
+darhan -> BPJSLDC

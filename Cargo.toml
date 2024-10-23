@@ -1,5 +1,5 @@
 [package]
-name = "belajar-axum"
+name = "inventory"
 version = "0.1.0"
 edition = "2021"
 
@@ -9,10 +9,10 @@ members = []
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-axum = "0.7.4"
+axum = { version = "0.7.4" ,features = ["multipart"]}
 futures = "0.3.30"
 http-body = "1.0.0"
-redis = "0.24.0"
+redis = "0.27.2"
 serde = { version = "1.0.196", features = ["derive"] }
 tokio = { version = "1.36.0", features = ["macros", "rt-multi-thread"] }
 tokio-stream = "0.1.14"
@@ -22,12 +22,20 @@ uuid = { version = "1.7.0", features = ["v4"] }
 bcrypt = "0.15.1"
 rand = "0.8.5"
 jsonwebtoken = "9.3.0"
-chrono = { version = "0.4.34", features = ["unstable-locales","serde"] }
+chrono = { version = "0.4.34", features = ["unstable-locales", "serde"] }
 headers = "0.4.0"
 axum-extra = { version = "0.9.3", features = ["typed-header"] }
-serde_json = {version = "1.0.120"}
-sqlx = { version = "0.8.0", features = ["postgres","chrono","runtime-tokio"] }
+serde_json = { version = "1.0.120" }
 log = "0.4.20"
 itertools = "0.13.0"
 lettre = "0.11.7"
+validator = { version = "0.18", features = ["derive"] }
+mime = "0.3.17"
+rust-s3 = "0.35.1"
+bson = {version = "2.13.0"}
+serde-helpers = {version = "0.1.0",features = ["serde_json","default"]}
+serde_with = "3.11.0"
+
+[dependencies.mongodb]
+version = "3.1.0"
 
