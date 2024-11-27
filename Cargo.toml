@@ -1,5 +1,5 @@
 [package]
-name = "inventory"
+name = "strong-teams"
 version = "0.1.0"
 edition = "2021"
 
@@ -10,11 +10,11 @@ members = []
 
 [dependencies]
 axum = { version = "0.7.4" ,features = ["multipart"]}
-futures = "0.3.30"
+futures ={version="0.3.30"}
 http-body = "1.0.0"
 redis = "0.27.2"
 serde = { version = "1.0.196", features = ["derive"] }
-tokio = { version = "1.36.0", features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1.36.0", features = ["full"] }
 tokio-stream = "0.1.14"
 tracing-subscriber = "0.3.18"
 dotenv = "0.15.0"
@@ -29,7 +29,7 @@ serde_json = { version = "1.0.120" }
 log = "0.4.20"
 itertools = "0.13.0"
 lettre = "0.11.7"
-validator = { version = "0.18", features = ["derive"] }
+validator = { version = "0.19.0", features = ["derive"] }
 mime = "0.3.17"
 rust-s3 = "0.35.1"
 bson = {version = "2.13.0"}
@@ -38,4 +38,5 @@ serde_with = "3.11.0"
 
 [dependencies.mongodb]
 version = "3.1.0"
+features = ["sync"]
 

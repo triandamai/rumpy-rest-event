@@ -1,0 +1,26 @@
+{
+  "message": {
+    "en": "Hello, ${name}. ${hohoe}",
+    "id-ID": "Halo, ${name}. ${hohoe}"
+  },
+  "unauthorized": {
+    "en": "Unauthorized access.",
+    "id-ID": "Anda tidak memiliki izin."
+  },
+  "access.denied": {
+    "en": "Access Denied.",
+    "id-ID": "Akses Ditolak."
+  },
+  "validation.error": {
+    "en": "Bad Request.",
+    "id-ID": "Permintaan tidak valid."
+  },
+  "sign-in.failed": {
+    "en": "Account not found, wrong username or password.",
+    "id-ID": "Akun tidak ditemukan, username atau password salah."
+  },
+  "sign-in.success": {
+    "en": "Sign In Success.",
+    "id-ID": "Login Berhasil."
+  }
+}

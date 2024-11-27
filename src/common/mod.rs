@@ -8,3 +8,11 @@ pub mod smtp;
 pub mod minio;
 pub mod utils;
 pub mod bson;
+#[macro_use]
+pub mod orm;
+#[macro_use]
+pub mod i18n;
+pub mod lang;
+pub mod seeder;
+
+

@@ -81,7 +81,7 @@ pub async fn subscribe_to_topic(
         .redis
         .subscribe_to_topic(body.topic.clone(),body.user_id.clone());
 
-    subscribe.map_or_else(|e|ApiResponse::failed(e),|message|ApiResponse::ok(message,"Berhasil subscribe ke topic"))
+    subscribe.map_or_else(|e|ApiResponse::failed(e.as_str()),|message|ApiResponse::ok(message,"Berhasil subscribe ke topic"))
 
 }
 
@@ -94,14 +94,14 @@ pub async fn unsubscribe_to_topic(
         .redis
         .subscribe_to_topic(body.topic.clone(),body.user_id.clone());
 
-    subscribe.map_or_else(|e| ApiResponse::failed(e), |message|ApiResponse::ok(message,"Berhasil unsubscribe ke topic"))
+    subscribe.map_or_else(|e| ApiResponse::failed(e.as_str()), |message|ApiResponse::ok(message,"Berhasil unsubscribe ke topic"))
 
 }
 
 pub async fn get_active_subscriber(state: State<AppState>, _: JwtClaims) -> impl IntoResponse {
     let data = state.sse.get_list_client().await;
     if data.is_none() {
-        return ApiResponse::failed("Tidak ditemukan subscriber".to_string());
+        return ApiResponse::failed("Tidak ditemukan subscriber");
     }
 
     ApiResponse::ok(data.unwrap(), "Subscriber aktif")

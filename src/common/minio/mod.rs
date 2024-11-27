@@ -1,6 +1,8 @@
-use s3::{Bucket, Region};
-use s3::creds::Credentials;
 use crate::common::env_config::EnvConfig;
+use log::info;
+use s3::creds::Credentials;
+use s3::request::ResponseData;
+use s3::{Bucket, Region};
 
 pub struct MinIO {
     access_key: String,
@@ -16,6 +18,45 @@ impl MinIO {
             secret_key: env.minio_secret_key.clone(),
             url_server: env.minio_url.clone(),
         }
+    }
+
+    pub async fn get_file(
+        &self,
+        bucket_name: String,
+        file_name: String,
+    ) -> Result<ResponseData, String> {
+        let credentials = Credentials::new(Some(self.access_key.clone().as_str()), Some(self.secret_key.clone().as_str()), None, None, None);
+        if credentials.is_err() {
+            return Err(credentials.unwrap_err().to_string());
+        }
+        let credentials = credentials.unwrap();
+        let bucket = Bucket::new(
+            bucket_name.as_str(),
+            Region::Custom {
+                region: "asia".to_string(),
+                endpoint: self.url_server.clone(),
+            },
+            credentials,
+        );
+        if bucket.is_err() {
+            return Err(bucket.unwrap_err().to_string());
+        }
+        let filename = format!("/{}", file_name);
+        let bucket = bucket.unwrap().with_path_style();
+
+        let file = bucket.get_object(filename.clone()).await;
+        if file.is_err() {
+            return Err(file.unwrap_err().to_string());
+        }
+
+        {
+            info!(target: "get_object","from minio {}", &filename);
+        }
+        if file.is_err() {
+            return Err("".to_string());
+        }
+        let file = file.unwrap();
+        Ok(file)
     }
 
     pub async fn upload_file(&self, file_path: String, bucket_name: String, file_name: String) -> Result<String, String> {

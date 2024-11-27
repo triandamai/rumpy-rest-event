@@ -1,10 +1,10 @@
-use chrono::{DateTime, NaiveDate, ParseResult, Utc};
+use chrono::NaiveDate;
 use log::info;
 use serde::{Deserialize, Serialize};
 use validator::{Validate, ValidationError};
-use crate::entity::user_credential::{UserCredential};
 
 pub const OTP_KEY: &str = "otp";
+pub const BRANCH_ID_KEY: &str = "branch_id";
 pub const USER_ID_KEY: &str = "user_id";
 pub const USER_UUID_KEY: &str = "user_uuid";
 pub const TOKEN_KEY: &str = "token";
@@ -21,50 +21,30 @@ pub struct CheckEmailRequest {
     pub email: String,
 }
 
-#[derive(Debug, Clone, Validate,Serialize, Deserialize)]
-pub struct SignInEmailRequest {
+#[derive(Debug, Clone, Validate, Serialize, Deserialize)]
+pub struct SignInStaffRequest {
     #[validate(email)]
     pub email: String,
     pub password: String,
 }
 
-impl SignInEmailRequest {
+impl SignInStaffRequest {
     pub fn is_test_email(&self) -> bool {
         self.email.eq("triandamai@gmail.com") || self.email.eq("parzival@email.com")
     }
 }
 
-#[derive(Debug, Clone,Validate, Serialize, Deserialize)]
-pub struct SignInEmailResponse {
+#[derive(Debug, Clone, Validate, Serialize, Deserialize)]
+pub struct SignInStaffResponse {
     pub token: String,
 }
 
-#[derive(Debug, Clone,Validate, Serialize, Deserialize)]
-pub struct VerifyOtpSignInRequest {
-    #[validate(length(min = 4, max = 4))]
-    pub otp: String,
-}
-
-#[derive(Debug, Clone,Validate, Serialize, Deserialize)]
-pub struct VerifyOtpSignInResponse {
-    pub token: String,
-    pub data: Option<UserCredential>,
-}
-
-#[derive(Debug, Clone,Validate, Serialize, Deserialize)]
-pub struct ResendOtpSignInRequest {
-    #[validate(length(min = 4, max = 4))]
-    pub otp: String,
-}
-
-//sign up
-#[derive(Debug, Clone,Validate, Serialize, Deserialize)]
+#[derive(Debug, Clone, Validate, Serialize, Deserialize)]
 pub struct SignUpEmailRequest {
     #[validate(email)]
     pub email: String,
     pub password: String,
 }
-
 
 impl SignUpEmailRequest {
     pub fn is_test_email(&self) -> bool {
@@ -72,33 +52,14 @@ impl SignUpEmailRequest {
     }
 }
 
-#[derive(Debug, Clone,Validate, Serialize, Deserialize)]
+#[derive(Debug, Clone, Validate, Serialize, Deserialize)]
 pub struct SignUpEmailResponse {
     pub token: String,
 }
 
-#[derive(Debug, Clone,Validate, Serialize, Deserialize)]
-pub struct VerifyOtpSignUpRequest {
-    #[validate(length(min = 4, max = 4))]
-    pub otp: String,
-}
-
-#[derive(Debug, Clone,Validate, Serialize, Deserialize)]
-pub struct VerifyOtpSignUpResponse {
-    pub token: String,
-    pub data: Option<UserCredential>,
-}
-
-#[derive(Debug, Clone,Validate, Serialize, Deserialize)]
-pub struct ResendOtpSignUpRequest {
-    #[validate(length(min = 4, max = 4))]
-    pub otp: String,
-}
-
-#[derive(Debug,Validate, Clone, Serialize, Deserialize)]
+#[derive(Debug, Validate, Clone, Serialize, Deserialize)]
 pub struct CompleteSignUpRequest {
     pub full_name: String,
-    pub username: String,
     #[validate(length(min = 10), custom(function = "validate_date_of_birth"))]
     pub date_of_birth: String,
 }
@@ -107,12 +68,8 @@ impl CompleteSignUpRequest {
     pub fn get_date_of_birth(&self) -> Option<NaiveDate> {
         let parse = NaiveDate::parse_from_str(self.date_of_birth.clone().as_str(), "%Y-%m-%d");
         match parse {
-            Ok(value) => {
-                Some(value)
-            }
-            Err(_) => {
-                None
-            }
+            Ok(value) => Some(value),
+            Err(_) => None,
         }
     }
 }
@@ -120,23 +77,25 @@ impl CompleteSignUpRequest {
 pub fn validate_date_of_birth(date: &str) -> Result<(), ValidationError> {
     let parse = NaiveDate::parse_from_str(date, "%Y-%m-%d");
     match parse {
-        Ok(_) => {
-            Ok(())
-        }
+        Ok(_) => Ok(()),
         Err(e) => {
             info!(target: "validate_dob::","{:?}",e);
-            Err(ValidationError::new("Invalid date of birth format: YYYY-MM-DD"))
+            Err(ValidationError::new(
+                "Invalid date of birth format: YYYY-MM-DD",
+            ))
         }
     }
 }
-#[derive(Debug, Clone,Validate, Serialize, Deserialize)]
-pub struct CompleteSignUpResponse {
-    pub token: String,
-    pub data: Option<UserCredential>,
+
+//change password
+#[derive(Debug, Clone, Validate, Serialize, Deserialize)]
+pub struct ChangePasswordRequest {
+    pub current_password: String,
+    pub new_password: String,
 }
 
 //forgot password
-#[derive(Debug, Clone,Validate, Serialize, Deserialize)]
+#[derive(Debug, Clone, Validate, Serialize, Deserialize)]
 pub struct ForgotPasswordRequest {
     #[validate(email)]
     pub email: String,
@@ -148,35 +107,9 @@ impl ForgotPasswordRequest {
     }
 }
 
-
-#[derive(Debug, Clone,Validate, Serialize, Deserialize)]
-pub struct ForgotPasswordResponse {
-    pub token: String,
-}
-
-#[derive(Debug, Clone,Validate, Serialize, Deserialize)]
-pub struct VerifyOtpForgotPasswordRequest {
-    #[validate(length(min = 4, max = 4))]
-    pub otp: String,
-}
-#[derive(Debug, Clone,Validate, Serialize, Deserialize)]
-pub struct VerifyOtpForgotPasswordResponse {
-    pub token: String,
-    pub data: Option<UserCredential>,
-}
-
-#[derive(Debug, Clone,Validate, Serialize, Deserialize)]
-pub struct ResendOtpForgotPasswordRequest {
-    #[validate(length(min = 4, max = 4))]
-    pub otp: String,
-}
-
-#[derive(Debug, Clone,Validate, Serialize, Deserialize)]
+#[derive(Debug, Clone, Validate, Serialize, Deserialize)]
 pub struct CompleteForgotPasswordRequest {
+    #[validate(length(min=1))]
     pub new_password: String,
 }
 
-#[derive(Debug, Clone,Validate, Serialize, Deserialize)]
-pub struct CompleteForgotPasswordResponse {
-    pub token: String,
-}
