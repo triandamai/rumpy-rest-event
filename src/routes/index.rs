@@ -1,20 +1,32 @@
 use crate::common::api_response::ApiResponse;
+use crate::common::app_state::AppState;
 use crate::common::lang::Lang;
 use crate::common::minio::MinIO;
 use crate::common::orm::orm::Orm;
+use crate::dto::account_permission_dto::AccountPermissionDTO;
+use crate::entity::account_permission::AccountPermission;
 use crate::translate;
+use axum::extract::State;
 use bson::oid::ObjectId;
-use bson::Document;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Write;
+use std::str::FromStr;
 
-pub async fn index() -> ApiResponse<Vec<Document>> {
+pub async fn index(
+    state: State<AppState>
+) -> ApiResponse<Vec<AccountPermissionDTO>> {
+    let command = Orm::get("account-permission")
+        .filter_object_id("account_id", &ObjectId::from_str("6742c74a15e68b0e7ee06122").unwrap_or(ObjectId::new()));
+
+    let find = command
+        .all::<AccountPermissionDTO>(&state.db).await;
+
     let update = Orm::get("account")
         .and()
         .filter_object_id("_id", &ObjectId::new())
         .filter_object_id("_id2", &ObjectId::new());
-    ApiResponse::ok(update.show_merging(), "test merge")
+    ApiResponse::ok(find.unwrap_or(Vec::new()), "test merge")
 }
 
 pub async fn generate_locales() -> ApiResponse<String> {

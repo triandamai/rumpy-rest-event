@@ -79,12 +79,13 @@ impl Replace {
     }
 
     pub fn filter_bool(mut self, column: &str, operator: Option<&str>, value: bool)->Self{
-        let orm = self.orm.filter_bool(column, operator, value.clone());
+        let orm = self.orm.filter_bool(column, operator, value);
         self.orm = orm;
         self
     }
-    pub fn filter_vec<T>(mut self, column: &str, operator: Option<&str>, value: Vec<T>)->Self{
-        let orm = self.orm.filter_vec(column, operator, value.clone());
+
+    pub fn filter_array<T:Serialize>(mut self, column: &str, operator: Option<&str>, value: Vec<T>)->Self{
+        let orm = self.orm.filter_array(column, operator, value);
         self.orm = orm;
         self
     }

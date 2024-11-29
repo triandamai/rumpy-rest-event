@@ -160,14 +160,19 @@ impl Orm {
         }
         self
     }
-
-    pub fn filter_vec<T>(mut self, column: &str, operator: Option<&str>, value: Vec<T>) -> Self {
+    pub fn filter_array<T: Serialize>(
+        mut self,
+        column: &str,
+        operator: Option<&str>,
+        value: Vec<T>,
+    ) -> Self {
         let mut doc = Document::new();
+        let value_as_doc = bson::to_document(&value).unwrap_or(Document::new());
         if operator.is_none() {
-            doc.insert(column, value);
+            doc.insert(column, value_as_doc);
         } else {
             let mut eq = Document::new();
-            eq.insert(operator.unwrap(), value);
+            eq.insert(operator.unwrap(), value_as_doc);
             doc.insert(column, eq);
         }
 
@@ -245,12 +250,7 @@ impl Orm {
     pub fn filter_object_id(mut self, column: &str, value: &ObjectId) -> Self {
         let mut doc = Document::new();
 
-        doc.insert(
-            column,
-            doc! {
-                "$eq":value.to_string()
-            },
-        );
+        doc.insert(column, doc! {"$eq":value});
 
         if self.current_filter.is_none() {
             self.filter.push(doc);
@@ -300,18 +300,34 @@ impl Orm {
                 }
             }
             if is_aggregate {
-                parent.insert("$match", result2);
+                if result2.len() > 1 {
+                    parent.insert("$match", result2);
+                } else {
+                    parent.insert("$match", result2.get(0).unwrap());
+                }
                 result.push(parent.clone());
             }
         }
 
         for lookup in self.lookup {
-            result.push(lookup.clone());
+            result.push(lookup);
         }
 
         for unwind in self.unwind {
-            result.push(unwind.clone());
+            result.push(unwind);
         }
+
+        if self.count.is_some() {
+            result.push(self.count.unwrap());
+        }
+
+        if self.skip.is_some() {
+            result.push(self.skip.unwrap());
+        }
+        // NO NEED LIMIT
+        // if self.limit.is_some() {
+        //     result.push(self.limit.unwrap());
+        // }
         result
     }
 
@@ -333,7 +349,6 @@ impl Orm {
             if is_aggregate {
                 parent.insert("$match", upper_filter);
                 result.push(parent.clone());
-                result_count.push(parent);
             } else {
                 result.push(upper_filter.clone());
             }
@@ -345,13 +360,15 @@ impl Orm {
                     result2.push(f.clone());
                 } else {
                     result.push(f.clone());
-                    result_count.push(f.clone());
                 }
             }
             if is_aggregate {
-                parent.insert("$match", result2);
+                if result2.len() > 1 {
+                    parent.insert("$match", result2);
+                } else {
+                    parent.insert("$match", result2.get(0).unwrap());
+                }
                 result.push(parent.clone());
-                result_count.push(parent)
             }
         }
 
@@ -425,7 +442,7 @@ impl Orm {
             if is_aggregate {
                 if result2.len() > 1 {
                     parent.insert("$match", result2);
-                }else {
+                } else {
                     parent.insert("$match", result2.get(0).unwrap());
                 }
                 result.push(parent.clone());

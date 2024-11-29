@@ -78,7 +78,7 @@ impl Get {
 
         if data.is_err() {
             let err_message = data.unwrap_err().to_string();
-            info!(target: "db::get::error","{}",err_message.clone());
+            info!(target: "db::get::error 1","{}",err_message.clone());
             return Err(err_message);
         }
         let mut result: Vec<T> = Vec::new();
@@ -93,12 +93,12 @@ impl Get {
         let extract = extract.unwrap();
 
         for item in extract {
-            let tr = bson::from_document::<T>(item.clone());
+            let transform = bson::from_document::<T>(item.clone());
 
-            if tr.is_ok() {
-                result.push(tr.unwrap());
+            if transform.is_ok() {
+                result.push(transform.unwrap());
             } else {
-                let err_message = tr.unwrap_err().to_string();
+                let err_message = transform.unwrap_err().to_string();
                 info!(target:"db::get::error:","extract {:?}",err_message);
             }
         }
@@ -230,8 +230,9 @@ impl Get {
         self.orm = orm;
         self
     }
-    pub fn filter_vec<T>(mut self, column: &str, operator: Option<&str>, value: Vec<T>)->Self{
-        let orm = self.orm.filter_vec(column, operator, value.clone());
+
+    pub fn filter_array<T:Serialize>(mut self, column: &str, operator: Option<&str>, value: Vec<T>)->Self{
+        let orm = self.orm.filter_array(column, operator, value);
         self.orm = orm;
         self
     }
@@ -278,6 +279,6 @@ impl Get {
     }
 
     pub fn show_merging(self) -> Vec<Document> {
-        self.orm.merge_field(true)
+        self.orm.merge_field_all(true)
     }
 }

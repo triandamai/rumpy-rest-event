@@ -6,12 +6,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug,Serialize,Deserialize)]
 pub struct Coach{
-    #[serde(
-        rename = "_id",
-        skip_serializing_if = "Option::is_none",
-        serialize_with = "serialize_object_id",
-        deserialize_with = "deserialize_object_id"
-    )]
+    #[serde(rename = "_id", skip_serializing_if = "Option::is_none")]
     pub id:Option<ObjectId>,
     pub branch_id:Option<ObjectId>,
     pub full_name:String,

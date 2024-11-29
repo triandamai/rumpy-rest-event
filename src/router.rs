@@ -28,12 +28,12 @@ pub fn init_routes(state: AppState) -> Router {
         )
         //auth
         .route(
-            "/auth/staff-sign-in",
-            get(feature::auth::auth::sign_in),
+            "/auth/sign-in",
+            post(feature::auth::auth::sign_in),
         )
         .route(
-            "/auth/staff-sign-out",
-            get(feature::auth::auth::sign_out),
+            "/auth/sign-out",
+            post(feature::auth::auth::sign_out),
         )
         //permission
         .route(

@@ -22,20 +22,20 @@ pub struct CheckEmailRequest {
 }
 
 #[derive(Debug, Clone, Validate, Serialize, Deserialize)]
-pub struct SignInStaffRequest {
+pub struct SignInRequest {
     #[validate(email)]
     pub email: String,
     pub password: String,
 }
 
-impl SignInStaffRequest {
+impl SignInRequest {
     pub fn is_test_email(&self) -> bool {
         self.email.eq("triandamai@gmail.com") || self.email.eq("parzival@email.com")
     }
 }
 
 #[derive(Debug, Clone, Validate, Serialize, Deserialize)]
-pub struct SignInStaffResponse {
+pub struct SignInResponse {
     pub token: String,
 }
 

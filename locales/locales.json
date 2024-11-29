@@ -12,8 +12,8 @@
     "id-ID": "Akses Ditolak."
   },
   "validation.error": {
-    "en": "Bad Request.",
-    "id-ID": "Permintaan tidak valid."
+    "en": "Request Body Not Valid.",
+    "id-ID": "Request Body Tidak Valid."
   },
   "sign-in.failed": {
     "en": "Account not found, wrong username or password.",
@@ -22,5 +22,33 @@
   "sign-in.success": {
     "en": "Sign In Success.",
     "id-ID": "Login Berhasil."
+  },
+  "change-password.account.not-failed": {
+    "en": "Failed change password, account not found.",
+    "id-ID": "Gagal merubah password akun tidak ditemukan."
+  },
+  "change-password.password-invalid": {
+    "en": "Failed change password, account not found.",
+    "id-ID": "Gagal merubah password akun tidak ditemukan."
+  },
+  "change-password.new-password-invalid": {
+    "en": "Failed change password, account not found.",
+    "id-ID": "Gagal merubah password akun tidak ditemukan."
+  },
+  "change-password.failed": {
+    "en": "Failed to change password, try again later.",
+    "id-ID": "Gagal merubah password, coba beberapa saat lagi."
+  },
+  "change-password.success": {
+    "en": "Password has been change.",
+    "id-ID": "Password berhasil dirubah."
+  },
+  "change-password.verify-token.success": {
+    "en": "Verification valid.",
+    "id-ID": "Verifikasi token berhasil."
+  },
+  "complete-forgot-password.not-found": {
+    "en": "User or session not found.",
+    "id-ID": "Akun atau sesi tidak ditemukan"
   }
 }

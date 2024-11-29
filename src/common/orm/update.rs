@@ -42,9 +42,9 @@ impl Update {
         self.set = Some(set);
         self
     }
-    pub fn set_vec<T>(mut self,column:&str,value:Vec<T>)->Self{
+    pub fn set_vec<T:Serialize>(mut self,column:&str,value:Vec<T>)->Self{
         let mut set = self.set.unwrap_or(Document::new());
-        set.insert(column, value);
+        set.insert(column, bson::to_document(&value).unwrap_or(Document::new()));
         self.set = Some(set);
         self
     }
@@ -63,7 +63,7 @@ impl Update {
     }
     pub fn set_object<T: Serialize>(mut self,column:&str,value:T)->Self{
         let mut set = self.set.unwrap_or(Document::new());
-        set.insert(column, value);
+        set.insert(column, bson::to_document(&value).unwrap_or(Document::new()));
         self.set = Some(set);
         self
     }
@@ -73,14 +73,14 @@ impl Update {
         self.one(
             set,
             db
-        )
+        ).await
     }
     pub async fn execute_many(self,db:&Database)->Result<ObjectId,String>{
         let set = &self.set.clone().unwrap_or(Document::new());
         self.many(
             set,
             db
-        )
+        ).await
     }
 
     pub async fn one<T: Serialize>(
@@ -182,8 +182,9 @@ impl Update {
         self.orm = orm;
         self
     }
-    pub fn filter_vec<T>(mut self, column: &str, operator: Option<&str>, value: Vec<T>)->Self{
-        let orm = self.orm.filter_vec(column, operator, value.clone());
+
+    pub fn filter_array<T:Serialize>(mut self, column: &str, operator: Option<&str>, value: Vec<T>)->Self{
+        let orm = self.orm.filter_array(column, operator, value);
         self.orm = orm;
         self
     }

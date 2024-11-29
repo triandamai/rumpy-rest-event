@@ -22,7 +22,7 @@ where
     type Rejection = AuthError;
 
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
-        let head = parts.headers.get("");
+        let head = parts.headers.get("Accept-Language");
         if head.is_none() {
             return Ok(Lang {
                 locale_code: "id-ID".to_string(),
