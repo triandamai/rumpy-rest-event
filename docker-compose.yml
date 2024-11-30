@@ -21,10 +21,11 @@ services:
         MINIO_ACCESS_KEY_PROD: ${MINIO_ACCESS_KEY_PROD}
         MINIO_SECRET_KEY_PROD: ${MINIO_SECRET_KEY_PROD}
         SMTP: ${SMTP}
-
     restart: always
     ports:
       - "3000"
+    env_file:
+      - .env
     networks:
       - dokploy-network
     labels:
