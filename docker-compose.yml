@@ -5,6 +5,23 @@ services:
     build:
       context: .
       dockerfile: prod.Dockerfile
+      args:
+        MODE: ${MODE}
+        RUST_BACKTRACE: ${RUST_BACKTRACE}
+        DATABASE_URL_DEV: ${DATABASE_URL_DEV}
+        REDIS_URL_DEV: ${REDIS_URL_DEV}
+        MINIO_URL_DEV: ${MINIO_URL_DEV}
+        DATABASE_URL_PROD: ${DATABASE_URL_PROD}
+        REDIS_URL_PROD: ${REDIS_URL_PROD}
+        MINIO_URL_PROD: ${MINIO_URL_PROD}
+        JWT_SECRET_DEV: ${JWT_SECRET_DEV}
+        JWT_SECRET_PROD: ${JWT_SECRET_PROD}
+        MINIO_ACCESS_KEY_DEV: ${MINIO_ACCESS_KEY_DEV}
+        MINIO_SECRET_KEY_DEV: ${MINIO_SECRET_KEY_DEV}
+        MINIO_ACCESS_KEY_PROD: ${MINIO_ACCESS_KEY_PROD}
+        MINIO_SECRET_KEY_PROD: ${MINIO_SECRET_KEY_PROD}
+        SMTP: ${SMTP}
+
     restart: always
     ports:
       - "3000"
@@ -16,26 +33,6 @@ services:
       - "traefik.http.routers.<unique-name>.entrypoints=websecure"
       - "traefik.http.routers.<unique-name>.tls.certResolver=letsencrypt"
       - "traefik.http.services.<unique-name>.loadbalancer.server.port=3000"
-    environment:
-      - MODE=${MODE}
-      - RUST_BACKTRACE=${RUST_BACKTRACE}
-
-      - DATABASE_URL_DEV=${DATABASE_URL_DEV}
-      - REDIS_URL_DEV=${REDIS_URL_DEV}
-      - MINIO_URL_DEV=${MINIO_URL_DEV}
-      - DATABASE_URL_PROD=${DATABASE_URL_PROD}
-      - REDIS_URL_PROD=${REDIS_URL_PROD}
-      - MINIO_URL_PROD=${MINIO_URL_PROD}
-
-      - JWT_SECRET_DEV=${JWT_SECRET_DEV}
-      - JWT_SECRET_PROD=${JWT_SECRET_PROD}
-
-      - MINIO_ACCESS_KEY_DEV=${MINIO_ACCESS_KEY_DEV}
-      - MINIO_SECRET_KEY_DEV=${MINIO_SECRET_KEY_DEV}
-      - MINIO_ACCESS_KEY_PROD=${MINIO_ACCESS_KEY_PROD}
-      - MINIO_SECRET_KEY_PROD=${MINIO_SECRET_KEY_PROD}
-
-      - SMTP=${SMTP}
 
 networks:
   dokploy-network:
