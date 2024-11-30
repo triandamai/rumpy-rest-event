@@ -19,5 +19,5 @@ RUN apt update \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 COPY --from=builder /app/target/release/strong-teams /usr/local/bin
 
-EXPOSE 7001
+EXPOSE 5000
 ENTRYPOINT ["/usr/local/bin/strong-teams"]
