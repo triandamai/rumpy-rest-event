@@ -1,9 +1,9 @@
 FROM rustlang/rust:nightly-slim AS builder
-WORKDIR /workdir
-RUN ls -la /workdir
+WORKDIR /app
 
-COPY ./Cargo.toml ./Cargo.lock ./
-
+COPY Cargo.toml .
+COPY Cargo.lock .
+COPY src ./src
 
 RUN cargo +nightly build --release
 
@@ -13,7 +13,7 @@ RUN apt update \
     && apt install -y openssl ca-certificates \
     && apt clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-COPY --from=builder /workdir/target/release/strong-teams /usr/local/bin
+COPY --from=builder /app/target/release/strong-teams /usr/local/bin
 
 EXPOSE 7001
 ENTRYPOINT ["/usr/local/bin/strong-teams"]
