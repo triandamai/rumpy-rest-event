@@ -2,7 +2,7 @@ FROM rustlang/rust:nightly-slim AS builder
 WORKDIR /app
 
 COPY Cargo.toml .
-COPY Cargo.lock .
+#COPY Cargo.lock .
 COPY src ./src
 
 RUN cargo +nightly build --release
