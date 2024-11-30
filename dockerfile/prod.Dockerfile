@@ -1,7 +1,7 @@
 FROM rustlang/rust:nightly-slim AS builder
 WORKDIR /workdir
 COPY ./Cargo.toml ./Cargo.lock ./
-COPY ./src ./src
+
 RUN cargo +nightly build --release
 
 FROM debian:stable-slim
