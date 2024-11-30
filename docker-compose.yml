@@ -20,7 +20,7 @@ services:
         MINIO_ACCESS_KEY_PROD: ${MINIO_ACCESS_KEY_PROD}
         MINIO_SECRET_KEY_PROD: ${MINIO_SECRET_KEY_PROD}
         SMTP: ${SMTP}
-    restart: always
+#    restart: always
     ports:
       - 5000
     networks:
