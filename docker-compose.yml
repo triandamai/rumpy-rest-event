@@ -3,7 +3,7 @@ version: "3"
 services:
   string-team-api:
     build:
-      context: ./dockerfile
+      context: .
       dockerfile: prod.Dockerfile
     restart: always
     ports:
