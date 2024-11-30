@@ -1,6 +1,14 @@
 FROM rustlang/rust:nightly-slim AS builder
 WORKDIR /app
 
+RUN apt update \
+    && apt install pkg-config \
+    && apt install openssl-dev \
+    && apt install -y libssl-dev \
+    && apt install -y openssl ca-certificates \
+    && apt clean \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
 COPY Cargo.toml .
 #COPY Cargo.lock .
 COPY src ./src
@@ -9,6 +17,8 @@ RUN cargo +nightly build --release
 
 FROM debian:stable-slim
 RUN apt update \
+    && apt install pkg-config \
+    && apt install openssl-dev \
     && apt install -y libssl-dev \
     && apt install -y openssl ca-certificates \
     && apt clean \
