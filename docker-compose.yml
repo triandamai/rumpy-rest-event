@@ -1,0 +1,21 @@
+version: "3"
+
+services:
+  next-app:
+    build:
+      context: ./dockerfile
+      dockerfile: prod.Dockerfile
+    restart: always
+    ports:
+      - "3000"
+    networks:
+      - dokploy-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.<unique-name>.rule=Host(`your-domain.com`)"
+      - "traefik.http.routers.<unique-name>.entrypoints=websecure"
+      - "traefik.http.routers.<unique-name>.tls.certResolver=letsencrypt"
+      - "traefik.http.services.<unique-name>.loadbalancer.server.port=3000"
+networks:
+  dokploy-network:
+    external: true
