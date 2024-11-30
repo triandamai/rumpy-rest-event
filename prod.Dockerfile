@@ -1,5 +1,5 @@
 FROM rustlang/rust:nightly-slim AS builder
-RUN apt install -y pkg-config \
+RUN apt install  pkg-config \
     && apt install -y libssl-dev
 WORKDIR /app
 
