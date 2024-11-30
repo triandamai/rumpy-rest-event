@@ -1,6 +1,6 @@
 FROM rustlang/rust:nightly-slim AS builder
-RUN apt-get install -y pkg-config \
-    && apt-get install -y libssl-dev
+RUN apt install -y pkg-config \
+    && apt install -y libssl-dev
 WORKDIR /app
 
 COPY Cargo.toml .
