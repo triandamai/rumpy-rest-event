@@ -1,9 +1,9 @@
 FROM rustlang/rust:nightly-slim AS builder
 WORKDIR /workdir
+RUN ls -la /workdir
 
 COPY ./Cargo.toml ./Cargo.lock ./
 
-RUN ls -la /workdir
 
 RUN cargo +nightly build --release
 
