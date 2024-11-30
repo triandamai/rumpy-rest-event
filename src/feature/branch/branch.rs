@@ -22,11 +22,36 @@ pub async fn get_list_branch(
     query: Query<PaginationRequest>,
 ) -> ApiResponse<PagingResponse<BranchDTO>> {
     if !auth_context.authorize("app::branch::read") {
-        return ApiResponse::un_authorized(translate!("",lang.get()).as_str());
+        return ApiResponse::un_authorized(translate!("", lang.get()).as_str());
     }
     let find_all_branch = Orm::get("branch")
-        .join_one("account","user_id","_id","owner")
+        .join_one("account", "user_id", "_id", "owner")
         .pageable::<BranchDTO>(query.page.unwrap_or(1), query.size.unwrap_or(10), &state.db)
+        .await;
+
+    ApiResponse::ok(
+        find_all_branch.unwrap(),
+        translate!("", lang.get()).as_str(),
+    )
+}
+
+pub async fn get_detail_branch(
+    state: State<AppState>,
+    lang: Lang,
+    auth_context: AuthContext,
+    Path(branch_id): Path<String>,
+) -> ApiResponse<BranchDTO> {
+    if !auth_context.authorize("app::branch::read") {
+        return ApiResponse::un_authorized(translate!("", lang.get()).as_str());
+    }
+    let branch_id = ObjectId::parse_str(branch_id.as_str());
+    if branch_id.is_err() {
+        return ApiResponse::not_found(translate!("", lang.get()).as_str());
+    }
+    let branch_id = branch_id.unwrap();
+    let find_all_branch = Orm::get("branch")
+        .filter_object_id("_id", &branch_id)
+        .one::<BranchDTO>(&state.db)
         .await;
 
     ApiResponse::ok(

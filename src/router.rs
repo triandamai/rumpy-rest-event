@@ -2,7 +2,7 @@ use crate::common::api_response::ApiResponse;
 use crate::common::app_state::AppState;
 use crate::feature;
 use crate::routes;
-use axum::routing::{get, post};
+use axum::routing::{get, post, put};
 use axum::Router;
 
 pub fn init_routes(state: AppState) -> Router {
@@ -27,25 +27,42 @@ pub fn init_routes(state: AppState) -> Router {
             post(feature::sse::sse::unsubscribe_to_topic),
         )
         //auth
-        .route(
-            "/auth/sign-in",
-            post(feature::auth::auth::sign_in),
-        )
-        .route(
-            "/auth/sign-out",
-            post(feature::auth::auth::sign_out),
-        )
+        .route("/auth/sign-in", post(feature::auth::auth::sign_in))
+        .route("/auth/sign-out", post(feature::auth::auth::sign_out))
         //permission
         .route(
             "/permission/assign",
             post(feature::permission::permission::assign_permission),
+        )
+        .route(
+            "/permission/account/:account_id",
+            get(feature::permission::permission::get_user_permission),
+        )
+        //coach
+        .route("/coach/list", get(feature::coach::coach::get_list_coach))
+        .route(
+            "/coach/:coach_id",
+            get(feature::coach::coach::get_detail_coach),
+        )
+        .route("/coach", post(feature::coach::coach::create_coach))
+        .route(
+            "/coach/:coach_id",
+            put(feature::coach::coach::get_detail_coach),
         )
         //branch
         .route(
             "/branch/list",
             get(feature::branch::branch::get_list_branch),
         )
+        .route(
+            "/branch/:branch_id",
+            get(feature::branch::branch::get_detail_branch),
+        )
         .route("/branch", post(feature::branch::branch::create_branch))
+        .route(
+            "/branch/:branch_id",
+            put(feature::branch::branch::update_branch),
+        )
         .fallback(handle_404)
         .with_state(state)
 }

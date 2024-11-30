@@ -10,6 +10,7 @@ pub struct Permission {
     pub id: Option<ObjectId>,
     pub value: String,
     pub name: String,
+    pub group: String,
     pub description: String,
     pub created_at: DateTime,
     pub updated_at: DateTime,

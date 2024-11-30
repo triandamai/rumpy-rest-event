@@ -14,8 +14,6 @@ pub struct Coach{
     pub phone_number:String,
     pub gender:String,
     pub created_by:Option<ObjectId>,
-    #[serde(with = "bson_datetime_as_rfc3339_string")]
     pub created_at: DateTime,
-    #[serde(with = "bson_datetime_as_rfc3339_string")]
     pub updated_at: DateTime,
 }
