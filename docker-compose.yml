@@ -4,7 +4,7 @@ services:
     build:
       context: .
       dockerfile: prod.Dockerfile
-      args:
+    environment:
         MODE: ${MODE}
         RUST_BACKTRACE: ${RUST_BACKTRACE}
         DATABASE_URL_DEV: ${DATABASE_URL_DEV}
