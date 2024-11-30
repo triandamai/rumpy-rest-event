@@ -1,5 +1,7 @@
 FROM rustlang/rust:nightly-slim AS builder
-RUN apt install -y pkg-config make g++ libssl-dev
+RUN apt install -y pkg-config \
+    && make g++ \
+    && apt install -y libssl-dev
 WORKDIR /app
 
 COPY Cargo.toml .
@@ -10,7 +12,6 @@ RUN cargo +nightly build --release
 
 FROM debian:stable-slim
 RUN apt update \
-    && apt install -y pkg-config make g++ libssl-dev \
     && apt install -y pkg-config \
     && apt install -y libssl-dev \
     && apt install -y openssl ca-certificates \
