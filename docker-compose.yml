@@ -25,12 +25,6 @@ services:
       - 5000
     networks:
       - dokploy-network
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.strong-team-api.rule=Host(`strong-team.id`)"
-      - "traefik.http.routers.strong-team-api.entrypoints=websecure"
-      - "traefik.http.routers.strong-team-api.tls.certResolver=letsencrypt"
-      - "traefik.http.services.strong-team-api.loadbalancer.server.port=5000"
 
 networks:
   dokploy-network:
