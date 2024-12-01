@@ -244,7 +244,6 @@ pub async fn init_seeder(database: &Database) {
     {
         info!(target: "seeder","20% seed permission");
         for mut permission in get_list_permission() {
-
             let exist = Orm::get("permission")
                 .filter_object_id("_id", &permission.id.unwrap())
                 .one::<Permission>(&database)
@@ -308,6 +307,7 @@ pub async fn init_seeder(database: &Database) {
             }
         }
     }
+
     //seed account
     {
         info!(target: "seeder","70% seed account");

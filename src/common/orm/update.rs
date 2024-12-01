@@ -92,7 +92,6 @@ impl Update {
         let collection: Collection<Document> = db.collection(self.orm.collection_name.as_str());
         let query = self.orm.get_filter_as_doc();
 
-        info!(target: "sas","{}",query);
         let save = collection
             .update_one(
                 query,
@@ -163,26 +162,31 @@ impl Update {
         self
     }
 
-    pub fn filter_bool(mut self, column: &str, value: bool) -> Self {
-        let orm = self.orm.filter_bool(column, None, value.clone());
+    pub fn filter_bool(mut self, column: &str, operator: Option<&str>, value: bool) -> Self {
+        let orm = self.orm.filter_bool(column, operator, value.clone());
         self.orm = orm;
         self
     }
 
-    pub fn filter_array<T: Serialize>(mut self, column: &str, value: Vec<T>) -> Self {
-        let orm = self.orm.filter_array(column, None, value);
+    pub fn filter_array<T: Serialize>(
+        mut self,
+        column: &str,
+        operator: Option<&str>,
+        value: Vec<T>,
+    ) -> Self {
+        let orm = self.orm.filter_array(column, operator, value);
         self.orm = orm;
         self
     }
 
-    pub fn filter_number(mut self, column: &str, value: i64) -> Self {
-        let orm = self.orm.filter_number(column, None, value);
+    pub fn filter_number(mut self, column: &str, operator: Option<&str>, value: i64) -> Self {
+        let orm = self.orm.filter_number(column, operator, value);
         self.orm = orm;
         self
     }
 
-    pub fn filter_string(mut self, column: &str, value: &str) -> Self {
-        let orm = self.orm.filter_string(column, None, value);
+    pub fn filter_string(mut self, column: &str, operator: Option<&str>, value: &str) -> Self {
+        let orm = self.orm.filter_string(column, operator, value);
         self.orm = orm;
         self
     }
