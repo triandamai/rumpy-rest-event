@@ -31,7 +31,7 @@ impl Replace {
         self,
         update: T,
         db: &Database,
-    ) -> Result<ObjectId, String> {
+    ) -> Result<u64, String> {
         info!(target: "db::replace","Starting replace data");
         if self.orm.collection_name.is_empty(){
             info!(target: "db::replace::error","Replace collection name is empty");
@@ -60,7 +60,7 @@ impl Replace {
         }
 
         info!(target: "db::replace::ok","Finished replace data");
-        Ok(save.unwrap().upserted_id.unwrap().as_object_id().unwrap())
+        Ok(save.unwrap().modified_count)
     }
 
 
@@ -103,7 +103,7 @@ impl Replace {
     }
 
     pub fn filter_object_id(mut self, column: &str, value: &ObjectId) -> Self {
-        let orm = self.orm.filter_object_id(column, value);
+        let orm = self.orm.filter_object_id_with_equal(column, value);
         self.orm = orm;
         self
     }

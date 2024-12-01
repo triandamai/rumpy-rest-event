@@ -246,8 +246,29 @@ impl Orm {
         }
         self
     }
-
     pub fn filter_object_id(mut self, column: &str, value: &ObjectId) -> Self {
+        let mut doc = Document::new();
+
+        doc.insert(column, value);
+
+        if self.current_filter.is_none() {
+            self.filter.push(doc);
+        } else {
+            let map = self.current_filter.clone().unwrap();
+            let hp = self.filters.get(&map.clone());
+            match hp {
+                None => {}
+                Some(filter) => {
+                    let mut f = filter.clone();
+                    f.filter.push(doc);
+                    self.filters.insert(map, f);
+                }
+            }
+        }
+        self
+    }
+
+    pub fn filter_object_id_with_equal(mut self, column: &str, value: &ObjectId) -> Self {
         let mut doc = Document::new();
 
         doc.insert(column, doc! {"$eq":value});

@@ -113,7 +113,7 @@ impl Delete {
     }
 
     pub fn filter_object_id(mut self, column: &str, value: &ObjectId) -> Self {
-        let orm = self.orm.filter_object_id(column, value);
+        let orm = self.orm.filter_object_id_with_equal(column, value);
         self.orm = orm;
         self
     }

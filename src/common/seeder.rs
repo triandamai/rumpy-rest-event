@@ -243,13 +243,22 @@ pub async fn init_seeder(database: &Database) {
     //seed permission
     {
         info!(target: "seeder","20% seed permission");
-        for permission in get_list_permission() {
+        for mut permission in get_list_permission() {
+
             let exist = Orm::get("permission")
                 .filter_object_id("_id", &permission.id.unwrap())
                 .one::<Permission>(&database)
                 .await;
+
             if exist.is_err() {
                 let _index = Orm::insert("permission").one(permission, &database).await;
+            } else {
+                let id = &permission.id.unwrap();
+                permission.id = None;
+                let _index = Orm::update("permission")
+                    .filter_object_id("_id", id)
+                    .one(permission, &database)
+                    .await;
             }
         }
     }
@@ -282,13 +291,20 @@ pub async fn init_seeder(database: &Database) {
             },
         ];
 
-        for branch in branchs {
+        for mut branch in branchs {
             let exist = Orm::get("branch")
                 .filter_object_id("_id", &branch.id.unwrap())
                 .one::<Branch>(&database)
                 .await;
             if exist.is_err() {
                 let _save = Orm::insert("branch").one(branch, &database).await;
+            } else {
+                let id = &branch.id.unwrap();
+                branch.id = None;
+                let _index = Orm::update("branch")
+                    .filter_object_id("_id", &id)
+                    .one(branch, &database)
+                    .await;
             }
         }
     }
@@ -340,13 +356,20 @@ pub async fn init_seeder(database: &Database) {
                 };
             })
             .collect();
-        for permission in account_permission {
+        for mut permission in account_permission {
             let exist = Orm::get("account-permission")
                 .filter_object_id("_id", &permission.id.unwrap())
                 .one::<AccountPermission>(&database)
                 .await;
             if exist.is_err() {
                 let _save_account_permission = Orm::insert("account-permission")
+                    .one(permission, &database)
+                    .await;
+            } else {
+                let id = &permission.id.unwrap();
+                permission.id = None;
+                let _index = Orm::update("account-permission")
+                    .filter_object_id("_id", &id)
                     .one(permission, &database)
                     .await;
             }

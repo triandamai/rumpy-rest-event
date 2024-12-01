@@ -30,78 +30,69 @@ impl Update {
         }
     }
 
-    pub fn set_str(mut self,column:&str,value:&str)->Self{
+    pub fn set_str(mut self, column: &str, value: &str) -> Self {
         let mut set = self.set.unwrap_or(Document::new());
         set.insert(column, value);
         self.set = Some(set);
         self
     }
-    pub fn set_number(mut self,column:&str,value:&i64)->Self{
+    pub fn set_number(mut self, column: &str, value: &i64) -> Self {
         let mut set = self.set.unwrap_or(Document::new());
         set.insert(column, value);
         self.set = Some(set);
         self
     }
-    pub fn set_vec<T:Serialize>(mut self,column:&str,value:Vec<T>)->Self{
+    pub fn set_vec<T: Serialize>(mut self, column: &str, value: Vec<T>) -> Self {
         let mut set = self.set.unwrap_or(Document::new());
         set.insert(column, bson::to_document(&value).unwrap_or(Document::new()));
         self.set = Some(set);
         self
     }
 
-    pub fn set_bool(mut self,column:&str,value:&bool)->Self{
+    pub fn set_bool(mut self, column: &str, value: &bool) -> Self {
         let mut set = self.set.unwrap_or(Document::new());
         set.insert(column, value);
         self.set = Some(set);
         self
     }
-    pub fn set_object_id(mut self,column:&str,value:&ObjectId)->Self{
+    pub fn set_object_id(mut self, column: &str, value: &ObjectId) -> Self {
         let mut set = self.set.unwrap_or(Document::new());
         set.insert(column, value);
         self.set = Some(set);
         self
     }
-    pub fn set_object<T: Serialize>(mut self,column:&str,value:T)->Self{
+    pub fn set_object<T: Serialize>(mut self, column: &str, value: T) -> Self {
         let mut set = self.set.unwrap_or(Document::new());
         set.insert(column, bson::to_document(&value).unwrap_or(Document::new()));
         self.set = Some(set);
         self
     }
 
-    pub async fn execute_one(self,db:&Database)->Result<ObjectId,String>{
+    pub async fn execute_one(self, db: &Database) -> Result<u64, String> {
         let set = &self.set.clone().unwrap_or(Document::new());
-        self.one(
-            set,
-            db
-        ).await
+        self.one(set, db).await
     }
-    pub async fn execute_many(self,db:&Database)->Result<ObjectId,String>{
+    pub async fn execute_many(self, db: &Database) -> Result<u64, String> {
         let set = &self.set.clone().unwrap_or(Document::new());
-        self.many(
-            set,
-            db
-        ).await
+        self.many(set, db).await
     }
 
-    pub async fn one<T: Serialize>(
-        self,
-        update: T,
-        db: &Database,
-    ) -> Result<ObjectId, String> {
-        if self.orm.collection_name.is_empty(){
-            return Err("Specify collection name before update...".to_string())
+    pub async fn one<T: Serialize>(self, update: T, db: &Database) -> Result<u64, String> {
+        if self.orm.collection_name.is_empty() {
+            return Err("Specify collection name before update...".to_string());
         }
         if self.orm.filter.len() < 1 && self.orm.filters.len() < 1 {
-            return Err("Specify filter before update...".to_string())
+            return Err("Specify filter before update...".to_string());
         }
         let doc = bson::to_document(&update);
         if doc.is_err() {
             return Err("".to_string());
         }
-        
-        let collection: Collection<Document> = db.collection(self.orm.collection_name.as_str());
-        let query =  self.orm.get_filter_as_doc();
 
+        let collection: Collection<Document> = db.collection(self.orm.collection_name.as_str());
+        let query = self.orm.get_filter_as_doc();
+
+        info!(target: "sas","{}",query);
         let save = collection
             .update_one(
                 query,
@@ -115,23 +106,21 @@ impl Update {
             return Err(save.unwrap_err().to_string());
         }
 
+        let save = save.unwrap();
+
         info!(target: "db::update::oke","Success update data");
-        Ok(save.unwrap().upserted_id.unwrap().as_object_id().unwrap())
+        Ok(save.modified_count)
     }
 
-    pub async fn many<T: Serialize>(
-        self,
-        update: T,
-        db: &Database,
-    ) -> Result<ObjectId, String> {
+    pub async fn many<T: Serialize>(self, update: T, db: &Database) -> Result<u64, String> {
         info!(target: "db::update","Start update data");
-        if self.orm.collection_name.is_empty(){
+        if self.orm.collection_name.is_empty() {
             info!(target:"db::update::error", "Specify collection name before update...");
-            return Err("Specify collection name before update...".to_string())
+            return Err("Specify collection name before update...".to_string());
         }
         if self.orm.filter.len() < 1 && self.orm.filters.len() < 1 {
             info!(target:"db::update::error", "Specify filter before update...");
-            return Err("Specify filter before update...".to_string())
+            return Err("Specify filter before update...".to_string());
         }
         let doc = bson::to_document(&update);
         if doc.is_err() {
@@ -140,15 +129,13 @@ impl Update {
 
             return Err(err_message);
         }
-        
+
         let collection: Collection<Document> = db.collection(self.orm.collection_name.as_str());
 
         let query = self.orm.get_filter_as_doc();
 
         let save = collection
-            .update_many(
-                query, doc! {"$set":doc.unwrap()}
-            )
+            .update_many(query, doc! {"$set":doc.unwrap()})
             .await;
 
         if save.is_err() {
@@ -159,9 +146,8 @@ impl Update {
         }
         info!(target: "db::get::ok","Success update data");
 
-        Ok(save.unwrap().upserted_id.unwrap().as_object_id().unwrap())
+        Ok(save.unwrap().modified_count)
     }
-
 
     //query
 
@@ -177,26 +163,26 @@ impl Update {
         self
     }
 
-    pub fn filter_bool(mut self, column: &str, operator: Option<&str>, value: bool)->Self{
-        let orm = self.orm.filter_bool(column, operator, value.clone());
+    pub fn filter_bool(mut self, column: &str, value: bool) -> Self {
+        let orm = self.orm.filter_bool(column, None, value.clone());
         self.orm = orm;
         self
     }
 
-    pub fn filter_array<T:Serialize>(mut self, column: &str, operator: Option<&str>, value: Vec<T>)->Self{
-        let orm = self.orm.filter_array(column, operator, value);
+    pub fn filter_array<T: Serialize>(mut self, column: &str, value: Vec<T>) -> Self {
+        let orm = self.orm.filter_array(column, None, value);
         self.orm = orm;
         self
     }
 
-    pub fn filter_number(mut self, column: &str, operator: Option<&str>, value: i64) -> Self {
-        let orm = self.orm.filter_number(column, operator, value);
+    pub fn filter_number(mut self, column: &str, value: i64) -> Self {
+        let orm = self.orm.filter_number(column, None, value);
         self.orm = orm;
         self
     }
 
-    pub fn filter_string(mut self, column: &str, operator: Option<&str>, value: &str) -> Self {
-        let orm = self.orm.filter_string(column, operator, value);
+    pub fn filter_string(mut self, column: &str, value: &str) -> Self {
+        let orm = self.orm.filter_string(column, None, value);
         self.orm = orm;
         self
     }
