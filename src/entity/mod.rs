@@ -12,3 +12,4 @@ pub mod membership_quota;
 pub mod transaction;
 pub mod detail_transaction;
 pub mod promotion;
+pub mod discount;
