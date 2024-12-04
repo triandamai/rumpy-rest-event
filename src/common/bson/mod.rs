@@ -1,3 +1,4 @@
+use bson::DateTime;
 use bson::oid::ObjectId;
 use serde::{Deserialize, Deserializer, Serializer};
 
@@ -24,6 +25,20 @@ where
         Ok(None)
     } else {
         Ok(Some(s?))
+    }
+}
+
+
+//cutom serializer for DateTime
+pub fn serialize_datetime<S>(val: &DateTime, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    let formatted = val.try_to_rfc3339_string();
+    if formatted.is_ok() {
+        serializer.serialize_str(formatted.unwrap().as_str()) // Convert ObjectId to a hex string
+    } else {
+        serializer.serialize_none()
     }
 }
 

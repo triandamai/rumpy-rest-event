@@ -3,24 +3,24 @@ use bson::oid::ObjectId;
 use bson::DateTime;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize,Deserialize, Debug)]
-pub struct MemberLogDTO{
+#[derive(Debug, Serialize, Deserialize)]
+pub struct DiscountDTO {
     #[serde(
         rename = "_id",
         skip_serializing_if = "Option::is_none",
         serialize_with = "serialize_object_id",
         deserialize_with = "deserialize_object_id"
     )]
-    pub id:Option<ObjectId>,
+    pub id: Option<ObjectId>,
+    pub title: String,
+    pub amount: f32,
     #[serde(
-        rename = "member_id",
+        rename = "created_by",
         skip_serializing_if = "Option::is_none",
         serialize_with = "serialize_object_id",
         deserialize_with = "deserialize_object_id"
     )]
-    pub member_id:Option<ObjectId>,
-    pub name:String,
-    pub value:String,
+    pub created_by: Option<ObjectId>,
     #[serde(serialize_with = "serialize_datetime")]
     pub created_at: DateTime,
     #[serde(serialize_with = "serialize_datetime")]

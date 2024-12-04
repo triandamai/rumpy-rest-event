@@ -3,30 +3,26 @@ use crate::common::app_state::AppState;
 use crate::common::lang::Lang;
 use crate::common::minio::MinIO;
 use crate::common::orm::orm::Orm;
-use crate::dto::account_permission_dto::AccountPermissionDTO;
-use crate::entity::account_permission::AccountPermission;
+use crate::entity::permission::Permission;
 use crate::translate;
 use axum::extract::State;
 use bson::oid::ObjectId;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Write;
-use std::str::FromStr;
+use crate::dto::permission_dto::PermissionDTO;
 
-pub async fn index(
-    state: State<AppState>
-) -> ApiResponse<Vec<AccountPermissionDTO>> {
-    let command = Orm::get("account-permission")
-        .filter_object_id("account_id", &ObjectId::from_str("6742c74a15e68b0e7ee06122").unwrap_or(ObjectId::new()));
+pub async fn index(state: State<AppState>) -> ApiResponse<Vec<PermissionDTO>> {
+    let command = Orm::get("permission");
 
-    let find = command
-        .all::<AccountPermissionDTO>(&state.db).await;
+     let find = command.clone().all::<PermissionDTO>(&state.db).await;
 
-    let update = Orm::get("account")
-        .and()
+    let mut get = Orm::get("branch")
         .filter_object_id("_id", &ObjectId::new())
-        .filter_object_id("_id2", &ObjectId::new());
-    ApiResponse::ok(find.unwrap_or(Vec::new()), "test merge")
+        .filter_string("tes", None, "hahah")
+        .group_by_asc("branch_name");
+
+    ApiResponse::ok(find.unwrap(), "test merge")
 }
 
 pub async fn generate_locales() -> ApiResponse<String> {
@@ -48,9 +44,7 @@ pub async fn generate_locales() -> ApiResponse<String> {
     ApiResponse::ok(String::from("OK"), "success generate locales")
 }
 
-pub async fn test_locales(
-    lang: Lang,
-) -> ApiResponse<HashMap<String, String>> {
+pub async fn test_locales(lang: Lang) -> ApiResponse<HashMap<String, String>> {
     let re1 = translate!("message",lang.get(),{"name"=>"trian","hohoe"=>"Tes"});
     let re2 = translate!("message",lang.get(),{"name"=>"trian","hohoe"=>"Tes"});
     let re3 = translate!("message", lang.get());

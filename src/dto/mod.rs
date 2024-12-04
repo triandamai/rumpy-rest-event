@@ -12,4 +12,4 @@ pub mod product_dto;
 pub mod product_log_dto;
 pub mod promotion_dto;
 pub mod transaction_dto;
-pub mod discount;
+pub mod discount_dto;

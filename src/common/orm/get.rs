@@ -26,6 +26,7 @@ impl Get {
                 current_filter: None,
                 lookup: vec![],
                 unwind: vec![],
+                sort: None,
                 count: None,
                 skip: None,
                 limit: None,
@@ -95,6 +96,7 @@ impl Get {
         for item in extract {
             let transform = bson::from_document::<T>(item.clone());
 
+            // info!(target:"db::get::error:","extract {:?}",item);
             if transform.is_ok() {
                 result.push(transform.unwrap());
             } else {
@@ -256,6 +258,18 @@ impl Get {
 
     pub fn and(mut self) -> Self {
         let orm = self.orm.and();
+        self.orm = orm;
+        self
+    }
+
+    pub fn group_by_asc(mut self, column: &str) -> Self {
+        let orm = self.orm.group_by_asc(column);
+        self.orm = orm;
+        self
+    }
+
+    pub fn group_by_desc(mut self, column: &str) -> Self {
+        let orm = self.orm.group_by_desc(column);
         self.orm = orm;
         self
     }

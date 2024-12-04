@@ -1,9 +1,8 @@
-use bson::DateTime;
+use crate::common::bson::{deserialize_object_id, serialize_datetime, serialize_object_id};
 use bson::oid::ObjectId;
+use bson::DateTime;
 use chrono::NaiveDate;
 use serde::{Deserialize, Serialize};
-use crate::common::bson::{deserialize_object_id, serialize_object_id};
-use bson::serde_helpers::bson_datetime_as_rfc3339_string;
 
 #[derive(Debug,Serialize,Deserialize)]
 pub struct AccountDTO{
@@ -33,8 +32,8 @@ pub struct AccountDTO{
     )]
     pub branch_id:Option<ObjectId>,
     pub date_of_birth: Option<NaiveDate>,
-    #[serde(with = "bson_datetime_as_rfc3339_string")]
+    #[serde(serialize_with = "serialize_datetime")]
     pub created_at: DateTime,
-    #[serde(with = "bson_datetime_as_rfc3339_string")]
+    #[serde(serialize_with = "serialize_datetime")]
     pub updated_at: DateTime,
 }

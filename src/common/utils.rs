@@ -3,6 +3,12 @@ use std::str::FromStr;
 use bson::oid::ObjectId;
 use mime::Mime;
 
+pub const QUERY_LOWEST: &str ="lowest";
+pub const QUERY_HIGHEST: &str ="highest";
+pub const QUERY_ASC: &str ="asc";
+pub const QUERY_DESC: &str ="desc";
+pub const QUERY_LATEST: &str ="latest";
+pub const QUERY_OLDEST: &str ="oldest";
 
 // Function to map MIME types to file extensions
 pub fn get_extension_from_mime(mime: &Mime) -> Option<&'static str> {

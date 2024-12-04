@@ -21,6 +21,7 @@ impl Replace {
                 current_filter: None,
                 lookup: vec![],
                 unwind: vec![],
+                sort: None,
                 count: None,
                 skip: None,
                 limit: None,

@@ -1,6 +1,5 @@
-use crate::common::bson::{deserialize_object_id, serialize_object_id};
+use crate::common::bson::{deserialize_object_id, serialize_datetime, serialize_object_id};
 use bson::oid::ObjectId;
-use bson::serde_helpers::bson_datetime_as_rfc3339_string;
 use bson::DateTime;
 use serde::{Deserialize, Serialize};
 
@@ -29,8 +28,8 @@ pub struct AccountPermissionDTO {
     pub permission_id: Option<ObjectId>,
     pub name: String,
     pub value: String,
-    #[serde(with = "bson_datetime_as_rfc3339_string")]
+    #[serde(serialize_with = "serialize_datetime")]
     pub created_at: DateTime,
-    #[serde(with = "bson_datetime_as_rfc3339_string")]
+    #[serde(serialize_with = "serialize_datetime")]
     pub updated_at: DateTime,
 }

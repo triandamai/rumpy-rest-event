@@ -24,6 +24,7 @@ pub struct PaginationRequest {
     pub page: Option<i64>,
     pub size: Option<i64>,
     pub q: Option<String>,
+    pub filter: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

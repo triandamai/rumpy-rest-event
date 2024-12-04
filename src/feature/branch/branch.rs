@@ -3,16 +3,18 @@ use crate::common::app_state::AppState;
 use crate::common::jwt::AuthContext;
 use crate::common::lang::Lang;
 use crate::common::orm::orm::Orm;
-use crate::common::utils::create_or_new_object_id;
+use crate::common::utils::{create_or_new_object_id, QUERY_ASC, QUERY_DESC, QUERY_HIGHEST, QUERY_LATEST, QUERY_OLDEST};
 use crate::dto::branch_dto::BranchDTO;
 use crate::entity::branch::Branch;
 use crate::feature::branch::branch_model::{CreateBranchRequest, UpdateBranchRequest};
 use crate::translate;
 use axum::extract::{Path, Query, State};
 use axum::Json;
+use axum_extra::handler::Or;
 use bson::oid::ObjectId;
 use bson::DateTime;
 use log::info;
+use serde::de::Unexpected::Str;
 use validator::Validate;
 
 pub async fn get_list_branch(
@@ -24,11 +26,30 @@ pub async fn get_list_branch(
     if !auth_context.authorize("app::branch::read") {
         return ApiResponse::un_authorized(translate!("", lang.get()).as_str());
     }
-    let find_all_branch = Orm::get("branch")
+
+    let default = String::new();
+    let filter = query.filter.clone().unwrap_or(default);
+    let mut get = Orm::get("branch");
+    if filter.eq(QUERY_ASC) {
+        get = get.group_by_asc("branch_name");
+    }
+
+    if filter.eq(QUERY_DESC) {
+        get = get.group_by_asc("branch_name");
+    }
+
+    if filter.eq(QUERY_LATEST) {
+        get = get.group_by_desc("created_at");
+    }
+
+    if filter.eq(QUERY_OLDEST) {
+        get = get.group_by_asc("created_at");
+    }
+
+    let find_all_branch = get
         .join_one("account", "user_id", "_id", "owner")
         .pageable::<BranchDTO>(query.page.unwrap_or(1), query.size.unwrap_or(10), &state.db)
         .await;
-
     ApiResponse::ok(
         find_all_branch.unwrap(),
         translate!("", lang.get()).as_str(),

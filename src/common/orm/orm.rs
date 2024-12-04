@@ -80,6 +80,7 @@ pub struct Orm {
     pub current_filter: Option<String>,
     pub lookup: Vec<Document>,
     pub unwind: Vec<Document>,
+    pub sort: Option<Document>,
     pub count: Option<Document>,
     pub skip: Option<Document>,
     pub limit: Option<Document>,
@@ -115,6 +116,16 @@ impl Orm {
     pub fn join_many(mut self, collection: &str, from: &str, to: &str, alias: &str) -> Self {
         let doc = create_lookup_field(collection, to, from, alias);
         self.lookup.push(doc);
+        self
+    }
+
+    pub fn group_by_asc(mut self, column: &str) -> Self {
+        self.sort = Some(create_sort_asc_field(column));
+        self
+    }
+
+    pub fn group_by_desc(mut self, column: &str) -> Self {
+        self.sort = Some(create_sort_desc_field(column));
         self
     }
 
@@ -297,18 +308,22 @@ impl Orm {
             let mut parent: Document = Document::new();
             let mut upper_filter: Document = Document::new();
             for (_, filter) in self.filters {
-                let mut result_child: Vec<Document> = Vec::new();
-                for child in filter.filter {
-                    result_child.push(child);
+                if filter.filter.len() > 1 {
+                    let mut result_child: Vec<Document> = Vec::new();
+                    for child in filter.filter {
+                        result_child.push(child);
+                    }
+                    upper_filter.insert(filter.operator, result_child);
                 }
-                upper_filter.insert(filter.operator, result_child);
             }
 
-            if is_aggregate {
-                parent.insert("$match", upper_filter);
-                result.push(parent.clone());
-            } else {
-                result.push(upper_filter.clone());
+            if !upper_filter.is_empty() {
+                if is_aggregate {
+                    parent.insert("$match", upper_filter);
+                    result.push(parent.clone());
+                } else {
+                    result.push(upper_filter.clone());
+                }
             }
         } else {
             let mut parent = Document::new();
@@ -324,9 +339,14 @@ impl Orm {
                 if result2.len() > 1 {
                     parent.insert("$match", result2);
                 } else {
-                    parent.insert("$match", result2.get(0).unwrap());
+                    if result2.get(0).is_some() {
+                        let v = result2.get(0).unwrap();
+                        parent.insert("$match", v);
+                    }
                 }
-                result.push(parent.clone());
+                if !parent.is_empty() {
+                    result.push(parent.clone());
+                }
             }
         }
 
@@ -336,6 +356,10 @@ impl Orm {
 
         for unwind in self.unwind {
             result.push(unwind);
+        }
+
+        if self.sort.is_some() {
+            result.push(self.sort.unwrap());
         }
 
         if self.count.is_some() {
@@ -360,18 +384,22 @@ impl Orm {
             let mut parent: Document = Document::new();
             let mut upper_filter: Document = Document::new();
             for (_, filter) in self.filters {
-                let mut result_child: Vec<Document> = Vec::new();
-                for child in filter.filter {
-                    result_child.push(child);
+                if filter.filter.len() > 1 {
+                    let mut result_child: Vec<Document> = Vec::new();
+                    for child in filter.filter {
+                        result_child.push(child);
+                    }
+                    upper_filter.insert(filter.operator, result_child);
                 }
-                upper_filter.insert(filter.operator, result_child);
             }
 
-            if is_aggregate {
-                parent.insert("$match", upper_filter);
-                result.push(parent.clone());
-            } else {
-                result.push(upper_filter.clone());
+            if !upper_filter.is_empty() {
+                if is_aggregate {
+                    parent.insert("$match", upper_filter);
+                    result.push(parent.clone());
+                } else {
+                    result.push(upper_filter.clone());
+                }
             }
         } else {
             let mut parent = Document::new();
@@ -389,7 +417,9 @@ impl Orm {
                 } else {
                     parent.insert("$match", result2.get(0).unwrap());
                 }
-                result.push(parent.clone());
+                if !parent.is_empty() {
+                    result.push(parent.clone());
+                }
             }
         }
 
@@ -401,6 +431,10 @@ impl Orm {
         for unwind in self.unwind {
             result.push(unwind.clone());
             result_count.push(unwind);
+        }
+        if self.sort.is_some() {
+            result.push(self.sort.clone().unwrap());
+            result_count.push(self.sort.unwrap());
         }
         if self.count.is_some() {
             result_count.push(self.count.unwrap());
@@ -437,18 +471,21 @@ impl Orm {
             let mut parent: Document = Document::new();
             let mut upper_filter: Document = Document::new();
             for (_, filter) in self.filters {
-                let mut result_child: Vec<Document> = Vec::new();
-                for child in filter.filter {
-                    result_child.push(child);
+                if filter.filter.len() > 1 {
+                    let mut result_child: Vec<Document> = Vec::new();
+                    for child in filter.filter {
+                        result_child.push(child);
+                    }
+                    upper_filter.insert(filter.operator, result_child);
                 }
-                upper_filter.insert(filter.operator, result_child);
             }
-
-            if is_aggregate {
-                parent.insert("$match", upper_filter);
-                result.push(parent.clone());
-            } else {
-                result.push(upper_filter.clone());
+            if !upper_filter.is_empty() {
+                if is_aggregate {
+                    parent.insert("$match", upper_filter);
+                    result.push(parent.clone());
+                } else {
+                    result.push(upper_filter.clone());
+                }
             }
         } else {
             let mut parent = Document::new();
@@ -466,7 +503,9 @@ impl Orm {
                 } else {
                     parent.insert("$match", result2.get(0).unwrap());
                 }
-                result.push(parent.clone());
+                if !parent.is_empty() {
+                    result.push(parent.clone());
+                }
             }
         }
 
@@ -476,6 +515,10 @@ impl Orm {
 
         for unwind in self.unwind {
             result.push(unwind);
+        }
+
+        if self.sort.is_some() {
+            result.push(self.sort.unwrap());
         }
 
         if self.count.is_some() {

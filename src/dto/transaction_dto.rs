@@ -1,6 +1,5 @@
-use crate::common::bson::{deserialize_object_id, serialize_object_id};
+use crate::common::bson::{deserialize_object_id, serialize_object_id,serialize_datetime};
 use bson::oid::ObjectId;
-use bson::serde_helpers::bson_datetime_as_rfc3339_string;
 use bson::DateTime;
 use serde::{Deserialize, Serialize};
 
@@ -39,8 +38,8 @@ pub struct TransactionDTO{
         deserialize_with = "deserialize_object_id"
     )]
     pub created_by:Option<ObjectId>,
-    #[serde(with = "bson_datetime_as_rfc3339_string")]
+    #[serde(serialize_with = "serialize_datetime")]
     pub created_at: DateTime,
-    #[serde(with = "bson_datetime_as_rfc3339_string")]
+    #[serde(serialize_with = "serialize_datetime")]
     pub updated_at: DateTime,
 }
