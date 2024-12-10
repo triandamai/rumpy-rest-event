@@ -139,7 +139,6 @@ impl Get {
         if data.is_err() {
             let err_message = data.unwrap_err().to_string();
             info!(target: "db::get::error","{}",err_message.clone());
-
             return Err(err_message);
         }
         let mut result: Vec<T> = Vec::new();
