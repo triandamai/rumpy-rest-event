@@ -1,3 +1,5 @@
+use crate::dto::account_dto::AccountDetailDTO;
+use bson::Document;
 use chrono::NaiveDate;
 use log::info;
 use serde::{Deserialize, Serialize};
@@ -34,9 +36,10 @@ impl SignInRequest {
     }
 }
 
-#[derive(Debug, Clone, Validate, Serialize, Deserialize)]
+#[derive(Debug, Validate, Serialize, Deserialize)]
 pub struct SignInResponse {
     pub token: String,
+    pub account: AccountDetailDTO
 }
 
 #[derive(Debug, Clone, Validate, Serialize, Deserialize)]

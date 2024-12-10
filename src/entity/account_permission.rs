@@ -1,5 +1,5 @@
+use crate::dto::account_permission_dto::AccountPermissionDTO;
 use bson::oid::ObjectId;
-use bson::serde_helpers::bson_datetime_as_rfc3339_string;
 use bson::DateTime;
 use serde::{Deserialize, Serialize};
 
@@ -11,8 +11,21 @@ pub struct AccountPermission {
     pub permission_id: Option<ObjectId>,
     pub name: String,
     pub value: String,
-    #[serde(with = "bson_datetime_as_rfc3339_string")]
     pub created_at: DateTime,
-    #[serde(with = "bson_datetime_as_rfc3339_string")]
     pub updated_at: DateTime,
+    pub deleted: bool,
+}
+impl AccountPermission {
+    pub fn to_dto(self) -> AccountPermissionDTO {
+        AccountPermissionDTO {
+            id: self.id,
+            account_id: self.account_id,
+            permission_id: self.permission_id,
+            name: self.name,
+            value: self.value,
+            created_at: self.created_at,
+            updated_at: self.updated_at,
+            deleted: self.deleted,
+        }
+    }
 }

@@ -1,6 +1,7 @@
 use bson::oid::ObjectId;
 use bson::DateTime;
 use serde::{Deserialize, Serialize};
+use crate::dto::transaction_dto::TransactionDTO;
 
 #[derive(Debug,Serialize,Deserialize)]
 pub struct Transaction{
@@ -19,4 +20,24 @@ pub struct Transaction{
     pub created_by:Option<ObjectId>,
     pub created_at: DateTime,
     pub updated_at: DateTime,
+    pub deleted:bool,
+}
+
+impl Transaction{
+    pub fn to_dto(self)->TransactionDTO{
+        TransactionDTO{
+            id: self.id,
+            branch_id: self.branch_id,
+            member_id: self.member_id,
+            total_price_before_discount: self.total_price_before_discount,
+            notes: self.notes,
+            total_price: self.total_price,
+            total_discount: self.total_discount,
+            is_membership: self.is_membership,
+            created_by: self.created_by,
+            created_at: self.created_at,
+            updated_at: self.updated_at,
+            deleted: self.deleted,
+        }
+    }
 }

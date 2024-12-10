@@ -4,6 +4,7 @@ use crate::common::jwt::AuthContext;
 use crate::common::lang::Lang;
 use crate::common::orm::orm::Orm;
 use crate::common::utils::create_object_id_option;
+use crate::dto::coach::CoachDTO;
 use crate::entity::coach::Coach;
 use crate::feature::coach::coach_model::{CreateCoachRequest, UpdateCoachRequest};
 use crate::translate;
@@ -15,13 +16,13 @@ use std::str::FromStr;
 use validator::Validate;
 
 pub async fn get_list_coach(
-    state: State<AppState>,
+    mut state: State<AppState>,
     lang: Lang,
     auth_context: AuthContext,
     query: Query<PaginationRequest>,
 ) -> ApiResponse<PagingResponse<Coach>> {
     if auth_context.authorize("app::coach::read") {
-        return ApiResponse::un_authorized(translate!("unauthorized", lang.get()).as_str());
+        return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
 
     let find_coach = Orm::get("coach")
@@ -33,9 +34,9 @@ pub async fn get_list_coach(
         .await;
 
     if find_coach.is_err() {
-        return ApiResponse::failed(translate!("", lang.get()).as_str());
+        return ApiResponse::failed(translate!("", lang).as_str());
     }
-    return ApiResponse::ok(find_coach.unwrap(), translate!("", lang.get()).as_str());
+    return ApiResponse::ok(find_coach.unwrap(), translate!("", lang).as_str());
 }
 
 pub async fn get_detail_coach(
@@ -43,22 +44,23 @@ pub async fn get_detail_coach(
     lang: Lang,
     auth_context: AuthContext,
     Path(coach_id): Path<String>,
-)->ApiResponse<Coach>{
+) -> ApiResponse<Coach> {
     if !auth_context.authorize("app::coach::read") {
-        return ApiResponse::un_authorized(translate!("unauthorized", lang.get()).as_str());
+        return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
     let coach_id = ObjectId::from_str(coach_id.as_str());
     if coach_id.is_err() {
-        return ApiResponse::not_found(translate!("", lang.get()).as_str());
+        return ApiResponse::not_found(translate!("", lang).as_str());
     }
     let find_coach = Orm::get("coach")
-        .filter_object_id("_id",&coach_id.unwrap())
+        .filter_object_id("_id", &coach_id.unwrap())
         .one::<Coach>(&state.db)
         .await;
+
     if find_coach.is_err() {
-        return ApiResponse::not_found(translate!("", lang.get()).as_str());
+        return ApiResponse::not_found(translate!("", lang).as_str());
     }
-    ApiResponse::ok(find_coach.unwrap(), translate!("", lang.get()).as_str())
+    ApiResponse::ok(find_coach.unwrap(), translate!("", lang).as_str())
 }
 
 pub async fn create_coach(
@@ -66,9 +68,9 @@ pub async fn create_coach(
     lang: Lang,
     auth_context: AuthContext,
     body: Json<CreateCoachRequest>,
-) -> ApiResponse<Coach> {
+) -> ApiResponse<CoachDTO> {
     if !auth_context.authorize("app::coach::write") {
-        return ApiResponse::un_authorized(translate!("unauthorized", lang.get()).as_str());
+        return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
     let validate = body.validate();
     if !validate.is_err() {
@@ -85,14 +87,15 @@ pub async fn create_coach(
         created_by: None,
         created_at: DateTime::now(),
         updated_at: DateTime::now(),
+        deleted: false,
     };
 
     let save = Orm::insert("coach").one(&coach, &state.db).await;
     if save.is_err() {
-        return ApiResponse::failed(translate!("").as_mut_str());
+        return ApiResponse::failed(translate!("").as_str());
     }
 
-    ApiResponse::ok(coach, translate!("").as_str())
+    ApiResponse::ok(coach.to_dto(), translate!("").as_str())
 }
 
 pub async fn update_coach(
@@ -100,9 +103,9 @@ pub async fn update_coach(
     lang: Lang,
     auth_context: AuthContext,
     body: Json<UpdateCoachRequest>,
-) -> ApiResponse<Coach> {
+) -> ApiResponse<CoachDTO> {
     if !auth_context.authorize("app::coach::write") {
-        return ApiResponse::un_authorized(translate!("unauthorized", lang.get()).as_str());
+        return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
     let validate = body.validate();
     if !validate.is_err() {
@@ -132,5 +135,5 @@ pub async fn update_coach(
         return ApiResponse::failed(translate!("").as_str());
     }
 
-    ApiResponse::ok(coach, translate!("").as_str())
+    ApiResponse::ok(coach.to_dto(), translate!("").as_str())
 }

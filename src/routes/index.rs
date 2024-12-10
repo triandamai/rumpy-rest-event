@@ -3,26 +3,23 @@ use crate::common::app_state::AppState;
 use crate::common::lang::Lang;
 use crate::common::minio::MinIO;
 use crate::common::orm::orm::Orm;
-use crate::entity::permission::Permission;
+use crate::dto::permission_dto::PermissionDTO;
 use crate::translate;
 use axum::extract::State;
 use bson::oid::ObjectId;
+use bson::Document;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Write;
-use crate::dto::permission_dto::PermissionDTO;
 
-pub async fn index(state: State<AppState>) -> ApiResponse<Vec<PermissionDTO>> {
+pub async fn index(state: State<AppState>) -> ApiResponse<(Vec<Document>, Vec<Document>)> {
     let command = Orm::get("permission");
 
-     let find = command.clone().all::<PermissionDTO>(&state.db).await;
-
-    let mut get = Orm::get("branch")
-        .filter_object_id("_id", &ObjectId::new())
-        .filter_string("tes", None, "hahah")
-        .group_by_asc("branch_name");
-
-    ApiResponse::ok(find.unwrap(), "test merge")
+    let find_all_branch = Orm::get("account")
+        .group_by_desc("branch_name")
+        .join_one("account", "branch_owner", "_id", "owner")
+        .filter_bool("deleted", None, false);
+    ApiResponse::ok(find_all_branch.show_merging(), "test merge")
 }
 
 pub async fn generate_locales() -> ApiResponse<String> {
@@ -45,13 +42,13 @@ pub async fn generate_locales() -> ApiResponse<String> {
 }
 
 pub async fn test_locales(lang: Lang) -> ApiResponse<HashMap<String, String>> {
-    let re1 = translate!("message",lang.get(),{"name"=>"trian","hohoe"=>"Tes"});
-    let re2 = translate!("message",lang.get(),{"name"=>"trian","hohoe"=>"Tes"});
-    let re3 = translate!("message", lang.get());
+    let re1 = translate!("message",lang,{"name"=>"trian","hohoe"=>"Tes"});
+    let re2 = translate!("message",lang,{"name"=>"trian","hohoe"=>"Tes"});
+    let re3 = translate!("message", lang);
 
-    let mut hashmap = HashMap::new();
-    hashmap.insert("message1".to_string(), re1);
-    hashmap.insert("message2".to_string(), re2);
-    hashmap.insert("message3".to_string(), re3);
+    let mut hashmap: HashMap<String, String> = HashMap::new();
+    hashmap.insert("message1".to_string(), re1.to_string());
+    hashmap.insert("message2".to_string(), re2.to_string());
+    hashmap.insert("message3".to_string(), re3.to_string());
     ApiResponse::ok(hashmap, "")
 }

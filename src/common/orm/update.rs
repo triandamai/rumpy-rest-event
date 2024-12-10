@@ -50,7 +50,7 @@ impl Update {
         self
     }
 
-    pub fn set_bool(mut self, column: &str, value: &bool) -> Self {
+    pub fn set_bool(mut self, column: &str, value: bool) -> Self {
         let mut set = self.set.unwrap_or(Document::new());
         set.insert(column, value);
         self.set = Some(set);
@@ -87,7 +87,9 @@ impl Update {
         }
         let doc = bson::to_document(&update);
         if doc.is_err() {
-            return Err("".to_string());
+            let err = doc.unwrap_err().to_string();
+            info!(target: "update 1","{:?}",err);
+            return Err(err);
         }
 
         let collection: Collection<Document> = db.collection(self.orm.collection_name.as_str());
@@ -103,7 +105,9 @@ impl Update {
             .await;
 
         if save.is_err() {
-            return Err(save.unwrap_err().to_string());
+            let err = save.unwrap_err().to_string();
+            info!(target: "update","{:?}",err);
+            return Err(err);
         }
 
         let save = save.unwrap();
@@ -150,7 +154,6 @@ impl Update {
     }
 
     //query
-
     pub fn or(mut self) -> Self {
         let orm = self.orm.or();
         self.orm = orm;

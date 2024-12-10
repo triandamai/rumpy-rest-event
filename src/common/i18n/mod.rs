@@ -1,4 +1,5 @@
 use crate::common::env_config::EnvConfig;
+use crate::common::lang::Lang;
 use crate::common::minio::MinIO;
 use log::info;
 use std::collections::HashMap;
@@ -6,7 +7,6 @@ use std::fs::File;
 use std::io::Write;
 use std::sync::Mutex;
 use std::sync::Once;
-use crate::common::lang::Lang;
 
 #[derive(Debug, Default)]
 pub struct I18n {
@@ -120,17 +120,17 @@ macro_rules! translate {
         $crate::common::i18n::tr($name,"id-ID",std::collections::HashMap::<String,String>::new())
     }};
     //
-    ($name:expr,$lang:expr)=> {{
+    ($name:expr,$lang:ident)=> {{
 
-        $crate::common::i18n::tr($name,$lang,std::collections::HashMap::<String,String>::new())
+        &$crate::common::i18n::tr_ty_lang($name,$lang.clone(),std::collections::HashMap::<String,String>::new())
     }};
     //
-    ($name:expr,$lang:expr, {$($key:expr => $value:expr),* $(,)? }) => {{
+    ($name:expr,$lang:ident, {$($key:expr => $value:expr),* $(,)? }) => {{
         let mut values = std::collections::HashMap::new();
         $(
             values.insert($key.to_string(), $value.to_string());
         )*
 
-        $crate::common::i18n::tr($name,$lang,values)
+        $crate::common::i18n::tr_ty_lang($name,$lang.clone(),values)
     }};
 }

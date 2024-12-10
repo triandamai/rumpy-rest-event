@@ -18,10 +18,17 @@ pub struct BranchDTO{
     pub branch_email:Option<String>,
     pub branch_phone_number:Option<String>,
     pub branch_address:Option<String>,
+    #[serde(
+        rename = "branch_owner",
+        skip_serializing_if = "Option::is_none",
+        serialize_with = "serialize_object_id",
+        deserialize_with = "deserialize_object_id"
+    )]
     pub branch_owner:Option<ObjectId>,
     pub owner:Option<AccountDTO>,
     #[serde(serialize_with = "serialize_datetime")]
     pub created_at: DateTime,
     #[serde(serialize_with = "serialize_datetime")]
     pub updated_at: DateTime,
+    pub deleted:bool,
 }

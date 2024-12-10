@@ -6,7 +6,6 @@ pub mod detail_transaction;
 pub mod member_dto;
 pub mod member_log_dto;
 pub mod membership_dto;
-pub mod membership_quota_dto;
 pub mod permission_dto;
 pub mod product_dto;
 pub mod product_log_dto;

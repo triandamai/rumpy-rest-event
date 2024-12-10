@@ -29,7 +29,8 @@ where
 }
 
 
-//cutom serializer for DateTime
+
+//custom serializer for DateTime
 pub fn serialize_datetime<S>(val: &DateTime, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
@@ -41,6 +42,21 @@ where
         serializer.serialize_none()
     }
 }
+
+pub fn deserialize_datetime<'de, D>(deserializer: D) -> Result<DateTime, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let s = DateTime::deserialize(deserializer);
+    //String::deserialize(deserializer);
+    // info!(target: "deserialize","{:?}",s);
+    if s.is_err() {
+        Err(s.unwrap_err())
+    } else {
+        Ok(s?)
+    }
+}
+
 
 pub fn non_empty<'de, D, T>(d: D) -> Result<Vec<T>, D::Error>
 where

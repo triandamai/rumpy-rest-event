@@ -8,7 +8,6 @@ pub mod coach;
 pub mod product;
 pub mod product_log;
 pub mod membership;
-pub mod membership_quota;
 pub mod transaction;
 pub mod detail_transaction;
 pub mod promotion;

@@ -22,7 +22,7 @@ pub async fn assign_permission(
     body: Json<AssignPermissionRequest>,
 ) -> ApiResponse<AccountPermission> {
     if !auth_context.authorize("app::account::permission::write") {
-        return ApiResponse::un_authorized(translate!("unauthorized", lang.get()).as_str());
+        return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
 
     let permission = Orm::get("permission")
@@ -33,7 +33,7 @@ pub async fn assign_permission(
         .one::<Permission>(&state.db)
         .await;
     if permission.is_err() {
-        return ApiResponse::not_found(translate!("permission.not-found", lang.get()).as_str());
+        return ApiResponse::not_found(translate!("permission.not-found", lang).as_str());
     }
 
     let user_id = create_object_id_option(body.user_id.clone().as_str());
@@ -48,6 +48,7 @@ pub async fn assign_permission(
         value: permission.value.clone(),
         created_at: current_time,
         updated_at: current_time,
+        deleted: false,
     };
 
     let exist = Orm::get("account-permission")
@@ -64,7 +65,7 @@ pub async fn assign_permission(
         .await;
 
     if exist.is_ok() {
-        return ApiResponse::failed(translate!("user.permission.exist", lang.get()).as_str());
+        return ApiResponse::failed(translate!("user.permission.exist", lang).as_str());
     }
 
     let saved = Orm::insert("account-permission")
@@ -72,12 +73,12 @@ pub async fn assign_permission(
         .await;
 
     if saved.is_err() {
-        return ApiResponse::failed(translate!("user.permission.exist", lang.get()).as_str());
+        return ApiResponse::failed(translate!("user.permission.exist", lang).as_str());
     }
 
     ApiResponse::ok(
         account_permission,
-        translate!("permission.saved", "account-permission").as_str(),
+        translate!("permission.saved", lang).as_str(),
     )
 }
 
@@ -88,18 +89,18 @@ pub async fn get_user_permission(
     Path(user_id): Path<String>,
 ) -> ApiResponse<Vec<AccountPermissionDTO>> {
     if !auth_context.authorize("app::account::permission::read") {
-        return ApiResponse::un_authorized(translate!("unauthorized", lang.get()).as_str());
+        return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
     let user_id = ObjectId::from_str(user_id.as_str());
     if user_id.is_err() {
-        return ApiResponse::not_found(translate!("", lang.get()).as_str());
+        return ApiResponse::not_found(translate!("", lang).as_str());
     }
     let find = Orm::get("user-permission")
         .filter_object_id("account_id", &user_id.unwrap())
         .all::<AccountPermissionDTO>(&state.db)
         .await;
     if find.is_err() {
-        return ApiResponse::not_found(translate!("", lang.get()).as_str());
+        return ApiResponse::not_found(translate!("", lang).as_str());
     }
-    ApiResponse::ok(find.unwrap(), translate!("", lang.get()).as_str())
+    ApiResponse::ok(find.unwrap(), translate!("", lang).as_str())
 }
