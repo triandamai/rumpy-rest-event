@@ -124,25 +124,21 @@ impl Get {
         //prepare query
         let (query, query_count) = self.orm.merge_field_pageable(true);
 
+        // info!(target: "db::get","{:?}",query_count);
         let get_count = collection.aggregate(query_count).await;
 
         let total_items = match get_count {
             Ok(mut value) => StreamExt::try_next(&mut value).await.map_or_else(
-                |_| None,
-                |document| {
-                    document.map_or_else(|| None, |doc| Some(doc.get_i32("total").unwrap_or(0)))
-                },
-            ),
-            Err(_) => None,
-        }
-        .unwrap_or(0);
+                |_| None, |document|
+                    document.map_or_else(|| None, |doc| Some(doc.get_i32("total_items").unwrap_or(0)))
+            ), Err(_) => None,
+        }.unwrap_or(0);
 
         let data = collection.aggregate(query).await;
 
         if data.is_err() {
             let err_message = data.unwrap_err().to_string();
             info!(target: "db::get::error","{}",err_message.clone());
-
             return Err(err_message);
         }
         let mut result: Vec<T> = Vec::new();
@@ -169,7 +165,7 @@ impl Get {
         }
 
         let total_pages = (total_items.clone() as f64 / size as f64).ceil() as u32;
-        info!(target: "db::get::ok","total pages {}", total_pages.clone());
+        info!(target: "db::get::ok","total pages {}", total_items.clone());
         Ok(PagingResponse {
             total_items: total_items as i64,
             total_pages: total_pages as i64,
@@ -239,13 +235,13 @@ impl Get {
         self
     }
 
-    pub fn join_one(mut self, collection: &str, from: &str, to: &str, alias: &str) -> Self {
-        let orm = self.orm.join_one(collection, from, to, alias);
+    pub fn join_one(mut self, collection: &str, local_field: &str, from_field: &str, alias: &str) -> Self {
+        let orm = self.orm.join_one(collection, local_field, from_field, alias);
         self.orm = orm;
         self
     }
-    pub fn join_many(mut self, collection: &str, from: &str, to: &str, alias: &str) -> Self {
-        let orm = self.orm.join_many(collection, from, to, alias);
+    pub fn join_many(mut self, collection: &str, local_field: &str, from_field: &str, alias: &str) -> Self {
+        let orm = self.orm.join_many(collection, local_field, from_field, alias);
         self.orm = orm;
         self
     }
@@ -292,7 +288,7 @@ impl Get {
         self
     }
 
-    pub fn show_merging(self) -> Vec<Document> {
-        self.orm.merge_field_all(true)
+    pub fn show_merging(self) -> (Vec<Document>,Vec<Document>) {
+        self.orm.merge_field_pageable(true)
     }
 }

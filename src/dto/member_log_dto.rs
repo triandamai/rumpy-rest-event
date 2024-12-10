@@ -25,4 +25,5 @@ pub struct MemberLogDTO{
     pub created_at: DateTime,
     #[serde(serialize_with = "serialize_datetime")]
     pub updated_at: DateTime,
+    pub deleted:bool,
 }

@@ -106,15 +106,27 @@ impl Orm {
         Delete::from(from)
     }
 
-    pub fn join_one(mut self, collection: &str, from: &str, to: &str, alias: &str) -> Self {
-        let doc = create_lookup_field(collection, to, from, alias);
+    pub fn join_one(
+        mut self,
+        collection: &str,
+        local_field: &str,
+        from_field: &str,
+        alias: &str,
+    ) -> Self {
+        let doc = create_lookup_field(collection, from_field, local_field, alias);
         let unwind = create_unwind_field(format!("${}", alias).as_str());
         self.lookup.push(doc);
         self.unwind.push(unwind);
         self
     }
-    pub fn join_many(mut self, collection: &str, from: &str, to: &str, alias: &str) -> Self {
-        let doc = create_lookup_field(collection, to, from, alias);
+    pub fn join_many(
+        mut self,
+        collection: &str,
+        local_field: &str,
+        from_field: &str,
+        alias: &str,
+    ) -> Self {
+        let doc = create_lookup_field(collection, from_field, local_field, alias);
         self.lookup.push(doc);
         self
     }
@@ -350,16 +362,16 @@ impl Orm {
             }
         }
 
+        if self.sort.is_some() {
+            result.push(self.sort.unwrap());
+        }
+
         for lookup in self.lookup {
             result.push(lookup);
         }
 
         for unwind in self.unwind {
             result.push(unwind);
-        }
-
-        if self.sort.is_some() {
-            result.push(self.sort.unwrap());
         }
 
         if self.count.is_some() {
@@ -415,12 +427,20 @@ impl Orm {
                 if result2.len() > 1 {
                     parent.insert("$match", result2);
                 } else {
-                    parent.insert("$match", result2.get(0).unwrap());
+                    if result2.get(0).is_some() {
+                        let v = result2.get(0).unwrap();
+                        parent.insert("$match", v);
+                    }
                 }
                 if !parent.is_empty() {
                     result.push(parent.clone());
+                    result_count.push(parent.clone());
                 }
             }
+        }
+        if self.sort.is_some() {
+            result.push(self.sort.clone().unwrap());
+            result_count.push(self.sort.unwrap());
         }
 
         for lookup in self.lookup {
@@ -432,10 +452,7 @@ impl Orm {
             result.push(unwind.clone());
             result_count.push(unwind);
         }
-        if self.sort.is_some() {
-            result.push(self.sort.clone().unwrap());
-            result_count.push(self.sort.unwrap());
-        }
+
         if self.count.is_some() {
             result_count.push(self.count.unwrap());
         }
@@ -509,16 +526,16 @@ impl Orm {
             }
         }
 
+        if self.sort.is_some() {
+            result.push(self.sort.unwrap());
+        }
+
         for lookup in self.lookup {
             result.push(lookup);
         }
 
         for unwind in self.unwind {
             result.push(unwind);
-        }
-
-        if self.sort.is_some() {
-            result.push(self.sort.unwrap());
         }
 
         if self.count.is_some() {

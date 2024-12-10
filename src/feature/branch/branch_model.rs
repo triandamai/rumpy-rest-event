@@ -9,9 +9,7 @@ pub struct CreateBranchRequest{
     pub branch_description:String,
     pub branch_email:Option<String>,
     pub branch_phone_number:Option<String>,
-    pub branch_address:Option<String>,
-    #[validate(length(min = 1))]
-    pub branch_owner:String,
+    pub branch_address:Option<String>
 }
 
 #[derive(Debug,Validate,Serialize,Deserialize)]
@@ -22,7 +20,5 @@ pub struct UpdateBranchRequest{
     pub branch_description:String,
     pub branch_email:Option<String>,
     pub branch_phone_number:Option<String>,
-    pub branch_address:Option<String>,
-    #[validate(length(min = 1))]
-    pub branch_owner:String,
+    pub branch_address:Option<String>
 }

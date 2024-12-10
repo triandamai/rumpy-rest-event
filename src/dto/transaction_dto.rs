@@ -1,4 +1,4 @@
-use crate::common::bson::{deserialize_object_id, serialize_object_id,serialize_datetime};
+use crate::common::bson::{deserialize_object_id, serialize_datetime, serialize_object_id};
 use bson::oid::ObjectId;
 use bson::DateTime;
 use serde::{Deserialize, Serialize};
@@ -42,4 +42,5 @@ pub struct TransactionDTO{
     pub created_at: DateTime,
     #[serde(serialize_with = "serialize_datetime")]
     pub updated_at: DateTime,
+    pub deleted:bool,
 }

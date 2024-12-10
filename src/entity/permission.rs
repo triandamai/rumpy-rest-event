@@ -1,3 +1,4 @@
+use crate::dto::permission_dto::PermissionDTO;
 use bson::oid::ObjectId;
 use bson::DateTime;
 use serde::{Deserialize, Serialize};
@@ -12,4 +13,20 @@ pub struct Permission {
     pub description: String,
     pub created_at: DateTime,
     pub updated_at: DateTime,
+    pub deleted: bool,
+}
+
+impl Permission {
+    pub fn to_dto(self) -> PermissionDTO {
+        PermissionDTO {
+            id: self.id,
+            value: self.value,
+            name: self.name,
+            group: self.group,
+            description: self.description,
+            created_at: self.created_at,
+            updated_at: self.updated_at,
+            deleted: self.deleted,
+        }
+    }
 }

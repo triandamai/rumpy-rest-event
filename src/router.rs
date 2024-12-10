@@ -2,7 +2,7 @@ use crate::common::api_response::ApiResponse;
 use crate::common::app_state::AppState;
 use crate::feature;
 use crate::routes;
-use axum::routing::{get, post, put};
+use axum::routing::{delete, get, post, put, Route};
 use axum::Router;
 
 pub fn init_routes(state: AppState) -> Router {
@@ -63,8 +63,17 @@ pub fn init_routes(state: AppState) -> Router {
             "/branch/:branch_id",
             put(feature::branch::branch::update_branch),
         )
+        .route(
+            "/branch/:branch_id",
+            delete(feature::branch::branch::delete_branch),
+        )
         .fallback(handle_404)
         .with_state(state)
+}
+
+fn create_branch_route()->Router{
+    Router::new()
+
 }
 
 async fn handle_404() -> ApiResponse<String> {

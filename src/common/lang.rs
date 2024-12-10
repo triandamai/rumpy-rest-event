@@ -3,7 +3,7 @@ use axum::extract::FromRequestParts;
 use axum::http::request::Parts;
 use axum::{async_trait};
 
-#[derive(Debug)]
+#[derive(Debug,Clone)]
 pub struct Lang {
     pub locale_code: String,
 }

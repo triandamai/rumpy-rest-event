@@ -2,6 +2,7 @@ use bson::oid::ObjectId;
 use bson::DateTime;
 use chrono::NaiveDate;
 use serde::{Deserialize, Serialize};
+use crate::dto::account_dto::AccountDTO;
 
 #[derive(Debug,Serialize,Deserialize)]
 pub struct Account{
@@ -20,4 +21,23 @@ pub struct Account{
     pub date_of_birth: Option<NaiveDate>,
     pub created_at: DateTime,
     pub updated_at: DateTime,
+    pub deleted:bool,
+}
+
+impl Account{
+    pub fn to_dto(self) -> AccountDTO {
+        AccountDTO{
+            id: self.id,
+            full_name: self.full_name,
+            email: self.email,
+            gender: self.gender,
+            job_title: self.job_title,
+            report_to: self.report_to,
+            branch_id: self.branch_id,
+            date_of_birth: self.date_of_birth,
+            created_at: self.created_at,
+            updated_at: self.updated_at,
+            deleted: self.deleted,
+        }
+    }
 }

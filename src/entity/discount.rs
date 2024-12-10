@@ -1,3 +1,4 @@
+use crate::dto::discount_dto::DiscountDTO;
 use bson::oid::ObjectId;
 use bson::DateTime;
 use serde::{Deserialize, Serialize};
@@ -11,4 +12,19 @@ pub struct Discount {
     pub created_by: Option<ObjectId>,
     pub created_at: DateTime,
     pub updated_at: DateTime,
+    pub deleted: bool,
+}
+
+impl Discount {
+    pub fn to_dto(self) -> DiscountDTO {
+        DiscountDTO {
+            id: self.id,
+            title: self.title,
+            amount: self.amount,
+            created_by: self.created_by,
+            created_at: self.created_at,
+            updated_at: self.updated_at,
+            deleted: self.deleted
+        }
+    }
 }

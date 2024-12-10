@@ -1,3 +1,4 @@
+use std::time::SystemTime;
 use crate::common::orm::orm::Orm;
 use crate::common::utils::{create_object_id_option, create_or_new_object_id};
 use crate::entity::account::Account;
@@ -23,6 +24,7 @@ pub fn get_list_permission() -> Vec<Permission> {
             description: "Super Admin".to_string(),
             created_at: current_time.clone(),
             updated_at: current_time,
+            deleted:false
         },
         //read write member
         Permission {
@@ -33,6 +35,7 @@ pub fn get_list_permission() -> Vec<Permission> {
             description: "Can Insert/Update Member".to_string(),
             created_at: current_time.clone(),
             updated_at: current_time,
+            deleted:false
         },
         Permission {
             id: create_or_new_object_id("6742c74a15e68b0e7ee06125"),
@@ -42,6 +45,7 @@ pub fn get_list_permission() -> Vec<Permission> {
             description: "Can Read Member".to_string(),
             created_at: current_time.clone(),
             updated_at: current_time,
+            deleted:false
         },
         //read write branch
         Permission {
@@ -52,6 +56,7 @@ pub fn get_list_permission() -> Vec<Permission> {
             description: "Can Update Or Insert Branch".to_string(),
             created_at: current_time.clone(),
             updated_at: current_time,
+            deleted:false
         },
         Permission {
             id: create_or_new_object_id("6742c74a15e68b0e7ee06127"),
@@ -61,6 +66,7 @@ pub fn get_list_permission() -> Vec<Permission> {
             description: "Can Read Member".to_string(),
             created_at: current_time.clone(),
             updated_at: current_time,
+            deleted:false
         },
         //read write product
         Permission {
@@ -71,6 +77,7 @@ pub fn get_list_permission() -> Vec<Permission> {
             description: "Can Insert Or Update Product".to_string(),
             created_at: current_time.clone(),
             updated_at: current_time,
+            deleted:false
         },
         Permission {
             id: create_or_new_object_id("6742c74a15e68b0e7ee06129"),
@@ -80,6 +87,7 @@ pub fn get_list_permission() -> Vec<Permission> {
             description: "Can Read Member".to_string(),
             created_at: current_time.clone(),
             updated_at: current_time,
+            deleted:false
         },
         //read write membership
         Permission {
@@ -90,6 +98,7 @@ pub fn get_list_permission() -> Vec<Permission> {
             description: "Can Insert Or Update Membership".to_string(),
             created_at: current_time.clone(),
             updated_at: current_time,
+            deleted:false
         },
         Permission {
             id: create_or_new_object_id("6742c74a15e68b0e7ee0612b"),
@@ -99,6 +108,7 @@ pub fn get_list_permission() -> Vec<Permission> {
             description: "Can Read Member".to_string(),
             created_at: current_time.clone(),
             updated_at: current_time,
+            deleted:false
         },
         //read write account
         Permission {
@@ -109,6 +119,7 @@ pub fn get_list_permission() -> Vec<Permission> {
             description: "Can Create Or Update Account".to_string(),
             created_at: current_time.clone(),
             updated_at: current_time,
+            deleted:false
         },
         Permission {
             id: create_or_new_object_id("6742c74a15e68b0e7ee0612d"),
@@ -118,6 +129,7 @@ pub fn get_list_permission() -> Vec<Permission> {
             description: "Can Read Account".to_string(),
             created_at: current_time.clone(),
             updated_at: current_time,
+            deleted:false
         },
         //read write staff
         Permission {
@@ -128,6 +140,7 @@ pub fn get_list_permission() -> Vec<Permission> {
             description: "Can Create Or Update Staff".to_string(),
             created_at: current_time.clone(),
             updated_at: current_time,
+            deleted:false
         },
         Permission {
             id: create_or_new_object_id("6742c74a15e68b0e7ee0612f"),
@@ -137,6 +150,7 @@ pub fn get_list_permission() -> Vec<Permission> {
             description: "Can Read Staff".to_string(),
             created_at: current_time.clone(),
             updated_at: current_time,
+            deleted:false
         },
         //read write transaction
         Permission {
@@ -147,6 +161,7 @@ pub fn get_list_permission() -> Vec<Permission> {
             description: "Can Create Or Update Transaction".to_string(),
             created_at: current_time.clone(),
             updated_at: current_time,
+            deleted:false
         },
         Permission {
             id: create_or_new_object_id("6742c74a15e68b0e7ee06131"),
@@ -156,6 +171,7 @@ pub fn get_list_permission() -> Vec<Permission> {
             description: "Can Read Transaction".to_string(),
             created_at: current_time.clone(),
             updated_at: current_time,
+            deleted:false
         },
         //read write promotion
         Permission {
@@ -166,6 +182,7 @@ pub fn get_list_permission() -> Vec<Permission> {
             description: "Can Create Or Update Promotion".to_string(),
             created_at: current_time.clone(),
             updated_at: current_time,
+            deleted:false
         },
         Permission {
             id: create_or_new_object_id("6742c74a15e68b0e7ee06133"),
@@ -175,6 +192,7 @@ pub fn get_list_permission() -> Vec<Permission> {
             description: "Can Read Promotion".to_string(),
             created_at: current_time.clone(),
             updated_at: current_time,
+            deleted:false
         },
         //read write coach
         Permission {
@@ -185,6 +203,7 @@ pub fn get_list_permission() -> Vec<Permission> {
             description: "Can Create Or Update Coach".to_string(),
             created_at: current_time.clone(),
             updated_at: current_time,
+            deleted:false
         },
         Permission {
             id: create_or_new_object_id("6742c74a15e68b0e7ee06135"),
@@ -194,6 +213,7 @@ pub fn get_list_permission() -> Vec<Permission> {
             description: "Can Read Coach".to_string(),
             created_at: current_time.clone(),
             updated_at: current_time,
+            deleted:false
         },
         Permission {
             id: create_or_new_object_id("6742c74a15e68b0e7ee06136"),
@@ -203,6 +223,7 @@ pub fn get_list_permission() -> Vec<Permission> {
             description: "Can Read Account Permission".to_string(),
             created_at: current_time.clone(),
             updated_at: current_time,
+            deleted:false
         },
         Permission {
             id: create_or_new_object_id("6742c74a15e68b0e7ee06137"),
@@ -212,6 +233,7 @@ pub fn get_list_permission() -> Vec<Permission> {
             description: "Can Read Account Permission".to_string(),
             created_at: current_time.clone(),
             updated_at: current_time,
+            deleted:false
         },
         Permission {
             id: create_or_new_object_id("6742c74a15e68b0e7ee06138"),
@@ -221,6 +243,7 @@ pub fn get_list_permission() -> Vec<Permission> {
             description: "Can Read Permission".to_string(),
             created_at: current_time.clone(),
             updated_at: current_time,
+            deleted:false
         },
         Permission {
             id: create_or_new_object_id("6742c74a15e68b0e7ee06139"),
@@ -230,6 +253,7 @@ pub fn get_list_permission() -> Vec<Permission> {
             description: "Can Read Permission".to_string(),
             created_at: current_time.clone(),
             updated_at: current_time,
+            deleted:false
         },
     ]
 }
@@ -265,28 +289,31 @@ pub async fn init_seeder(database: &Database) {
     //seed branch
     {
         info!(target: "seeder","50% seed branch");
+        let current_date_time = DateTime::now();
         let branchs = vec![
             Branch {
                 id: branch_id_1.clone(),
-                branch_name: "Strong Teams HQ 1".to_string(),
+                branch_name: "Branch A".to_string(),
                 branch_description: "Cabang utama pertama".to_string(),
                 branch_email: Some(String::from("hq1@gmail.com")),
                 branch_phone_number: Some(String::from("+62812269999")),
                 branch_address: Some(String::from("Jakarta Selatan")),
                 branch_owner: account_id_1.clone(),
-                created_at: DateTime::now(),
-                updated_at: DateTime::now(),
+                created_at: DateTime::parse_rfc3339_str("2024-12-09T16:27:32.002Z").unwrap_or(current_date_time.clone()),
+                updated_at: DateTime::parse_rfc3339_str("2024-12-09T16:27:32.002Z").unwrap_or(current_date_time.clone()),
+                deleted:false
             },
             Branch {
                 id: branch_id_2.clone(),
-                branch_name: "Strong Teams HQ 2".to_string(),
+                branch_name: "Cabang B".to_string(),
                 branch_description: "Cabang utama kedua".to_string(),
                 branch_email: Some(String::from("hq2@gmail.com")),
                 branch_phone_number: Some(String::from("+62812269998")),
                 branch_address: Some(String::from("Jakarta Selatan")),
                 branch_owner: account_id_1.clone(),
-                created_at: DateTime::now(),
-                updated_at: DateTime::now(),
+                created_at: DateTime::parse_rfc3339_str("2024-12-10T16:27:32.002Z").unwrap_or(current_date_time.clone()),
+                updated_at: DateTime::parse_rfc3339_str("2024-12-10T16:27:32.002Z").unwrap_or(current_date_time.clone()),
+                deleted:false
             },
         ];
 
@@ -332,6 +359,7 @@ pub async fn init_seeder(database: &Database) {
                         date_of_birth: (NaiveDate::from_ymd_opt(2020, 1, 1)),
                         created_at: DateTime::now(),
                         updated_at: DateTime::now(),
+                        deleted:false
                     },
                     &database,
                 )
@@ -353,6 +381,7 @@ pub async fn init_seeder(database: &Database) {
                     value: e.value.to_string(),
                     created_at: DateTime::now(),
                     updated_at: DateTime::now(),
+                    deleted:false
                 };
             })
             .collect();

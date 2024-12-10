@@ -43,12 +43,32 @@
     "en": "Password has been change.",
     "id-ID": "Password berhasil dirubah."
   },
-  "change-password.verify-token.success": {
-    "en": "Verification valid.",
-    "id-ID": "Verifikasi token berhasil."
+  "branch.not-found": {
+    "en": "Branch Not Found.",
+    "id-ID": "Cabang tidak ditemukan."
   },
-  "complete-forgot-password.not-found": {
-    "en": "User or session not found.",
-    "id-ID": "Akun atau sesi tidak ditemukan"
+  "branch.insert.success": {
+    "en": "Success Create Branch.",
+    "id-ID": "Berhasil menambah cabang."
+  },
+  "branch.insert.failed": {
+    "en": "Failed create Branch.",
+    "id-ID": "Gagal menambah cabang."
+  },
+  "branch.update.success": {
+    "en": "Success Updating Branch.",
+    "id-ID": "Berhasil mengupdate cabang."
+  },
+  "branch.update.failed": {
+    "en": "Failed Updating Branch.",
+    "id-ID": "Gagal mengupdate cabang."
+  },
+  "branch.delete.success": {
+    "en": "Success Delete Branch",
+    "id-ID": "Berhasil menghapus Cabang."
+  },
+  "branch.delete.failed": {
+    "en": "Failed Delete Branch",
+    "id-ID": "Gagal menghapus Cabang."
   }
 }
