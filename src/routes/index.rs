@@ -3,17 +3,15 @@ use crate::common::app_state::AppState;
 use crate::common::lang::Lang;
 use crate::common::minio::MinIO;
 use crate::common::orm::orm::Orm;
-use crate::dto::permission_dto::PermissionDTO;
 use crate::translate;
 use axum::extract::State;
-use bson::oid::ObjectId;
 use bson::Document;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Write;
 
-pub async fn index(state: State<AppState>) -> ApiResponse<(Vec<Document>, Vec<Document>)> {
-    let command = Orm::get("permission");
+pub async fn index(_state: State<AppState>) -> ApiResponse<(Vec<Document>, Vec<Document>)> {
+    let _command = Orm::get("permission");
 
     let find_all_branch = Orm::get("account")
         .group_by_desc("branch_name")

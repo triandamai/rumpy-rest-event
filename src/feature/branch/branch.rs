@@ -4,7 +4,7 @@ use crate::common::jwt::AuthContext;
 use crate::common::lang::Lang;
 use crate::common::orm::orm::Orm;
 use crate::common::utils::{
-    create_object_id_option, create_or_new_object_id, QUERY_ASC, QUERY_DESC, QUERY_HIGHEST,
+    create_object_id_option, create_or_new_object_id, QUERY_ASC, QUERY_DESC,
     QUERY_LATEST, QUERY_OLDEST,
 };
 use crate::dto::branch_dto::BranchDTO;
@@ -14,11 +14,9 @@ use crate::feature::branch::branch_model::{CreateBranchRequest, UpdateBranchRequ
 use crate::translate;
 use axum::extract::{Path, Query, State};
 use axum::Json;
-use axum_extra::handler::Or;
 use bson::oid::ObjectId;
 use bson::DateTime;
 use log::info;
-use serde::de::Unexpected::Str;
 use validator::Validate;
 
 pub async fn get_list_branch(
@@ -127,7 +125,7 @@ pub async fn create_branch(
 
     let current_branch = DateTime::now();
     let branch_id = ObjectId::new();
-    let mut branch = Branch {
+    let branch = Branch {
         id: Some(branch_id.clone()),
         branch_name: body.branch_name.clone(),
         branch_description: body.branch_description.clone(),
@@ -193,21 +191,39 @@ pub async fn update_branch(
             }
         }
     }
+    let mut update = Orm::update("branch");
+    if body.branch_name.is_some() {
+        branch.branch_name = body.branch_name.clone().unwrap();
+        update = update.set_str("branch_name", body.branch_name.clone().unwrap().as_str());
+    }
 
-    branch.branch_name = body.branch_name.clone();
-    branch.branch_description = body.branch_description.clone();
-    branch.branch_email = body.branch_email.clone();
-    branch.branch_phone_number = body.branch_phone_number.clone();
-    branch.branch_address = body.branch_address.clone();
-    branch.updated_at = DateTime::now();
+    if body.branch_description.is_some() {
+        branch.branch_description = body.branch_description.clone().unwrap();
+        update = update.set_str(
+            "branch_description",
+            body.branch_description.clone().unwrap().as_str(),
+        );
+    }
+    if body.branch_email.is_some() {
+        branch.branch_email = body.branch_email.clone();
+        update = update.set_str("branch_email", body.branch_email.clone().unwrap().as_str());
+    }
+    if body.branch_address.is_some() {
+        branch.branch_address = body.branch_address.clone();
+        update = update.set_str(
+            "branch_address",
+            body.branch_address.clone().unwrap().as_str(),
+        );
+    }
 
-    let update = Orm::update("branch")
+    let save = update
         .filter_object_id("_id", &branch_id.unwrap())
+        .set_datetime("updated_at", DateTime::now())
         .one(&branch, &state.db)
         .await;
 
-    if update.is_err() {
-        info!(target: "branch::create", "failed to save branch {}",update.unwrap_err());
+    if save.is_err() {
+        info!(target: "branch::create", "failed to save branch {}",save.unwrap_err());
         return ApiResponse::failed(translate!("branch.update.failed", lang).as_str());
     }
 

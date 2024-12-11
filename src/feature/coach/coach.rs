@@ -16,7 +16,7 @@ use std::str::FromStr;
 use validator::Validate;
 
 pub async fn get_list_coach(
-    mut state: State<AppState>,
+    state: State<AppState>,
     lang: Lang,
     auth_context: AuthContext,
     query: Query<PaginationRequest>,
@@ -77,7 +77,7 @@ pub async fn create_coach(
         return ApiResponse::failed(translate!("").as_str());
     }
 
-    let mut coach = Coach {
+    let coach = Coach {
         id: Some(ObjectId::new()),
         branch_id: create_object_id_option(&body.branch_id),
         full_name: body.coach_name.to_string(),
@@ -124,7 +124,7 @@ pub async fn update_coach(
     if find_coach.is_err() {
         return ApiResponse::failed(translate!("").as_str());
     }
-    let mut coach = find_coach.unwrap();
+    let coach = find_coach.unwrap();
 
     let update = Orm::update("coach")
         .filter_object_id("_id", &coach_id)

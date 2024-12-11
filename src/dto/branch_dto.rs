@@ -4,7 +4,7 @@ use bson::oid::ObjectId;
 use bson::DateTime;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug,Serialize,Deserialize)]
+#[derive(Debug,Clone,Serialize,Deserialize)]
 pub struct BranchDTO{
     #[serde(
         rename = "_id",

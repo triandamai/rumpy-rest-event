@@ -1,23 +1,18 @@
 use crate::common::api_response::ApiResponse;
 use crate::common::app_state::AppState;
-use crate::common::jwt::{AuthContext, JwtClaims, JwtUtil};
+use crate::common::jwt::{AuthContext, JwtUtil};
 use crate::common::lang::Lang;
 use crate::common::orm::orm::Orm;
-use crate::common::smtp::SmtpClient;
 use crate::dto::account_dto::AccountDetailDTO;
 use crate::entity::account::Account;
 use crate::feature::auth::auth_model::{
-    ChangePasswordRequest, CompleteForgotPasswordRequest, ForgotPasswordRequest, SignInRequest,
-    SignInResponse, ISSUED_AT_KEY, TOKEN_KEY, USER_ID_KEY,
+    ChangePasswordRequest, SignInRequest,
+    SignInResponse, TOKEN_KEY, USER_ID_KEY,
 };
 use crate::translate;
 use axum::extract::State;
 use axum::Json;
 use bcrypt::DEFAULT_COST;
-use bson::oid::ObjectId;
-use chrono::Utc;
-use std::collections::HashMap;
-use std::str::FromStr;
 use validator::Validate;
 
 pub async fn sign_in(
@@ -55,6 +50,7 @@ pub async fn sign_in(
         .filter_object_id("_id", &find.id.unwrap())
         .join_one("account", "reply_to", "_id", "report")
         .join_one("branch", "_id", "branch_id", "branch")
+        .join_one("file-attachment", "_id", "ref_id", "profile_picture")
         .join_many("account-permission", "account_id", "_id", "permission")
         .one::<AccountDetailDTO>(&state.db)
         .await;
@@ -75,7 +71,9 @@ pub async fn sign_in(
         return ApiResponse::failed(translate!("sign-in.failed", lang).as_str());
     }
 
-    let find_permission = get_account.permission
+    let permission = get_account.clone().permission.unwrap_or(Vec::new());
+
+    let find_permission = permission
         .iter()
         .map(|e| (e.value.clone(), e.value.clone()))
         .collect::<Vec<(String, String)>>();

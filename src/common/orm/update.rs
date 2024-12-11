@@ -1,10 +1,11 @@
 use crate::common::orm::orm::Orm;
 use bson::oid::ObjectId;
-use bson::{doc, Document};
+use bson::{doc, DateTime, Document};
 use log::info;
 use mongodb::{Collection, Database};
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
+use chrono::NaiveDate;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Update {
@@ -32,6 +33,26 @@ impl Update {
     }
 
     pub fn set_str(mut self, column: &str, value: &str) -> Self {
+        let mut set = self.set.unwrap_or(Document::new());
+        set.insert(column, value);
+        self.set = Some(set);
+        self
+    }
+
+    pub fn set_datetime(mut self, column: &str, value: DateTime) -> Self {
+        let mut set = self.set.unwrap_or(Document::new());
+        set.insert(column, value);
+        self.set = Some(set);
+        self
+    }
+
+    pub fn set_naive_date(mut self, column: &str, value: &NaiveDate) -> Self {
+        let mut set = self.set.unwrap_or(Document::new());
+        set.insert(column, bson::to_bson(value).unwrap());
+        self.set = Some(set);
+        self
+    }
+    pub fn set_float(mut self, column: &str, value: &f64) -> Self {
         let mut set = self.set.unwrap_or(Document::new());
         set.insert(column, value);
         self.set = Some(set);

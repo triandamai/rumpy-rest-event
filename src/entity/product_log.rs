@@ -1,4 +1,3 @@
-use crate::dto::product_dto::ProductDTO;
 use crate::dto::product_log_dto::ProductLogDTO;
 use bson::oid::ObjectId;
 use bson::DateTime;

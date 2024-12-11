@@ -1,5 +1,4 @@
 use crate::dto::account_dto::AccountDetailDTO;
-use bson::Document;
 use chrono::NaiveDate;
 use log::info;
 use serde::{Deserialize, Serialize};
