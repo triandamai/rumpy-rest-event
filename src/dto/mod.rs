@@ -12,3 +12,4 @@ pub mod product_log_dto;
 pub mod promotion_dto;
 pub mod transaction_dto;
 pub mod discount_dto;
+pub mod file_attachment_dto;

@@ -2,7 +2,9 @@ use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::Json;
 use bson::doc;
+use log::info;
 use serde::{Deserialize, Serialize};
+use std::borrow::Cow;
 use validator::ValidationErrors;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -105,8 +107,11 @@ impl<T> ApiResponse<T> {
                 let message: Vec<String> = value
                     .iter()
                     .map(|e| {
+                        if e.message.is_none() {
+                            return e.code.clone().to_string();
+                        }
                         return match e.message.clone() {
-                            None => "".to_string(),
+                            None => e.code.to_string(),
                             Some(v) => v.to_string(),
                         };
                     })

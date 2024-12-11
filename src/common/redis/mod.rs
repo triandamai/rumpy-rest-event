@@ -4,7 +4,7 @@ use std::{
 };
 
 use crate::feature::auth::auth_model::{
-    SIGN_IN_TTL, SIGN_UP_TTL,
+    SIGN_IN_TTL,
 };
 use rand::{thread_rng, Rng};
 use redis::{Client, Commands, RedisResult};
@@ -73,48 +73,12 @@ impl RedisClient {
         saved
     }
 
-    pub fn set_session_sign_up(
-        &mut self,
-        session_id: &str,
-        items: &[(&str, String)],
-    ) -> RedisResult<String> {
-        let key = self.create_key_sign_up_session(session_id);
-        let saved = self.client.hset_multiple(key.clone(), items);
-        let _: RedisResult<String> = self.client.expire(key, SIGN_UP_TTL);
-        saved
-    }
-
-    pub fn set_session_forgot_password(
-        &mut self,
-        session_id: &str,
-        items: &[(&str, String)],
-    ) -> RedisResult<String> {
-        let key = self.create_key_forgot_password_session(session_id);
-        let saved = self.client.hset_multiple(key.clone(), items);
-        let _: RedisResult<String> = self.client.expire(key, SIGN_UP_TTL);
-        saved
-    }
-
     //GET SESSION
     pub fn get_session_sign_in(
         &mut self,
         session_id: &str,
     ) -> RedisResult<HashMap<String, String>> {
         let key = self.create_key_sign_in_session(session_id);
-        self.client.hgetall(key)
-    }
-    pub fn get_session_sign_up(
-        &mut self,
-        session_id: &str,
-    ) -> RedisResult<HashMap<String, String>> {
-        let key = self.create_key_sign_up_session(session_id);
-        self.client.hgetall(key)
-    }
-    pub fn get_session_forgot_password(
-        &mut self,
-        session_id: &str,
-    ) -> RedisResult<HashMap<String, String>> {
-        let key = self.create_key_forgot_password_session(session_id);
         self.client.hgetall(key)
     }
 
@@ -124,15 +88,6 @@ impl RedisClient {
         self.client.del(key)
     }
 
-    pub fn delete_session_sign_up(&mut self, session_id: &str) -> RedisResult<String> {
-        let key = self.create_key_sign_up_session(session_id);
-        self.client.del(key)
-    }
-
-    pub fn delete_session_forgot_password(&mut self, session_id: &str) -> RedisResult<String> {
-        let key = self.create_key_forgot_password_session(session_id);
-        self.client.del(key)
-    }
 
     //OTHER
     pub async fn exist(&mut self, key: &str) -> bool {

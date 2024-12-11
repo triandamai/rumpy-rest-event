@@ -1,14 +1,18 @@
+use bson::oid::ObjectId;
+use chrono::NaiveDate;
+use log::info;
+use mime::Mime;
+use std::borrow::Cow;
 use std::fmt::Debug;
 use std::str::FromStr;
-use bson::oid::ObjectId;
-use mime::Mime;
+use validator::ValidationError;
 
-pub const QUERY_LOWEST: &str ="lowest";
-pub const QUERY_HIGHEST: &str ="highest";
-pub const QUERY_ASC: &str ="asc";
-pub const QUERY_DESC: &str ="desc";
-pub const QUERY_LATEST: &str ="latest";
-pub const QUERY_OLDEST: &str ="oldest";
+pub const QUERY_LOWEST: &str = "lowest";
+pub const QUERY_HIGHEST: &str = "highest";
+pub const QUERY_ASC: &str = "asc";
+pub const QUERY_DESC: &str = "desc";
+pub const QUERY_LATEST: &str = "latest";
+pub const QUERY_OLDEST: &str = "oldest";
 
 // Function to map MIME types to file extensions
 pub fn get_extension_from_mime(mime: &Mime) -> Option<&'static str> {
@@ -28,7 +32,6 @@ pub fn get_extension_from_mime(mime: &Mime) -> Option<&'static str> {
     }
 }
 
-
 pub fn get_mime_type_from_filename(filename: &str) -> &'static str {
     if filename.ends_with(".jpg") || filename.ends_with(".jpeg") {
         "image/jpeg"
@@ -43,7 +46,7 @@ pub fn get_mime_type_from_filename(filename: &str) -> &'static str {
     }
 }
 
-pub fn vec_to_array<const N: usize,K:Debug>(vec: Vec<K>) -> Option<[K; N]> {
+pub fn vec_to_array<const N: usize, K: Debug>(vec: Vec<K>) -> Option<[K; N]> {
     if vec.len() == N {
         Some(vec.try_into().unwrap())
     } else {
@@ -66,4 +69,49 @@ pub fn create_object_id_option(id: &str) -> Option<ObjectId> {
     } else {
         None
     }
+}
+
+pub fn validate_date_of_birth_option(date: &&String) -> Result<(), ValidationError> {
+    let text = date.clone();
+    let parse = NaiveDate::parse_from_str(text, "%Y-%m-%d");
+    match parse {
+        Ok(_) => Ok(()),
+        Err(e) => {
+            info!(target: "validate_dob::","{:?}",e);
+            Err(
+                ValidationError::new("Invalid date of birth format: YYYY-MM-DD")
+                    .with_message(Cow::from("Invalid date of birth format: YYYY-MM-DD")),
+            )
+        }
+    }
+}
+
+pub fn validate_date_of_birth(date: &String) -> Result<(), ValidationError> {
+    let parse = NaiveDate::parse_from_str(date, "%Y-%m-%d");
+    match parse {
+        Ok(_) => Ok(()),
+        Err(e) => {
+            info!(target: "validate_dob::","{:?}",e);
+            Err(
+                ValidationError::new("Invalid date of birth format: YYYY-MM-DD")
+                    .with_message(Cow::from("Invalid date of birth format: YYYY-MM-DD")),
+            )
+        }
+    }
+}
+
+pub fn validate_gender(gender: &String) -> Result<(), ValidationError> {
+    if gender == "M" {
+        return Ok(());
+    }
+
+    if gender == "F" {
+        return Ok(());
+    }
+
+    Err(
+        ValidationError::new("Invalid Gender, valid value M(Male) or F(Female)").with_message(
+            Cow::from("Invalid Gender, valid value M(Male) or F(Female)"),
+        ),
+    )
 }

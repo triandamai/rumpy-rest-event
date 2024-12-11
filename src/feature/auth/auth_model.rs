@@ -13,9 +13,8 @@ pub const TOKEN_KEY: &str = "token";
 pub const ATTEMPT_KEY: &str = "otp_attempt";
 pub const RESEND_ATTEMPT_KEY: &str = "resend_attempt";
 pub const ISSUED_AT_KEY: &str = "issued_at";
-pub const OTP_TTL: i64 = 10800;
-pub const SIGN_IN_TTL: i64 = 10800;
-pub const SIGN_UP_TTL: i64 = 10800;
+
+pub const SIGN_IN_TTL: i64 = 43200; //12 hours
 
 #[derive(Debug, Clone, Validate, Serialize, Deserialize)]
 pub struct CheckEmailRequest {

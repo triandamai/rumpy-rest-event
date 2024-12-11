@@ -67,13 +67,22 @@ pub fn init_routes(state: AppState) -> Router {
             "/branch/:branch_id",
             delete(feature::branch::branch::delete_branch),
         )
+        //user
+        .route("/user/list", get(feature::user::user::get_list_user))
+        .route("/user/:user_id", get(feature::user::user::get_detail_user))
+        .route("/user", post(feature::user::user::create_user))
+        .route("/user/:user_id", put(feature::user::user::update_user))
+        .route("/user/:user_id", delete(feature::user::user::delete_user))
+        .route(
+            "/user/update-profile-picture",
+            post(feature::user::user::upload_profile_picture),
+        )
         .fallback(handle_404)
         .with_state(state)
 }
 
-fn create_branch_route()->Router{
+fn create_branch_route() -> Router {
     Router::new()
-
 }
 
 async fn handle_404() -> ApiResponse<String> {

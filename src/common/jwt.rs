@@ -15,14 +15,13 @@ use chrono::{Duration, Local};
 use jsonwebtoken::{
     errors::Error as JwtError, Algorithm, DecodingKey, EncodingKey, Header, TokenData, Validation,
 };
-use log::info;
 use serde::{Deserialize, Serialize};
 
 use super::app_state::AppState;
 use crate::common::api_response::ApiResponse;
 use crate::common::env_config::EnvConfig;
-use crate::common::utils::create_or_new_object_id;
-use crate::feature::auth::auth_model::BRANCH_ID_KEY;
+use crate::common::utils::{create_object_id_option, create_or_new_object_id};
+use crate::feature::auth::auth_model::{BRANCH_ID_KEY, USER_ID_KEY};
 
 pub struct JwtUtil {
     pub claims: JwtClaims,
@@ -41,6 +40,7 @@ pub struct AuthContext {
     pub claims: JwtClaims,
     pub permissions: HashMap<String, String>,
     pub branch_id: Option<ObjectId>,
+    pub user_id: Option<ObjectId>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -159,21 +159,38 @@ where
             return Err(AuthError::MissingCredentials);
         }
         let mut state = state.unwrap();
+
+        let default_hashmap:HashMap<String,String> = HashMap::new();
+        let default = String::from("");
+        let session = state
+            .redis
+            .get_session_sign_in(claims.sub.clone().as_str());
+
+        if session.is_err(){
+            return Err(AuthError::MissingCredentials);
+        }
+
+        let session = &session.unwrap();
+
+        if session.is_empty(){
+            return Err(AuthError::MissingCredentials);
+        }
+
+        let user_id = session.get(USER_ID_KEY).map_or(None, |s| create_object_id_option(s.as_str()));
+        let branch_id = session.get(BRANCH_ID_KEY).unwrap_or(&default);
+        let branch_id = create_or_new_object_id(branch_id);
+
+
         let permissions = &state
             .redis
             .get_session_permission(claims.sub.clone().as_str())
-            .unwrap_or(HashMap::new());
-        let default = String::from("");
-        let session = &state
-            .redis
-            .get_session_sign_in(claims.sub.clone().as_str())
-            .unwrap_or(HashMap::new());
-        let branch_id = session.get(BRANCH_ID_KEY).unwrap_or(&default);
-        let branch_id = create_or_new_object_id(branch_id);
+            .map_or(default_hashmap.clone(),|p|p);
+
 
         Ok(AuthContext {
             claims,
             branch_id,
+            user_id,
             permissions: permissions.clone(),
         })
     }
