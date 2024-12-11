@@ -110,5 +110,105 @@
   "user.update.failed": {
     "en": "Failed to update user.",
     "id-ID": "Gagal mengupdate user"
+  },
+  "product.list.success": {
+    "en": "",
+    "id-ID": ""
+  },
+  "product.not-found": {
+    "en": "",
+    "id-ID": ""
+  },
+  "product.found": {
+    "en": "",
+    "id-ID": ""
+  },
+  "product.create.failed": {
+    "en": "",
+    "id-ID": ""
+  },
+  "product.create.success": {
+    "en": "",
+    "id-ID": ""
+  },
+  "product.update.failed": {
+    "en": "",
+    "id-ID": ""
+  },
+  "product.update.success": {
+    "en": "",
+    "id-ID": ""
+  },
+  "product.delete.failed": {
+    "en": "",
+    "id-ID": ""
+  },
+  "product.delete.success": {
+    "en": "",
+    "id-ID": ""
+  },
+  "product.product-image.failed": {
+    "en": "",
+    "id-ID": ""
+  },
+  "product.product-image.not-found": {
+    "en": "",
+    "id-ID": ""
+  },
+  "product.product-image.success": {
+    "en": "",
+    "id-ID": ""
+  },
+  "member.list.success": {
+    "en": "",
+    "id-ID": ""
+  },
+  "member.list.failed": {
+    "en": "",
+    "id-ID": ""
+  },
+  "member.not-found": {
+    "en": "",
+    "id-ID": ""
+  },
+  "member.found": {
+    "en": "",
+    "id-ID": ""
+  },
+  "member.create.failed": {
+    "en": "",
+    "id-ID": ""
+  },
+  "member.create.success": {
+    "en": "",
+    "id-ID": ""
+  },
+  "member.update.failed": {
+    "en": "",
+    "id-ID": ""
+  },
+  "member.update.success": {
+    "en": "",
+    "id-ID": ""
+  },
+  "member.delete.failed": {
+    "en": "",
+    "id-ID": ""
+  },
+  "member.delete.success": {
+    "en": "",
+    "id-ID": ""
+  },
+  "member.profile-picture.not-found": {
+    "en": "",
+    "id-ID": ""
+  },
+  "member.profile-picture.failed": {
+    "en": "",
+    "id-ID": ""
+  },
+  "member.profile-picture.success": {
+    "en": "",
+    "id-ID": ""
   }
 }

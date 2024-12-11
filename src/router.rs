@@ -99,6 +99,28 @@ pub fn init_routes(state: AppState) -> Router {
             "/product/update-product-image",
             delete(feature::product::product::update_product_image),
         )
+        //member
+        .route(
+            "/member/list",
+            get(feature::member::member::get_list_member),
+        )
+        .route(
+            "/member/:product_id",
+            get(feature::member::member::get_detail_member),
+        )
+        .route("/member", post(feature::member::member::create_member))
+        .route(
+            "/member/:product_id",
+            put(feature::member::member::update_member),
+        )
+        .route(
+            "/member/:product_id",
+            delete(feature::member::member::delete_member),
+        )
+        .route(
+            "/member/update-profile-picture",
+            delete(feature::member::member::update_profile_picture),
+        )
         .fallback(handle_404)
         .with_state(state)
 }
