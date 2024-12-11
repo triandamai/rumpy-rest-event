@@ -7,7 +7,7 @@ WORKDIR /app
 COPY Cargo.toml .
 #COPY Cargo.lock .
 COPY src ./src
-COPY upload ./uploads
+COPY uploads ./uploads
 COPY locales ./locales
 
 
