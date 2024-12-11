@@ -70,5 +70,45 @@
   "branch.delete.failed": {
     "en": "Failed Delete Branch",
     "id-ID": "Gagal menghapus Cabang."
+  },
+  "user.not-found": {
+    "en": "User Not Found.",
+    "id-ID": "User tidak ditemukan."
+  },
+  "user.found": {
+    "en": "User Found.",
+    "id-ID": "User ditemukan."
+  },
+  "user.profile-picture.not-found": {
+    "en": "Profile Picture Not Found.",
+    "id-ID": "Tidak menemukan foto profile."
+  },
+  "user.profile-picture.failed": {
+    "en": "Failed to upload profile picture.",
+    "id-ID": "Gagal upload foto profile."
+  },
+  "user.profile-picture.success": {
+    "en": "Success updateing profile picture.",
+    "id-ID": "Berhasil upload foto profil."
+  },
+  "user.list.success": {
+    "en": "Data User.",
+    "id-ID": "Data User."
+  },
+  "user.delete.failed": {
+    "en": "Failed delete user.",
+    "id-ID": "Gagal menghapus user."
+  },
+  "user.delete.success": {
+    "en": "Success delete user.",
+    "id-ID": "Berhasil menghapus user."
+  },
+  "user.update.success": {
+    "en": "Success update user.",
+    "id-ID": "Berhasil mengupdate user."
+  },
+  "user.update.failed": {
+    "en": "Failed to update user.",
+    "id-ID": "Gagal mengupdate user"
   }
 }

@@ -32,8 +32,13 @@ pub async fn get_list_branch(
     }
 
     let default = String::new();
-    let filter = query.filter.clone().unwrap_or(default);
+    let filter = query.filter.clone().unwrap_or(default.clone());
     let mut get = Orm::get("branch");
+
+    if query.q.is_some() {
+        let text = query.q.clone().unwrap_or(default);
+        get = get.filter_string("$text", Some("$search"), text.as_str());
+    }
 
     if filter == QUERY_ASC.to_string() {
         get = get.group_by_asc("branch_name");
@@ -53,7 +58,7 @@ pub async fn get_list_branch(
 
     let find_all_branch = get
         .join_one("account", "branch_owner", "_id", "owner")
-        .filter_bool("deleted",None,false)
+        .filter_bool("deleted", None, false)
         .pageable::<BranchDTO>(query.page.unwrap_or(1), query.size.unwrap_or(10), &state.db)
         .await;
     ApiResponse::ok(find_all_branch.unwrap(), translate!("", lang).as_str())
@@ -197,7 +202,9 @@ pub async fn update_branch(
     branch.updated_at = DateTime::now();
 
     let update = Orm::update("branch")
-        .filter_object_id("_id",&branch_id.unwrap()).one(&branch, &state.db).await;
+        .filter_object_id("_id", &branch_id.unwrap())
+        .one(&branch, &state.db)
+        .await;
 
     if update.is_err() {
         info!(target: "branch::create", "failed to save branch {}",update.unwrap_err());

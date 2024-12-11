@@ -408,7 +408,7 @@ pub async fn init_seeder(database: &Database) {
     {
         info!(target: "seeder","99% seed index");
 
-        let _index = &database
+        let _index_account = &database
             .collection::<Document>("account")
             .create_index(
                 IndexModel::builder()
@@ -423,7 +423,7 @@ pub async fn init_seeder(database: &Database) {
             )
             .await;
 
-        let _index = &database
+        let _index_permission = &database
             .collection::<Document>("permission")
             .create_index(
                 IndexModel::builder()
@@ -438,14 +438,29 @@ pub async fn init_seeder(database: &Database) {
             )
             .await;
 
-        let _index = &database
+        let _index_coach = &database
             .collection::<Document>("coach")
             .create_index(
                 IndexModel::builder()
                     .keys(doc! { "full_name": "text", "email":1 })
                     .options(
                         IndexOptions::builder()
-                            .name("account-index".to_string())
+                            .name("coach-index".to_string())
+                            .unique(false)
+                            .build(),
+                    )
+                    .build(),
+            )
+            .await;
+
+        let _index_branch = &database
+            .collection::<Document>("branch")
+            .create_index(
+                IndexModel::builder()
+                    .keys(doc! { "branch_name": "text" })
+                    .options(
+                        IndexOptions::builder()
+                            .name("branch-index".to_string())
                             .unique(false)
                             .build(),
                     )
