@@ -2,9 +2,7 @@ use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::Json;
 use bson::doc;
-use log::info;
 use serde::{Deserialize, Serialize};
-use std::borrow::Cow;
 use validator::ValidationErrors;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

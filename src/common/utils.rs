@@ -72,7 +72,7 @@ pub fn create_object_id_option(id: &str) -> Option<ObjectId> {
 }
 
 pub fn validate_date_of_birth_option(date: &&String) -> Result<(), ValidationError> {
-    let text = date.clone();
+    let text = date;
     let parse = NaiveDate::parse_from_str(text, "%Y-%m-%d");
     match parse {
         Ok(_) => Ok(()),

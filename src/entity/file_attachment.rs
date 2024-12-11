@@ -2,7 +2,6 @@ use crate::dto::file_attachment_dto::FileAttachmentDTO;
 use bson::oid::ObjectId;
 use bson::DateTime;
 use serde::{Deserialize, Serialize};
-use std::str::FromStr;
 use validator::Validate;
 
 #[derive(Deserialize, Serialize, Debug,Validate)]

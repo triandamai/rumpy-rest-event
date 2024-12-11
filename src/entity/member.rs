@@ -1,6 +1,5 @@
 use crate::dto::member_dto::MemberDTO;
 use bson::oid::ObjectId;
-use bson::serde_helpers::bson_datetime_as_rfc3339_string;
 use bson::DateTime;
 use chrono::NaiveDate;
 use serde::{Deserialize, Serialize};

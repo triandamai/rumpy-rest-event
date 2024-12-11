@@ -2,7 +2,7 @@ use crate::common::api_response::ApiResponse;
 use crate::common::app_state::AppState;
 use crate::feature;
 use crate::routes;
-use axum::routing::{delete, get, post, put, Route};
+use axum::routing::{delete, get, post, put};
 use axum::Router;
 
 pub fn init_routes(state: AppState) -> Router {
@@ -77,12 +77,30 @@ pub fn init_routes(state: AppState) -> Router {
             "/user/update-profile-picture",
             post(feature::user::user::upload_profile_picture),
         )
+        //product
+        .route(
+            "/product/list",
+            get(feature::product::product::get_list_product),
+        )
+        .route(
+            "/product/:product_id",
+            get(feature::product::product::get_detail_product),
+        )
+        .route("/product", post(feature::product::product::create_product))
+        .route(
+            "/product/:product_id",
+            put(feature::product::product::update_product),
+        )
+        .route(
+            "/product/:product_id",
+            delete(feature::product::product::delete_product),
+        )
+        .route(
+            "/product/update-product-image",
+            delete(feature::product::product::update_product_image),
+        )
         .fallback(handle_404)
         .with_state(state)
-}
-
-fn create_branch_route() -> Router {
-    Router::new()
 }
 
 async fn handle_404() -> ApiResponse<String> {

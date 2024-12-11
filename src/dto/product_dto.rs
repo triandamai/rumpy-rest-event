@@ -2,6 +2,7 @@ use crate::common::bson::{deserialize_object_id, serialize_datetime, serialize_o
 use bson::oid::ObjectId;
 use bson::DateTime;
 use serde::{Deserialize, Serialize};
+use crate::dto::file_attachment_dto::FileAttachmentDTO;
 
 #[derive(Serialize,Deserialize, Debug)]
 pub struct ProductDTO{
@@ -21,9 +22,11 @@ pub struct ProductDTO{
     pub branch_id:Option<ObjectId>,
     pub product_name:String,
     pub product_description:String,
-    pub product_price:i64,
-    pub product_selling_price:i64,
+    pub product_price:f64,
+    pub product_selling_price:f64,
+    pub product_profit:f64,
     pub product_stock:i64,
+    pub product_image:Option<FileAttachmentDTO>,
     #[serde(
         rename = "created_by",
         skip_serializing_if = "Option::is_none",
