@@ -1,7 +1,5 @@
 use crate::common::api_response::PagingResponse;
-use crate::common::orm::orm::{
-    create_count_field, create_limit_field, create_skip_field, Orm,
-};
+use crate::common::orm::orm::{create_count_field, create_limit_field, create_skip_field, Orm};
 use bson::oid::ObjectId;
 use bson::{doc, Document};
 use log::info;
@@ -35,7 +33,7 @@ impl Get {
     }
 
     pub async fn one<T: DeserializeOwned + Debug>(mut self, db: &Database) -> Result<T, String> {
-        info!(target: "db::get","starting get one..");
+        //info!(target: "db::get","starting get one..");
         let collection: Collection<Document> = db.collection(self.orm.collection_name.as_str());
         self.orm.limit = Some(create_limit_field(1));
         let pipeline = self.orm.merge_field(true);
@@ -49,11 +47,10 @@ impl Get {
         let mut data = data.unwrap();
         let next = data.next().await;
         if next.is_none() {
-            info!(target: "db::get::not_found","No data found");
+            //info!(target: "db::get::not_found","No data found");
             return Err("Tidak dapat menemukan data".to_string());
         }
         let next = next.unwrap();
-
         if next.is_err() {
             return Err(next.unwrap_err().to_string());
         }
@@ -67,12 +64,12 @@ impl Get {
             return Err(format!("{:?}", err_message));
         }
 
-        info!(target: "db::get::ok","data found");
+       // info!(target: "db::get::ok","data found");
         Ok(transform.unwrap())
     }
 
     pub async fn all<T: DeserializeOwned + Debug>(self, db: &Database) -> Result<Vec<T>, String> {
-        info!(target: "db::get","starting get all..");
+        //info!(target: "db::get","starting get all..");
         let collection: Collection<Document> = db.collection(self.orm.collection_name.as_str());
         let pipeline = self.orm.merge_field_all(true);
         let data = collection.aggregate(pipeline).await;
@@ -104,7 +101,7 @@ impl Get {
                 info!(target:"db::get::error:","extract {:?}",err_message);
             }
         }
-        info!(target: "db::get::ok","data found");
+       // info!(target: "db::get::ok","data found");
         Ok(result)
     }
 
@@ -129,10 +126,15 @@ impl Get {
 
         let total_items = match get_count {
             Ok(mut value) => StreamExt::try_next(&mut value).await.map_or_else(
-                |_| None, |document|
-                    document.map_or_else(|| None, |doc| Some(doc.get_i32("total_items").unwrap_or(0)))
-            ), Err(_) => None,
-        }.unwrap_or(0);
+                |_| None,
+                |document| {
+                    document
+                        .map_or_else(|| None, |doc| Some(doc.get_i32("total_items").unwrap_or(0)))
+                },
+            ),
+            Err(_) => None,
+        }
+        .unwrap_or(0);
 
         let data = collection.aggregate(query).await;
 
@@ -165,7 +167,7 @@ impl Get {
         }
 
         let total_pages = (total_items.clone() as f64 / size as f64).ceil() as u32;
-        info!(target: "db::get::ok","total pages {}", total_items.clone());
+        //info!(target: "db::get::ok","total pages {}", total_items.clone());
         Ok(PagingResponse {
             total_items: total_items as i64,
             total_pages: total_pages as i64,
@@ -176,7 +178,7 @@ impl Get {
     }
 
     pub async fn find_one<T: DeserializeOwned>(self, query: Document, db: &Database) -> Option<T> {
-        info!(target: "db::get","find one..");
+        //info!(target: "db::get","find one..");
         let collection: Collection<Document> = db.collection(self.orm.collection_name.as_str());
         collection.find_one(query).await.map_or_else(
             |_| None,
@@ -215,7 +217,7 @@ impl Get {
                     result.push(value);
                 }
                 Err(e) => {
-                    info!(target:"extract from doc:","{:?}",e);
+                     info!(target:"extract from doc:","{:?}",e);
                 }
             }
         }
@@ -223,25 +225,46 @@ impl Get {
     }
 
     //query
-    pub fn filter_bool(mut self, column: &str, operator: Option<&str>, value: bool)->Self{
+    pub fn filter_bool(mut self, column: &str, operator: Option<&str>, value: bool) -> Self {
         let orm = self.orm.filter_bool(column, operator, value.clone());
         self.orm = orm;
         self
     }
 
-    pub fn filter_array<T:Serialize>(mut self, column: &str, operator: Option<&str>, value: Vec<T>)->Self{
+    pub fn filter_array<T: Serialize>(
+        mut self,
+        column: &str,
+        operator: Option<&str>,
+        value: Vec<T>,
+    ) -> Self {
         let orm = self.orm.filter_array(column, operator, value);
         self.orm = orm;
         self
     }
 
-    pub fn join_one(mut self, collection: &str, local_field: &str, from_field: &str, alias: &str) -> Self {
-        let orm = self.orm.join_one(collection, local_field, from_field, alias);
+    pub fn join_one(
+        mut self,
+        collection: &str,
+        local_field: &str,
+        from_field: &str,
+        alias: &str,
+    ) -> Self {
+        let orm = self
+            .orm
+            .join_one(collection, local_field, from_field, alias);
         self.orm = orm;
         self
     }
-    pub fn join_many(mut self, collection: &str, local_field: &str, from_field: &str, alias: &str) -> Self {
-        let orm = self.orm.join_many(collection, local_field, from_field, alias);
+    pub fn join_many(
+        mut self,
+        collection: &str,
+        local_field: &str,
+        from_field: &str,
+        alias: &str,
+    ) -> Self {
+        let orm = self
+            .orm
+            .join_many(collection, local_field, from_field, alias);
         self.orm = orm;
         self
     }
@@ -288,7 +311,7 @@ impl Get {
         self
     }
 
-    pub fn show_merging(self) -> (Vec<Document>,Vec<Document>) {
+    pub fn show_merging(self) -> (Vec<Document>, Vec<Document>) {
         self.orm.merge_field_pageable(true)
     }
 }

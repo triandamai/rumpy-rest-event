@@ -13,7 +13,7 @@ pub struct DiscountDTO {
     )]
     pub id: Option<ObjectId>,
     pub title: String,
-    pub amount: f32,
+    pub amount: f64,
     #[serde(
         rename = "created_by",
         skip_serializing_if = "Option::is_none",

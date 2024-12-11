@@ -38,17 +38,6 @@ pub fn init_routes(state: AppState) -> Router {
             "/permission/account/:account_id",
             get(feature::permission::permission::get_user_permission),
         )
-        //coach
-        .route("/coach/list", get(feature::coach::coach::get_list_coach))
-        .route(
-            "/coach/:coach_id",
-            get(feature::coach::coach::get_detail_coach),
-        )
-        .route("/coach", post(feature::coach::coach::create_coach))
-        .route(
-            "/coach/:coach_id",
-            put(feature::coach::coach::get_detail_coach),
-        )
         //branch
         .route(
             "/branch/list",
@@ -120,6 +109,63 @@ pub fn init_routes(state: AppState) -> Router {
         .route(
             "/member/update-profile-picture",
             delete(feature::member::member::update_profile_picture),
+        )
+        //coach
+        .route("/coach/list", get(feature::coach::coach::get_list_coach))
+        .route(
+            "/coach/:coach_id",
+            get(feature::coach::coach::get_detail_coach),
+        )
+        .route("/coach", post(feature::coach::coach::create_coach))
+        .route(
+            "/coach/:coach_id",
+            put(feature::coach::coach::get_detail_coach),
+        )
+        .route(
+            "/coach/:coach_id",
+            delete(feature::coach::coach::delete_coach),
+        )
+        .route(
+            "/coach/update-profile-picture",
+            post(feature::coach::coach::update_profile_picture),
+        )
+        //discount
+        .route(
+            "/discount/list",
+            get(feature::discount::discount::get_list_discount),
+        )
+        .route(
+            "/discount/:discount_id",
+            get(feature::discount::discount::get_detail_discount),
+        )
+        .route(
+            "/discount",
+            post(feature::discount::discount::create_discount),
+        )
+        .route(
+            "/discount/:discount_id",
+            put(feature::discount::discount::update_discount),
+        )
+        .route(
+            "/discount/:discount_id",
+            delete(feature::discount::discount::delete_discount),
+        )
+        //
+        .route(
+            "/membership/list",
+            get(feature::membership::membership::get_list_membership),
+        )
+        .route(
+            "/membership/:membership_id",
+            get(feature::membership::membership::get_detail_membership),
+        )
+        .route(
+            "/membership/:membership_id",
+            put(feature::membership::membership::update_membership),
+        )
+        .route(
+            "/membership/:membership_id",
+            delete(feature::membership::membership::delete_membership),
         )
         .fallback(handle_404)
         .with_state(state)

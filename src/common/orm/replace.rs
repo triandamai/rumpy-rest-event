@@ -33,7 +33,7 @@ impl Replace {
         update: T,
         db: &Database,
     ) -> Result<u64, String> {
-        info!(target: "db::replace","Starting replace data");
+        //info!(target: "db::replace","Starting replace data");
         if self.orm.collection_name.is_empty(){
             info!(target: "db::replace::error","Replace collection name is empty");
             return Err("Specify collection name before replace...".to_string())
@@ -56,11 +56,10 @@ impl Replace {
         if save.is_err() {
             let err_message = save.unwrap_err().to_string();
             info!(target: "db::replace::error","{}",err_message.clone());
-
             return Err(err_message);
         }
 
-        info!(target: "db::replace::ok","Finished replace data");
+        //info!(target: "db::replace::ok","Finished replace data");
         Ok(save.unwrap().modified_count)
     }
 

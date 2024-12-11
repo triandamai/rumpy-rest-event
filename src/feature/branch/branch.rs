@@ -4,8 +4,8 @@ use crate::common::jwt::AuthContext;
 use crate::common::lang::Lang;
 use crate::common::orm::orm::Orm;
 use crate::common::utils::{
-    create_object_id_option, create_or_new_object_id, QUERY_ASC, QUERY_DESC,
-    QUERY_LATEST, QUERY_OLDEST,
+    create_object_id_option, create_or_new_object_id, QUERY_ASC, QUERY_DESC, QUERY_LATEST,
+    QUERY_OLDEST,
 };
 use crate::dto::branch_dto::BranchDTO;
 use crate::entity::branch::Branch;
@@ -59,7 +59,10 @@ pub async fn get_list_branch(
         .filter_bool("deleted", None, false)
         .pageable::<BranchDTO>(query.page.unwrap_or(1), query.size.unwrap_or(10), &state.db)
         .await;
-    ApiResponse::ok(find_all_branch.unwrap(), translate!("", lang).as_str())
+    ApiResponse::ok(
+        find_all_branch.unwrap(),
+        translate!("branch.list.success", lang).as_str(),
+    )
 }
 
 pub async fn get_detail_branch(
@@ -71,9 +74,9 @@ pub async fn get_detail_branch(
     if !auth_context.authorize("app::branch::read") {
         return ApiResponse::un_authorized(translate!("", lang).as_str());
     }
-    let branch_id = ObjectId::parse_str(branch_id.as_str());
-    if branch_id.is_err() {
-        return ApiResponse::not_found(translate!("", lang).as_str());
+    let branch_id = create_object_id_option(branch_id.as_str());
+    if branch_id.is_none() {
+        return ApiResponse::not_found(translate!("branch.not-found", lang).as_str());
     }
     let branch_id = branch_id.unwrap();
     let find_all_branch = Orm::get("branch")
@@ -82,9 +85,12 @@ pub async fn get_detail_branch(
         .await;
 
     if find_all_branch.is_err() {
-        return ApiResponse::not_found(translate!("", lang).as_str());
+        return ApiResponse::not_found(translate!("branch.not-found", lang).as_str());
     }
-    ApiResponse::ok(find_all_branch.unwrap(), translate!("", lang).as_str())
+    ApiResponse::ok(
+        find_all_branch.unwrap(),
+        translate!("branch.success", lang).as_str(),
+    )
 }
 
 pub async fn create_branch(

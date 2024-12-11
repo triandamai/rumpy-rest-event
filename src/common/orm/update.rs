@@ -1,11 +1,11 @@
 use crate::common::orm::orm::Orm;
 use bson::oid::ObjectId;
 use bson::{doc, DateTime, Document};
+use chrono::NaiveDate;
 use log::info;
 use mongodb::{Collection, Database};
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
-use chrono::NaiveDate;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Update {
@@ -133,12 +133,12 @@ impl Update {
 
         let save = save.unwrap();
 
-        info!(target: "db::update::oke","Success update data");
+        // info!(target: "db::update::oke","Success update data");
         Ok(save.modified_count)
     }
 
     pub async fn many<T: Serialize>(self, update: T, db: &Database) -> Result<u64, String> {
-        info!(target: "db::update","Start update data");
+        //info!(target: "db::update","Start update data");
         if self.orm.collection_name.is_empty() {
             info!(target:"db::update::error", "Specify collection name before update...");
             return Err("Specify collection name before update...".to_string());
@@ -169,8 +169,7 @@ impl Update {
 
             return Err(err_message);
         }
-        info!(target: "db::get::ok","Success update data");
-
+        //info!(target: "db::get::ok","Success update data");
         Ok(save.unwrap().modified_count)
     }
 

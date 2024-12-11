@@ -36,7 +36,7 @@ impl Insert {
         data: T,
         db: &Database,
     ) -> Result<ObjectId, String> {
-        info!(target: "db::insert","Starting insert data..");
+        //info!(target: "db::insert","Starting insert data..");
         if self.orm.collection_name.is_empty(){
             info!(target: "db:insert::error","Collection name is empty");
             return Err("Specify collection name before deleting...".to_string())
@@ -45,7 +45,6 @@ impl Insert {
         if doc.is_err() {
             let err_message = doc.unwrap_err().to_string();
             info!(target: "db::insert::error","{}",err_message.clone());
-
             return Err(err_message);
         }
         //getting collection info
@@ -56,11 +55,10 @@ impl Insert {
         if save.is_err() {
             let err_message = save.unwrap_err().to_string();
             info!(target: "db::insert::error","{}",err_message.clone());
-
             return Err(err_message);
         }
 
-        info!(target: "db::insert::ok","Successfully inserted data!");
+        //info!(target: "db::insert::ok","Successfully inserted data!");
         Ok(save.unwrap().inserted_id.as_object_id().unwrap_or(ObjectId::new()))
     }
 
@@ -69,7 +67,7 @@ impl Insert {
         data: Vec<T>,
         db: &Database,
     ) -> Result<Vec<ObjectId>, String> {
-        info!(target: "db:insert","Starting insert batch data..");
+       // info!(target: "db:insert","Starting insert batch data..");
         if self.orm.collection_name.is_empty(){
             info!(target: "db:insert::error","Collection name is empty");
             return Err("Specify collection name before deleting...".to_string())
@@ -92,7 +90,6 @@ impl Insert {
         if save.is_err() {
             let err_message = save.unwrap_err().to_string();
             info!(target: "db::insert::error","{}",err_message.clone());
-
             return Err(err_message);
         }
         let save = save
@@ -102,7 +99,7 @@ impl Insert {
             .map(|(_, id)| id.as_object_id().unwrap_or(ObjectId::new()))
             .collect::<Vec<ObjectId>>();
 
-        info!(target: "db::insert::ok","data saved");
+       // info!(target: "db::insert::ok","data saved");
         Ok(save)
     }
 

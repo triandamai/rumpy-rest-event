@@ -210,5 +210,109 @@
   "member.profile-picture.success": {
     "en": "",
     "id-ID": ""
+  },
+  "discount.list.success": {
+    "en": "",
+    "id-ID": ""
+  },
+  "discount.not-found": {
+    "en": "",
+    "id-ID": ""
+  },
+  "discount.found": {
+    "en": "",
+    "id-ID": ""
+  },
+  "discount.create.failed": {
+    "en": "",
+    "id-ID": ""
+  },
+  "discount.update.failed": {
+    "en": "",
+    "id-ID": ""
+  },
+  "discount.delete.failed": {
+    "en": "",
+    "id-ID": ""
+  },
+  "discount.delete.success": {
+    "en": "",
+    "id-ID": ""
+  },
+  "membership.list.success": {
+    "en": "",
+    "id-ID": ""
+  },
+  "membership.not-found": {
+    "en": "",
+    "id-ID": ""
+  },
+  "membership.found": {
+    "en": "",
+    "id-ID": ""
+  },
+  "membership.create.failed": {
+    "en": "",
+    "id-ID": ""
+  },
+  "membership.create.success": {
+    "en": "",
+    "id-ID": ""
+  },
+  "membership.update.success": {
+    "en": "",
+    "id-ID": ""
+  },
+  "membership.delete.failed": {
+    "en": "",
+    "id-ID": "id-ID"
+  },
+  "membership.delete.success": {
+    "en": "",
+    "id-ID": ""
+  },
+  "coach.list.success": {
+    "en": "",
+    "id-ID": ""
+  },
+  "coach.not-found": {
+    "en": "",
+    "id-ID": ""
+  },
+  "coach.create.failed": {
+    "en": "",
+    "id-ID": ""
+  },
+  "coach.create.success": {
+    "en": "",
+    "id-ID": ""
+  },
+  "coach.update.failed": {
+    "en": "",
+    "id-ID": ""
+  },
+  "coach.update.success": {
+    "en": "",
+    "id-ID": ""
+  },
+  "coach.delete.failed": {
+    "en": "",
+    "id-ID": ""
+  },
+  "coach.delete.success": {
+    "en": "",
+    "id-ID": ""
+  },
+  "coach.profile-picture.failed": {
+    "en": "",
+    "id-ID": ""
+  },
+  "coach.profile-picture.not-found": {
+    "en": "",
+    "id-ID": ""
+  },
+  "coach.profile-picture.success": {
+    "en": "",
+    "id-ID": ""
   }
 }

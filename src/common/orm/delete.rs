@@ -77,7 +77,6 @@ impl Delete {
 
 
     //query
-
     pub fn or(mut self) -> Self {
         let orm = self.orm.or();
         self.orm = orm;

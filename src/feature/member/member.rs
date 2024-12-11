@@ -29,10 +29,13 @@ pub async fn get_list_member(
     lang: Lang,
     query: Query<PaginationRequest>,
 ) -> ApiResponse<PagingResponse<MemberDTO>> {
+    info!(target: "member::list", "{} trying get list member",auth_context.claims.sub);
     if !auth_context.authorize("app::member::read") {
+        info!(target: "member::list", "{} not permitted",auth_context.claims.sub);
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
     if auth_context.branch_id.is_none() {
+        info!(target: "member::list","not permitted branch");
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
 
@@ -70,6 +73,8 @@ pub async fn get_list_member(
         .join_one("file-attachment", "_id", "ref_id", "profile_picture")
         .pageable::<MemberDTO>(query.page.unwrap_or(1), query.size.unwrap_or(10), &state.db)
         .await;
+
+    info!(target: "member::list", "successfully get list member");
     ApiResponse::ok(
         find_all_branch.unwrap(),
         translate!("member.list.success", lang).as_str(),
@@ -82,15 +87,19 @@ pub async fn get_detail_member(
     lang: Lang,
     Path(member_id): Path<String>,
 ) -> ApiResponse<MemberDTO> {
+    info!(target: "member::detail", "{} trying get detail member",auth_context.claims.sub);
     if !auth_context.authorize("app::member::read") {
+        info!(target: "member::detail", "{} not permitted",auth_context.claims.sub);
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
     if auth_context.branch_id.is_none() {
+        info!(target: "member::detail", "not permitted because branch not found");
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
 
     let id = create_object_id_option(member_id.as_str());
     if id.is_none() {
+        info!(target: "member::detail", "failed create ObjectId");
         return ApiResponse::un_authorized(translate!("member.not-found", lang).as_str());
     }
 
@@ -105,6 +114,7 @@ pub async fn get_detail_member(
         .await;
 
     if find_product.is_err() {
+        info!(target: "member::detail","Data member not found");
         return ApiResponse::not_found(translate!("member.not-found", lang).as_str());
     }
 
@@ -120,7 +130,9 @@ pub async fn create_member(
     lang: Lang,
     body: Json<CreateMemberRequest>,
 ) -> ApiResponse<MemberDTO> {
+    info!(target: "member::create", "{} trying create member",auth_context.claims.sub);
     if !auth_context.authorize("app::member::write") {
+        info!(target: "member::list", "{} not permitted",auth_context.claims.sub);
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
 
@@ -146,7 +158,7 @@ pub async fn create_member(
         id: Some(ObjectId::new()),
         member_code: member_code,
         branch_id: auth_context.branch_id,
-        created_by: auth_context.user_id,
+        created_by_id: auth_context.user_id,
         coach_id: coach_id,
         full_name: body.full_name.clone(),
         gender: body.gender.clone(),
@@ -161,6 +173,7 @@ pub async fn create_member(
 
     let save = Orm::insert("member").one(&product, &state.db).await;
     if save.is_err() {
+        info!(target: "member::create", "{}",save.unwrap_err());
         return ApiResponse::failed(translate!("member.create.failed", lang).as_str());
     }
     ApiResponse::ok(
@@ -176,7 +189,9 @@ pub async fn update_member(
     Path(member_id): Path<String>,
     body: Json<UpdateMemberRequest>,
 ) -> ApiResponse<MemberDTO> {
+    info!(target: "member::update", "{} trying get list member",auth_context.claims.sub);
     if !auth_context.authorize("app::member::write") {
+        info!(target: "member::update", "{} not permitted",auth_context.claims.sub);
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
 
@@ -190,6 +205,7 @@ pub async fn update_member(
 
     let member_id = create_object_id_option(member_id.as_str());
     if member_id.is_none() {
+        info!(target: "member::update", "failed create ObjectId");
         return ApiResponse::un_authorized(translate!("member.not-found", lang).as_str());
     }
 
@@ -201,6 +217,7 @@ pub async fn update_member(
         .one::<MemberDTO>(&state.db)
         .await;
     if find_member.is_err() {
+        info!(target: "member::update", "{}",find_member.unwrap_err());
         return ApiResponse::not_found(translate!("member.not-found", lang).as_str());
     }
     let mut member = find_member.unwrap();
@@ -255,8 +272,10 @@ pub async fn update_member(
         .await;
 
     if save_data.is_err() {
+        info!(target: "member::update", "{}",save_data.unwrap_err());
         return ApiResponse::failed(translate!("member.update.failed", lang).as_str());
     }
+    info!(target: "member::update", "Successfully update member");
     ApiResponse::ok(member, translate!("member.update.success", lang).as_str())
 }
 
@@ -266,6 +285,7 @@ pub async fn delete_member(
     lang: Lang,
     Path(member_id): Path<String>,
 ) -> ApiResponse<String> {
+    info!(target: "member::delete", "{} trying get list member",auth_context.claims.sub);
     if !auth_context.authorize("app::member::write") {
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }

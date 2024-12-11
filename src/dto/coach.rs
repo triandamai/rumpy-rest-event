@@ -2,6 +2,8 @@ use crate::common::bson::{deserialize_object_id, serialize_datetime, serialize_o
 use bson::oid::ObjectId;
 use bson::DateTime;
 use serde::{Deserialize, Serialize};
+use crate::dto::account_dto::AccountDTO;
+use crate::dto::file_attachment_dto::FileAttachmentDTO;
 
 #[derive(Serialize,Deserialize, Debug)]
 pub struct CoachDTO{
@@ -29,7 +31,9 @@ pub struct CoachDTO{
         serialize_with = "serialize_object_id",
         deserialize_with = "deserialize_object_id"
     )]
-    pub created_by:Option<ObjectId>,
+    pub created_by_id:Option<ObjectId>,
+    pub created_by:Option<AccountDTO>,
+    pub profile_picture:Option<FileAttachmentDTO>,
     #[serde(serialize_with = "serialize_datetime")]
     pub created_at: DateTime,
     #[serde(serialize_with = "serialize_datetime")]
