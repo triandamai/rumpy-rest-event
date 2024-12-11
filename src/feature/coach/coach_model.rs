@@ -1,27 +1,27 @@
+use crate::common::utils::validate_gender;
 use serde::{Deserialize, Serialize};
 use validator::Validate;
 
 #[derive(Serialize,Deserialize,Validate,Debug)]
 pub struct CreateCoachRequest {
-    pub coach_name: String,
+    #[validate(length(min = 0))]
+    pub full_name: String,
     #[validate(email)]
-    pub coach_email: String,
-    pub coach_phone_number: String,
+    pub email: String,
+    #[validate(length(min = 0))]
+    pub phone_number: String,
+    #[validate(length(min = 0))]
     pub coach_address: String,
-    pub branch_id:String,
-    #[validate(length(min = 1,max=1))]
-    pub coach_gender:String,
+    #[validate(custom(function="validate_gender"))]
+    pub gender:String,
 }
 
 #[derive(Serialize,Deserialize,Validate,Debug)]
 pub struct UpdateCoachRequest {
-    pub coach_id:String,
-    pub coach_name: String,
-    #[validate(email)]
-    pub coach_email: String,
-    pub coach_phone_number: String,
-    pub coach_address: String,
-    pub branch_id:String,
-    #[validate(length(min = 1,max=1))]
-    pub coach_gender:String,
+    pub full_name: Option<String>,
+    pub email: Option<String>,
+    pub phone_number: Option<String>,
+    pub coach_address: Option<String>,
+    #[validate(custom(function="validate_gender"))]
+    pub gender:Option<String>,
 }

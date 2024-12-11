@@ -6,3 +6,5 @@ pub mod coach;
 pub mod user;
 pub mod product;
 pub mod member;
+pub mod discount;
+pub mod membership;

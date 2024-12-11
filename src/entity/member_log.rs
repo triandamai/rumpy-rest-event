@@ -8,6 +8,7 @@ pub struct MemberLog {
     #[serde(rename = "_id", skip_serializing_if = "Option::is_none")]
     pub id: Option<ObjectId>,
     pub member_id: Option<ObjectId>,
+    pub created_by_id: Option<ObjectId>,
     pub name: String,
     pub value: String,
     pub created_at: DateTime,
@@ -20,6 +21,7 @@ impl MemberLog {
         MemberLogDTO {
             id: self.id,
             member_id: self.member_id,
+            created_by_id: self.created_by_id,
             name: self.name,
             value: self.value,
             created_at: self.created_at,

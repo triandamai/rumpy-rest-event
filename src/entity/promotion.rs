@@ -10,7 +10,7 @@ pub struct Promotion {
     pub title: String,
     pub description: String,
     pub discount: i64,
-    pub created_by: Option<ObjectId>,
+    pub created_by_id: Option<ObjectId>,
     pub created_at: DateTime,
     pub updated_at: DateTime,
     pub deleted: bool,

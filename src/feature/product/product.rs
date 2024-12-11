@@ -28,11 +28,14 @@ pub async fn get_list_product(
     lang: Lang,
     query: Query<PaginationRequest>,
 ) -> ApiResponse<PagingResponse<ProductDTO>> {
+    info!(target: "product::list","{} trying to get list product",auth_context.claims.sub);
     if !auth_context.authorize("app::product::read") {
+        info!(target:"product::list","{} not permitted", auth_context.claims.sub);
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
 
     if auth_context.branch_id.is_none() {
+        info!(target:"product::list","failed to get branch id");
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
 
@@ -69,6 +72,7 @@ pub async fn get_list_product(
         .join_one("account", "created_by_id", "_id", "created_by")
         .pageable::<ProductDTO>(query.page.unwrap_or(1), query.size.unwrap_or(10), &state.db)
         .await;
+    info!(target: "product::list","successfully get list product");
     ApiResponse::ok(
         find_all_branch.unwrap(),
         translate!("product.list.success", lang).as_str(),
@@ -81,16 +85,20 @@ pub async fn get_detail_product(
     lang: Lang,
     Path(product_id): Path<String>,
 ) -> ApiResponse<ProductDTO> {
+    info!(target: "product::detail", "{} trying to get product detail",auth_context.claims.sub);
     if !auth_context.authorize("app::product::read") {
+        info!(target:"product::detail","{} not permitted", auth_context.claims.sub);
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
 
     if auth_context.branch_id.is_none() {
+        info!(target:"product::detail","failed to get branch id");
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
 
     let id = create_object_id_option(product_id.as_str());
     if id.is_none() {
+        info!(target: "product::detail","Failed create ObjectId");
         return ApiResponse::un_authorized(translate!("product.not-found", lang).as_str());
     }
 
@@ -104,9 +112,11 @@ pub async fn get_detail_product(
         .await;
 
     if find_product.is_err() {
+        info!(target: "product::detail","Not found");
         return ApiResponse::not_found(translate!("product.not-found", lang).as_str());
     }
 
+    info!(target: "product::detail","Successfully get product detail");
     ApiResponse::ok(
         find_product.unwrap(),
         translate!("product.found", lang).as_str(),
@@ -119,7 +129,9 @@ pub async fn create_product(
     lang: Lang,
     body: Json<CreateProductRequest>,
 ) -> ApiResponse<ProductDTO> {
+    info!(target: "product::create", "{} trying to create product", auth_context.claims.sub);
     if !auth_context.authorize("app::product::write") {
+        info!(target: "product::create", "{} not permitted", auth_context.claims.sub);
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
 
@@ -148,8 +160,11 @@ pub async fn create_product(
 
     let save = Orm::insert("product").one(&product, &state.db).await;
     if save.is_err() {
+        info!(target: "product::create", "Create Product Failed");
         return ApiResponse::failed(translate!("product.create.failed", lang).as_str());
     }
+
+    info!(target: "product::create", "Successfully create product");
     ApiResponse::ok(
         product.to_dto(),
         translate!("product.create.success", lang).as_str(),
@@ -163,7 +178,9 @@ pub async fn update_product(
     Path(product_id): Path<String>,
     body: Json<UpdateProductRequest>,
 ) -> ApiResponse<ProductDTO> {
+    info!(target: "product::update", "{} trying to update product", auth_context.claims.sub);
     if !auth_context.authorize("app::product::write") {
+        info!(target: "product::update", "{} not permitted", auth_context.claims.sub);
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
 
@@ -177,6 +194,7 @@ pub async fn update_product(
 
     let product_id = create_object_id_option(product_id.as_str());
     if product_id.is_none() {
+        info!(target: "product::update", "Failed create ObjectId");
         return ApiResponse::un_authorized(translate!("product.not-found", lang).as_str());
     }
 
@@ -187,6 +205,7 @@ pub async fn update_product(
         .one::<ProductDTO>(&state.db)
         .await;
     if find_product.is_err() {
+        info!(target: "product::update","Product not found");
         return ApiResponse::not_found(translate!("product.not-found", lang).as_str());
     }
     let mut product = find_product.unwrap();
@@ -226,8 +245,10 @@ pub async fn update_product(
         .await;
 
     if save_data.is_err() {
+        info!(target: "product::update", "Failed update product");
         return ApiResponse::failed(translate!("product.update.failed", lang).as_str());
     }
+    info!(target: "product::update", "Successfully update product");
     ApiResponse::ok(product, translate!("product.update.success", lang).as_str())
 }
 
@@ -237,7 +258,9 @@ pub async fn delete_product(
     lang: Lang,
     Path(product_id): Path<String>,
 ) -> ApiResponse<String> {
+    info!(target: "product::delete", "{} trying to delete product", auth_context.claims.sub);
     if !auth_context.authorize("app::product::write") {
+        info!(target: "product::delete", "{} trying to delete product", auth_context.claims.sub);
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
 
@@ -253,9 +276,10 @@ pub async fn delete_product(
         .await;
 
     if update.is_err() {
+        info!(target: "product::delete", "{} trying to delete product", auth_context.claims.sub);
         return ApiResponse::failed(translate!("product.delete.failed", lang).as_str());
     }
-
+    info!(target: "product::delete", "successfully deleted product");
     ApiResponse::ok(
         "OK".to_string(),
         translate!("product.delete.success", lang).as_str(),
@@ -268,7 +292,9 @@ pub async fn update_product_image(
     lang: Lang,
     multipart: Multipart,
 ) -> ApiResponse<FileAttachmentDTO> {
+    info!(target: "product::create", "{} trying to update product image", auth_context.claims.sub);
     if !auth_context.authorize("app::product::write") {
+        info!(target: "product::create", "{} not permitted", auth_context.claims.sub);
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
 
@@ -284,6 +310,7 @@ pub async fn update_product_image(
 
     let user_id = create_object_id_option(extract.ref_id.as_str());
     if user_id.is_none() {
+        info!(target: "product::create", "failed create ObjectId");
         return ApiResponse::not_found(
             translate!("product.product-image.not-found", lang).as_str(),
         );
@@ -326,7 +353,7 @@ pub async fn update_product_image(
 
     if minio.is_err() {
         let err = minio.unwrap_err();
-        info!(target: "upload-profile-picture", "{}", err);
+        info!(target: "product::update-image", "{}", err);
         let _remove = extract.remove_file();
         return ApiResponse::failed(translate!("product.product-image.failed", lang).as_str());
     }
@@ -358,12 +385,13 @@ pub async fn update_product_image(
     };
 
     if !success {
-        info!(target: "upload-profile-picture", "{}", error_message);
+        info!(target: "product::update-image", "{}", error_message);
         let _remove = extract.remove_file();
         return ApiResponse::failed(translate!("product.product-image.failed", lang).as_str());
     }
 
     let _remove = extract.remove_file();
+    info!(target: "product::update-image", "suucessfully update product image");
     ApiResponse::ok(
         attachment.to_dto(),
         translate!("product.product-image.success", lang).as_str(),
