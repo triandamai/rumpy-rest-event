@@ -5,6 +5,8 @@ use mime::Mime;
 use std::borrow::Cow;
 use std::fmt::Debug;
 use std::str::FromStr;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::time::{SystemTime, UNIX_EPOCH};
 use validator::ValidationError;
 
 pub const QUERY_LOWEST: &str = "lowest";
@@ -114,4 +116,24 @@ pub fn validate_gender(gender: &String) -> Result<(), ValidationError> {
             Cow::from("Invalid Gender, valid value M(Male) or F(Female)"),
         ),
     )
+}
+
+static COUNTER: AtomicUsize = AtomicUsize::new(0);
+
+pub fn generate_member_code(prefix: &str) -> String {
+    // Get the current timestamp in seconds since UNIX epoch
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("Time went backwards")
+        .as_secs();
+
+    // Increment a small counter for extra uniqueness
+    let counter = COUNTER.fetch_add(1, Ordering::SeqCst) % 1000; // Keep counter to 3 digits
+
+    // Format as: PREFIX + short timestamp + counter
+    format!("{}{:X}{:03}", get_first_name(prefix).unwrap_or(""), timestamp % 0xFFFFFF, counter)
+}
+
+pub fn get_first_name(full_name: &str) -> Option<&str> {
+    full_name.split_whitespace().next()
 }

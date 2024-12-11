@@ -6,39 +6,39 @@ use crate::common::minio::MinIO;
 use crate::common::multipart_file::MultipartFile;
 use crate::common::orm::orm::Orm;
 use crate::common::utils::{
-    create_object_id_option, QUERY_ASC, QUERY_DESC, QUERY_LATEST, QUERY_OLDEST,
+    create_object_id_option, generate_member_code, QUERY_ASC, QUERY_DESC, QUERY_LATEST,
+    QUERY_OLDEST,
 };
-
 use crate::dto::file_attachment_dto::FileAttachmentDTO;
-use crate::dto::product_dto::ProductDTO;
+use crate::dto::member_dto::MemberDTO;
 use crate::entity::file_attachment::FileAttachment;
-use crate::entity::product::Product;
-use crate::feature::product::product_model::{CreateProductRequest, UpdateProductRequest};
+use crate::entity::member::Member;
+use crate::feature::member::member_model::{CreateMemberRequest, UpdateMemberRequest};
 use crate::translate;
 use axum::extract::{Multipart, Path, Query, State};
 use axum::Json;
 use bson::oid::ObjectId;
 use bson::DateTime;
+use chrono::NaiveDate;
 use log::info;
 use validator::Validate;
 
-pub async fn get_list_product(
+pub async fn get_list_member(
     state: State<AppState>,
     auth_context: AuthContext,
     lang: Lang,
     query: Query<PaginationRequest>,
-) -> ApiResponse<PagingResponse<ProductDTO>> {
-    if !auth_context.authorize("app::product::read") {
+) -> ApiResponse<PagingResponse<MemberDTO>> {
+    if !auth_context.authorize("app::member::read") {
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
-
     if auth_context.branch_id.is_none() {
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
 
     let default = String::new();
     let filter = query.filter.clone().unwrap_or(default.clone());
-    let mut get = Orm::get("product");
+    let mut get = Orm::get("member");
 
     if query.q.is_some() {
         let text = query.q.clone().unwrap_or(default);
@@ -46,11 +46,11 @@ pub async fn get_list_product(
     }
 
     if filter == QUERY_ASC.to_string() {
-        get = get.group_by_asc("product_name");
+        get = get.group_by_asc("full_name");
     }
 
     if filter == QUERY_DESC.to_string() {
-        get = get.group_by_desc("product_name");
+        get = get.group_by_desc("full_name");
     }
 
     if filter == QUERY_LATEST.to_string() {
@@ -65,61 +65,62 @@ pub async fn get_list_product(
         .and()
         .filter_bool("deleted", None, false)
         .filter_object_id("branch_id", &auth_context.branch_id.unwrap())
-        .join_one("file-attachment", "_id", "ref_id", "product_image")
-        .join_one("account", "created_by_id", "_id", "created_by")
-        .pageable::<ProductDTO>(query.page.unwrap_or(1), query.size.unwrap_or(10), &state.db)
+        .join_one("account", "create_by_id", "_id", "created_by")
+        .join_one("coach", "coach_id", "_id", "coach")
+        .join_one("file-attachment", "_id", "ref_id", "profile_picture")
+        .pageable::<MemberDTO>(query.page.unwrap_or(1), query.size.unwrap_or(10), &state.db)
         .await;
     ApiResponse::ok(
         find_all_branch.unwrap(),
-        translate!("product.list.success", lang).as_str(),
+        translate!("member.list.success", lang).as_str(),
     )
 }
 
-pub async fn get_detail_product(
+pub async fn get_detail_member(
     state: State<AppState>,
     auth_context: AuthContext,
     lang: Lang,
-    Path(product_id): Path<String>,
-) -> ApiResponse<ProductDTO> {
-    if !auth_context.authorize("app::product::read") {
+    Path(member_id): Path<String>,
+) -> ApiResponse<MemberDTO> {
+    if !auth_context.authorize("app::member::read") {
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
-
     if auth_context.branch_id.is_none() {
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
 
-    let id = create_object_id_option(product_id.as_str());
+    let id = create_object_id_option(member_id.as_str());
     if id.is_none() {
-        return ApiResponse::un_authorized(translate!("product.not-found", lang).as_str());
+        return ApiResponse::un_authorized(translate!("member.not-found", lang).as_str());
     }
 
-    let find_product = Orm::get("product")
+    let find_product = Orm::get("member")
         .and()
-        .filter_object_id("_id", &id.unwrap())
+        .filter_bool("deleted", None, false)
         .filter_object_id("branch_id", &auth_context.branch_id.unwrap())
-        .join_one("file-attachment", "_id", "ref_id", "product_image")
-        .join_one("account", "created_by_id", "_id", "created_by")
-        .one::<ProductDTO>(&state.db)
+        .join_one("account", "create_by_id", "_id", "created_by")
+        .join_one("coach", "coach_id", "_id", "coach")
+        .join_one("file-attachment", "_id", "ref_id", "profile_picture")
+        .one::<MemberDTO>(&state.db)
         .await;
 
     if find_product.is_err() {
-        return ApiResponse::not_found(translate!("product.not-found", lang).as_str());
+        return ApiResponse::not_found(translate!("member.not-found", lang).as_str());
     }
 
     ApiResponse::ok(
         find_product.unwrap(),
-        translate!("product.found", lang).as_str(),
+        translate!("member.found", lang).as_str(),
     )
 }
 
-pub async fn create_product(
+pub async fn create_member(
     state: State<AppState>,
     auth_context: AuthContext,
     lang: Lang,
-    body: Json<CreateProductRequest>,
-) -> ApiResponse<ProductDTO> {
-    if !auth_context.authorize("app::product::write") {
+    body: Json<CreateMemberRequest>,
+) -> ApiResponse<MemberDTO> {
+    if !auth_context.authorize("app::member::write") {
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
 
@@ -131,39 +132,51 @@ pub async fn create_product(
         );
     }
 
-    let product = Product {
+    let dob = body.date_of_birth.clone().map_or_else(
+        || None,
+        |v| NaiveDate::parse_from_str(v.as_str(), "%Y-%m-%d").map_or(None, |v| Some(v)),
+    );
+    let coach_id = match body.coach_id.clone() {
+        None => None,
+        Some(coach_id) => create_object_id_option(coach_id.as_str()),
+    };
+
+    let member_code = generate_member_code(body.full_name.as_str());
+    let product = Member {
         id: Some(ObjectId::new()),
+        member_code: member_code,
         branch_id: auth_context.branch_id,
-        product_name: body.product_name.clone(),
-        product_description: body.product_description.clone(),
-        product_price: body.product_price,
-        product_selling_price: body.product_selling_price,
-        product_profit: body.product_profit,
-        product_stock: body.product_stock,
+        created_by: auth_context.user_id,
+        coach_id: coach_id,
+        full_name: body.full_name.clone(),
+        gender: body.gender.clone(),
+        email: body.email.clone(),
+        date_of_birth: dob,
+        phone_number: body.phone_number.clone(),
+        is_member: true,
         created_at: DateTime::now(),
         updated_at: DateTime::now(),
         deleted: false,
-        created_by_id: auth_context.user_id,
     };
 
-    let save = Orm::insert("product").one(&product, &state.db).await;
+    let save = Orm::insert("member").one(&product, &state.db).await;
     if save.is_err() {
-        return ApiResponse::failed(translate!("product.create.failed", lang).as_str());
+        return ApiResponse::failed(translate!("member.create.failed", lang).as_str());
     }
     ApiResponse::ok(
         product.to_dto(),
-        translate!("product.create.success", lang).as_str(),
+        translate!("member.create.success", lang).as_str(),
     )
 }
 
-pub async fn update_product(
+pub async fn update_member(
     state: State<AppState>,
     auth_context: AuthContext,
     lang: Lang,
-    Path(product_id): Path<String>,
-    body: Json<UpdateProductRequest>,
-) -> ApiResponse<ProductDTO> {
-    if !auth_context.authorize("app::product::write") {
+    Path(member_id): Path<String>,
+    body: Json<UpdateMemberRequest>,
+) -> ApiResponse<MemberDTO> {
+    if !auth_context.authorize("app::member::write") {
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
 
@@ -171,104 +184,120 @@ pub async fn update_product(
     if validate.is_err() {
         return ApiResponse::error_validation(
             validate.unwrap_err(),
-            translate!("product.update.failed", lang).as_str(),
+            translate!("member.update.failed", lang).as_str(),
         );
     }
 
-    let product_id = create_object_id_option(product_id.as_str());
-    if product_id.is_none() {
-        return ApiResponse::un_authorized(translate!("product.not-found", lang).as_str());
+    let member_id = create_object_id_option(member_id.as_str());
+    if member_id.is_none() {
+        return ApiResponse::un_authorized(translate!("member.not-found", lang).as_str());
     }
 
-    let find_product = Orm::get("product")
-        .filter_object_id("_id", &product_id.unwrap())
-        .join_one("file-attachment", "_id", "ref_id", "product_image")
-        .join_one("account", "created_by_id", "_id", "created_by")
-        .one::<ProductDTO>(&state.db)
+    let find_member = Orm::get("member")
+        .filter_object_id("_id", &member_id.unwrap())
+        .join_one("account", "create_by_id", "_id", "created_by")
+        .join_one("coach", "coach_id", "_id", "coach")
+        .join_one("file-attachment", "_id", "ref_id", "profile_picture")
+        .one::<MemberDTO>(&state.db)
         .await;
-    if find_product.is_err() {
-        return ApiResponse::not_found(translate!("product.not-found", lang).as_str());
+    if find_member.is_err() {
+        return ApiResponse::not_found(translate!("member.not-found", lang).as_str());
     }
-    let mut product = find_product.unwrap();
+    let mut member = find_member.unwrap();
 
-    let mut save = Orm::update("product");
-    if body.product_name.is_some() {
-        product.product_name = body.product_name.clone().unwrap();
-        save = save.set_str("product_name", &body.product_name.clone().unwrap());
+    let mut save = Orm::update("member");
+    if body.full_name.is_some() {
+        member.full_name = body.full_name.clone().unwrap();
+        save = save.set_str("full_name", &body.full_name.clone().unwrap());
     }
-    if body.product_description.is_some() {
-        product.product_description = body.product_description.clone().unwrap();
-        save = save.set_str(
-            "product_description",
-            &body.product_description.clone().unwrap(),
+
+    if body.email.is_some() {
+        member.email = body.email.clone();
+        save = save.set_str("email", &body.email.clone().unwrap());
+    }
+
+    if body.gender.is_some() {
+        member.gender = body.gender.clone();
+        save = save.set_str("gender", &body.gender.clone().unwrap());
+    }
+
+    if body.date_of_birth.is_some() {
+        let dob = body.date_of_birth.clone().map_or_else(
+            || None,
+            |v| NaiveDate::parse_from_str(v.as_str(), "%Y-%m-%d").map_or(None, |v| Some(v)),
         );
+        member.date_of_birth = dob;
+        save = save.set_naive_date("date_of_birth", &dob.unwrap());
     }
-    if body.product_price.is_some() {
-        product.product_price = body.product_price.clone().unwrap();
-        save = save.set_float("product_price", &body.product_price.clone().unwrap());
+
+    if body.coach_id.is_some() {
+        let id = match body.coach_id.clone() {
+            None => None,
+            Some(v) => create_object_id_option(v.as_str()),
+        };
+        member.coach_id = id;
+        if id.is_some() {
+            save = save.set_object_id("coach_id", &id.unwrap());
+        }
     }
-    if body.product_selling_price.is_some() {
-        product.product_selling_price = body.product_selling_price.clone().unwrap();
-        save = save.set_float(
-            "product_selling_price",
-            &body.product_selling_price.clone().unwrap(),
-        );
-    }
-    if body.product_profit.is_some() {
-        product.product_profit = body.product_profit.clone().unwrap();
-        save = save.set_float("product_profit", &body.product_profit.clone().unwrap());
+
+    if body.phone_number.is_some() {
+        member.phone_number = body.phone_number.clone();
+        if body.phone_number.is_some() {
+            save = save.set_str("phone_number", &body.phone_number.clone().unwrap());
+        }
     }
 
     let save_data = save
-        .filter_object_id("_id", &product_id.unwrap())
+        .filter_object_id("_id", &member_id.unwrap())
         .set_datetime("updated_at", DateTime::now())
         .execute_one(&state.db)
         .await;
 
     if save_data.is_err() {
-        return ApiResponse::failed(translate!("product.update.failed", lang).as_str());
+        return ApiResponse::failed(translate!("member.update.failed", lang).as_str());
     }
-    ApiResponse::ok(product, translate!("product.update.success", lang).as_str())
+    ApiResponse::ok(member, translate!("member.update.success", lang).as_str())
 }
 
-pub async fn delete_product(
+pub async fn delete_member(
     state: State<AppState>,
     auth_context: AuthContext,
     lang: Lang,
-    Path(product_id): Path<String>,
+    Path(member_id): Path<String>,
 ) -> ApiResponse<String> {
-    if !auth_context.authorize("app::product::write") {
+    if !auth_context.authorize("app::member::write") {
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
 
-    let id = create_object_id_option(product_id.as_str());
+    let id = create_object_id_option(member_id.as_str());
     if id.is_none() {
-        return ApiResponse::un_authorized(translate!("product.not-found", lang).as_str());
+        return ApiResponse::un_authorized(translate!("member.not-found", lang).as_str());
     }
 
-    let update = Orm::update("product")
+    let update = Orm::update("member")
         .filter_object_id("_id", &id.unwrap())
         .set_bool("deleted", true)
         .execute_one(&state.db)
         .await;
 
     if update.is_err() {
-        return ApiResponse::failed(translate!("product.delete.failed", lang).as_str());
+        return ApiResponse::failed(translate!("member.delete.failed", lang).as_str());
     }
 
     ApiResponse::ok(
         "OK".to_string(),
-        translate!("product.delete.success", lang).as_str(),
+        translate!("member.delete.success", lang).as_str(),
     )
 }
 
-pub async fn update_product_image(
+pub async fn update_profile_picture(
     state: State<AppState>,
     auth_context: AuthContext,
     lang: Lang,
     multipart: Multipart,
 ) -> ApiResponse<FileAttachmentDTO> {
-    if !auth_context.authorize("app::product::write") {
+    if !auth_context.authorize("app::member::write") {
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
 
@@ -278,14 +307,14 @@ pub async fn update_product_image(
     if validate.is_err() {
         return ApiResponse::error_validation(
             validate.unwrap_err(),
-            translate!("product.product-image.failed", lang).as_str(),
+            translate!("member.profile-picture.failed", lang).as_str(),
         );
     }
 
     let user_id = create_object_id_option(extract.ref_id.as_str());
     if user_id.is_none() {
         return ApiResponse::not_found(
-            translate!("product.product-image.not-found", lang).as_str(),
+            translate!("member.profile-picture.not-found", lang).as_str(),
         );
     }
     let find_exist_profile_picture = Orm::get("file-attachment")
@@ -296,7 +325,7 @@ pub async fn update_product_image(
     let minio = MinIO::new().await;
     let mut filename = format!("{}.{}", extract.filename, extract.extension);
     let is_file_exists = find_exist_profile_picture.is_ok();
-    let bucket_name = "product_image".to_string();
+    let bucket_name = "member-profile-picture".to_string();
 
     let attachment = match find_exist_profile_picture {
         Ok(v) => v,
@@ -306,7 +335,7 @@ pub async fn update_product_image(
             filename: extract.filename.clone(),
             mime_type: extract.mime_type.clone(),
             extension: extract.extension.clone(),
-            kind: "PRODUCT".to_string(),
+            kind: "MEMBER".to_string(),
             create_at: DateTime::now(),
             updated_at: DateTime::now(),
         },
@@ -328,7 +357,7 @@ pub async fn update_product_image(
         let err = minio.unwrap_err();
         info!(target: "upload-profile-picture", "{}", err);
         let _remove = extract.remove_file();
-        return ApiResponse::failed(translate!("product.product-image.failed", lang).as_str());
+        return ApiResponse::failed(translate!("member.profile-picture.failed", lang).as_str());
     }
 
     let mut error_message = String::new();
@@ -360,12 +389,12 @@ pub async fn update_product_image(
     if !success {
         info!(target: "upload-profile-picture", "{}", error_message);
         let _remove = extract.remove_file();
-        return ApiResponse::failed(translate!("product.product-image.failed", lang).as_str());
+        return ApiResponse::failed(translate!("member.profile-picture.failed", lang).as_str());
     }
 
     let _remove = extract.remove_file();
     ApiResponse::ok(
         attachment.to_dto(),
-        translate!("product.product-image.success", lang).as_str(),
+        translate!("member.profile-picture.success", lang).as_str(),
     )
 }

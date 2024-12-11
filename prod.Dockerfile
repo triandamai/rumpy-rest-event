@@ -7,6 +7,9 @@ WORKDIR /app
 COPY Cargo.toml .
 #COPY Cargo.lock .
 COPY src ./src
+COPY upload ./uploads
+COPY locales ./locales
+
 
 RUN cargo +nightly build --release
 
