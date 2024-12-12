@@ -22,7 +22,7 @@ services:
         SMTP: ${SMTP}
 #    restart: always
     ports:
-      - 8000
+      - 8000:8000
     networks:
       - dokploy-network
 

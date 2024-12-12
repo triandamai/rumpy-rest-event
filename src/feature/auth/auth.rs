@@ -6,8 +6,7 @@ use crate::common::orm::orm::Orm;
 use crate::dto::account_dto::AccountDetailDTO;
 use crate::entity::account::Account;
 use crate::feature::auth::auth_model::{
-    ChangePasswordRequest, SignInRequest,
-    SignInResponse, TOKEN_KEY, USER_ID_KEY,
+    ChangePasswordRequest, SignInRequest, SignInResponse, BRANCH_ID_KEY, TOKEN_KEY, USER_ID_KEY,
 };
 use crate::translate;
 use axum::extract::State;
@@ -49,9 +48,9 @@ pub async fn sign_in(
     let get_account = Orm::get("account")
         .filter_object_id("_id", &find.id.unwrap())
         .join_one("account", "reply_to", "_id", "report")
-        .join_one("branch", "_id", "branch_id", "branch")
+        .join_one("branch", "branch_id", "_id", "branch")
         .join_one("file-attachment", "_id", "ref_id", "profile_picture")
-        .join_many("account-permission", "account_id", "_id", "permission")
+        .join_many("account-permission", "_id", "account_id", "permission")
         .one::<AccountDetailDTO>(&state.db)
         .await;
     if get_account.is_err() {
@@ -65,6 +64,7 @@ pub async fn sign_in(
         &[
             (USER_ID_KEY, find.id.unwrap().to_string()),
             (TOKEN_KEY, token.clone()),
+            (BRANCH_ID_KEY, find.branch_id.unwrap().to_string()),
         ],
     );
     if save_session.is_err() {
@@ -116,9 +116,7 @@ pub async fn change_password(
     let mut find = find_by_email.unwrap();
     let verify_current_password = bcrypt::verify(body.current_password.as_str(), &find.password);
     if verify_current_password.is_err() {
-        return ApiResponse::failed(
-            translate!("change-password.password-invalid", lang).as_str(),
-        );
+        return ApiResponse::failed(translate!("change-password.password-invalid", lang).as_str());
     }
     let create_new_password = bcrypt::hash(body.new_password.as_str(), DEFAULT_COST);
     if create_new_password.is_err() {

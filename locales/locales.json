@@ -112,16 +112,16 @@
     "id-ID": "Gagal mengupdate user"
   },
   "product.list.success": {
-    "en": "",
-    "id-ID": ""
+    "en": "Data product.",
+    "id-ID": "Data produk"
   },
   "product.not-found": {
-    "en": "",
-    "id-ID": ""
+    "en": "Product not found",
+    "id-ID": "Produk tidak ditemukan"
   },
   "product.found": {
-    "en": "",
-    "id-ID": ""
+    "en": "Detail Product",
+    "id-ID": "Data Produk"
   },
   "product.create.failed": {
     "en": "",
@@ -312,7 +312,7 @@
     "id-ID": ""
   },
   "coach.profile-picture.success": {
-    "en": "",
-    "id-ID": ""
+    "en": "Success updating profile picture coach",
+    "id-ID": "Berhasil mengupdate foto profil coach"
   }
 }

@@ -1,9 +1,10 @@
 use crate::common::api_response::PagingResponse;
 use crate::common::orm::orm::{create_count_field, create_limit_field, create_skip_field, Orm};
+use crate::common::orm::DB_NAME;
 use bson::oid::ObjectId;
 use bson::{doc, Document};
 use log::info;
-use mongodb::{Collection, Database};
+use mongodb::{Client, Collection};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
@@ -32,8 +33,9 @@ impl Get {
         }
     }
 
-    pub async fn one<T: DeserializeOwned + Debug>(mut self, db: &Database) -> Result<T, String> {
+    pub async fn one<T: DeserializeOwned + Debug>(mut self, client: &Client) -> Result<T, String> {
         //info!(target: "db::get","starting get one..");
+        let db = client.database(DB_NAME);
         let collection: Collection<Document> = db.collection(self.orm.collection_name.as_str());
         self.orm.limit = Some(create_limit_field(1));
         let pipeline = self.orm.merge_field(true);
@@ -64,12 +66,13 @@ impl Get {
             return Err(format!("{:?}", err_message));
         }
 
-       // info!(target: "db::get::ok","data found");
+        // info!(target: "db::get::ok","data found");
         Ok(transform.unwrap())
     }
 
-    pub async fn all<T: DeserializeOwned + Debug>(self, db: &Database) -> Result<Vec<T>, String> {
+    pub async fn all<T: DeserializeOwned + Debug>(self, client: &Client) -> Result<Vec<T>, String> {
         //info!(target: "db::get","starting get all..");
+        let db = client.database(DB_NAME);
         let collection: Collection<Document> = db.collection(self.orm.collection_name.as_str());
         let pipeline = self.orm.merge_field_all(true);
         let data = collection.aggregate(pipeline).await;
@@ -101,7 +104,7 @@ impl Get {
                 info!(target:"db::get::error:","extract {:?}",err_message);
             }
         }
-       // info!(target: "db::get::ok","data found");
+        // info!(target: "db::get::ok","data found");
         Ok(result)
     }
 
@@ -109,10 +112,11 @@ impl Get {
         mut self,
         page: i64,
         size: i64,
-        db: &Database,
+        client: &Client,
     ) -> Result<PagingResponse<T>, String> {
         info!(target: "db::get","starting get pagination...");
         //getting collection info
+        let db = client.database(DB_NAME);
         let collection: Collection<Document> = db.collection(self.orm.collection_name.as_str());
 
         self.orm.count = Some(create_count_field());
@@ -177,8 +181,13 @@ impl Get {
         })
     }
 
-    pub async fn find_one<T: DeserializeOwned>(self, query: Document, db: &Database) -> Option<T> {
+    pub async fn find_one<T: DeserializeOwned>(
+        self,
+        query: Document,
+        client: &Client,
+    ) -> Option<T> {
         //info!(target: "db::get","find one..");
+        let db = client.database(DB_NAME);
         let collection: Collection<Document> = db.collection(self.orm.collection_name.as_str());
         collection.find_one(query).await.map_or_else(
             |_| None,
@@ -196,7 +205,8 @@ impl Get {
         )
     }
 
-    pub async fn find_many<T: DeserializeOwned>(self, query: Document, db: &Database) -> Vec<T> {
+    pub async fn find_many<T: DeserializeOwned>(self, query: Document, client: &Client) -> Vec<T> {
+        let db = client.database(DB_NAME);
         let collection: Collection<Document> = db.collection(self.orm.collection_name.as_str());
         let find = collection.find(query).await;
         if find.is_err() {
@@ -217,7 +227,7 @@ impl Get {
                     result.push(value);
                 }
                 Err(e) => {
-                     info!(target:"extract from doc:","{:?}",e);
+                    info!(target:"extract from doc:","{:?}",e);
                 }
             }
         }
@@ -245,26 +255,26 @@ impl Get {
     pub fn join_one(
         mut self,
         collection: &str,
-        local_field: &str,
         from_field: &str,
+        foreign_field: &str,
         alias: &str,
     ) -> Self {
         let orm = self
             .orm
-            .join_one(collection, local_field, from_field, alias);
+            .join_one(collection, from_field, foreign_field, alias);
         self.orm = orm;
         self
     }
     pub fn join_many(
         mut self,
         collection: &str,
-        local_field: &str,
         from_field: &str,
+        foreign_field: &str,
         alias: &str,
     ) -> Self {
         let orm = self
             .orm
-            .join_many(collection, local_field, from_field, alias);
+            .join_many(collection, from_field, foreign_field, alias);
         self.orm = orm;
         self
     }

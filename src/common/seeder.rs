@@ -1,4 +1,5 @@
 use crate::common::orm::orm::Orm;
+use crate::common::orm::DB_NAME;
 use crate::common::utils::{create_object_id_option, create_or_new_object_id};
 use crate::entity::account::Account;
 use crate::entity::account_permission::AccountPermission;
@@ -6,10 +7,9 @@ use crate::entity::branch::Branch;
 use crate::entity::permission::Permission;
 use bcrypt::DEFAULT_COST;
 use bson::{doc, DateTime, Document};
-use chrono::NaiveDate;
 use log::info;
 use mongodb::options::IndexOptions;
-use mongodb::{Database, IndexModel};
+use mongodb::{Client, IndexModel};
 
 pub fn get_list_permission() -> Vec<Permission> {
     let current_time = DateTime::now();
@@ -23,7 +23,7 @@ pub fn get_list_permission() -> Vec<Permission> {
             description: "Super Admin".to_string(),
             created_at: current_time.clone(),
             updated_at: current_time,
-            deleted:false
+            deleted: false,
         },
         //read write member
         Permission {
@@ -34,7 +34,7 @@ pub fn get_list_permission() -> Vec<Permission> {
             description: "Can Insert/Update Member".to_string(),
             created_at: current_time.clone(),
             updated_at: current_time,
-            deleted:false
+            deleted: false,
         },
         Permission {
             id: create_or_new_object_id("6742c74a15e68b0e7ee06125"),
@@ -44,7 +44,7 @@ pub fn get_list_permission() -> Vec<Permission> {
             description: "Can Read Member".to_string(),
             created_at: current_time.clone(),
             updated_at: current_time,
-            deleted:false
+            deleted: false,
         },
         //read write branch
         Permission {
@@ -55,7 +55,7 @@ pub fn get_list_permission() -> Vec<Permission> {
             description: "Can Update Or Insert Branch".to_string(),
             created_at: current_time.clone(),
             updated_at: current_time,
-            deleted:false
+            deleted: false,
         },
         Permission {
             id: create_or_new_object_id("6742c74a15e68b0e7ee06127"),
@@ -65,7 +65,7 @@ pub fn get_list_permission() -> Vec<Permission> {
             description: "Can Read Member".to_string(),
             created_at: current_time.clone(),
             updated_at: current_time,
-            deleted:false
+            deleted: false,
         },
         //read write product
         Permission {
@@ -76,7 +76,7 @@ pub fn get_list_permission() -> Vec<Permission> {
             description: "Can Insert Or Update Product".to_string(),
             created_at: current_time.clone(),
             updated_at: current_time,
-            deleted:false
+            deleted: false,
         },
         Permission {
             id: create_or_new_object_id("6742c74a15e68b0e7ee06129"),
@@ -86,7 +86,7 @@ pub fn get_list_permission() -> Vec<Permission> {
             description: "Can Read Member".to_string(),
             created_at: current_time.clone(),
             updated_at: current_time,
-            deleted:false
+            deleted: false,
         },
         //read write membership
         Permission {
@@ -97,7 +97,7 @@ pub fn get_list_permission() -> Vec<Permission> {
             description: "Can Insert Or Update Membership".to_string(),
             created_at: current_time.clone(),
             updated_at: current_time,
-            deleted:false
+            deleted: false,
         },
         Permission {
             id: create_or_new_object_id("6742c74a15e68b0e7ee0612b"),
@@ -107,7 +107,7 @@ pub fn get_list_permission() -> Vec<Permission> {
             description: "Can Read Member".to_string(),
             created_at: current_time.clone(),
             updated_at: current_time,
-            deleted:false
+            deleted: false,
         },
         //read write account
         Permission {
@@ -118,7 +118,7 @@ pub fn get_list_permission() -> Vec<Permission> {
             description: "Can Create Or Update Account".to_string(),
             created_at: current_time.clone(),
             updated_at: current_time,
-            deleted:false
+            deleted: false,
         },
         Permission {
             id: create_or_new_object_id("6742c74a15e68b0e7ee0612d"),
@@ -128,7 +128,7 @@ pub fn get_list_permission() -> Vec<Permission> {
             description: "Can Read Account".to_string(),
             created_at: current_time.clone(),
             updated_at: current_time,
-            deleted:false
+            deleted: false,
         },
         //read write staff
         Permission {
@@ -139,7 +139,7 @@ pub fn get_list_permission() -> Vec<Permission> {
             description: "Can Create Or Update Staff".to_string(),
             created_at: current_time.clone(),
             updated_at: current_time,
-            deleted:false
+            deleted: false,
         },
         Permission {
             id: create_or_new_object_id("6742c74a15e68b0e7ee0612f"),
@@ -149,7 +149,7 @@ pub fn get_list_permission() -> Vec<Permission> {
             description: "Can Read Staff".to_string(),
             created_at: current_time.clone(),
             updated_at: current_time,
-            deleted:false
+            deleted: false,
         },
         //read write transaction
         Permission {
@@ -160,7 +160,7 @@ pub fn get_list_permission() -> Vec<Permission> {
             description: "Can Create Or Update Transaction".to_string(),
             created_at: current_time.clone(),
             updated_at: current_time,
-            deleted:false
+            deleted: false,
         },
         Permission {
             id: create_or_new_object_id("6742c74a15e68b0e7ee06131"),
@@ -170,7 +170,7 @@ pub fn get_list_permission() -> Vec<Permission> {
             description: "Can Read Transaction".to_string(),
             created_at: current_time.clone(),
             updated_at: current_time,
-            deleted:false
+            deleted: false,
         },
         //read write promotion
         Permission {
@@ -181,7 +181,7 @@ pub fn get_list_permission() -> Vec<Permission> {
             description: "Can Create Or Update Promotion".to_string(),
             created_at: current_time.clone(),
             updated_at: current_time,
-            deleted:false
+            deleted: false,
         },
         Permission {
             id: create_or_new_object_id("6742c74a15e68b0e7ee06133"),
@@ -191,7 +191,7 @@ pub fn get_list_permission() -> Vec<Permission> {
             description: "Can Read Promotion".to_string(),
             created_at: current_time.clone(),
             updated_at: current_time,
-            deleted:false
+            deleted: false,
         },
         //read write coach
         Permission {
@@ -202,7 +202,7 @@ pub fn get_list_permission() -> Vec<Permission> {
             description: "Can Create Or Update Coach".to_string(),
             created_at: current_time.clone(),
             updated_at: current_time,
-            deleted:false
+            deleted: false,
         },
         Permission {
             id: create_or_new_object_id("6742c74a15e68b0e7ee06135"),
@@ -212,7 +212,7 @@ pub fn get_list_permission() -> Vec<Permission> {
             description: "Can Read Coach".to_string(),
             created_at: current_time.clone(),
             updated_at: current_time,
-            deleted:false
+            deleted: false,
         },
         Permission {
             id: create_or_new_object_id("6742c74a15e68b0e7ee06136"),
@@ -222,7 +222,7 @@ pub fn get_list_permission() -> Vec<Permission> {
             description: "Can Read Account Permission".to_string(),
             created_at: current_time.clone(),
             updated_at: current_time,
-            deleted:false
+            deleted: false,
         },
         Permission {
             id: create_or_new_object_id("6742c74a15e68b0e7ee06137"),
@@ -232,7 +232,7 @@ pub fn get_list_permission() -> Vec<Permission> {
             description: "Can Read Account Permission".to_string(),
             created_at: current_time.clone(),
             updated_at: current_time,
-            deleted:false
+            deleted: false,
         },
         Permission {
             id: create_or_new_object_id("6742c74a15e68b0e7ee06138"),
@@ -242,7 +242,7 @@ pub fn get_list_permission() -> Vec<Permission> {
             description: "Can Read Permission".to_string(),
             created_at: current_time.clone(),
             updated_at: current_time,
-            deleted:false
+            deleted: false,
         },
         Permission {
             id: create_or_new_object_id("6742c74a15e68b0e7ee06139"),
@@ -252,12 +252,12 @@ pub fn get_list_permission() -> Vec<Permission> {
             description: "Can Read Permission".to_string(),
             created_at: current_time.clone(),
             updated_at: current_time,
-            deleted:false
+            deleted: false,
         },
     ]
 }
 
-pub async fn init_seeder(database: &Database) {
+pub async fn init_seeder(db_client: &Client) {
     info!(target: "seeder","Spread the seed...");
     let branch_id_1 = create_object_id_option("6742c74a15e68b0e7ee06120");
     let branch_id_2 = create_object_id_option("6742c74a15e68b0e7ee06121");
@@ -269,17 +269,17 @@ pub async fn init_seeder(database: &Database) {
         for mut permission in get_list_permission() {
             let exist = Orm::get("permission")
                 .filter_object_id("_id", &permission.id.unwrap())
-                .one::<Permission>(&database)
+                .one::<Permission>(&db_client)
                 .await;
 
             if exist.is_err() {
-                let _index = Orm::insert("permission").one(permission, &database).await;
+                let _index = Orm::insert("permission").one(permission, &db_client).await;
             } else {
                 let id = &permission.id.unwrap();
                 permission.id = None;
                 let _index = Orm::update("permission")
                     .filter_object_id("_id", id)
-                    .one(permission, &database)
+                    .one(permission, &db_client)
                     .await;
             }
         }
@@ -298,9 +298,11 @@ pub async fn init_seeder(database: &Database) {
                 branch_phone_number: Some(String::from("+62812269999")),
                 branch_address: Some(String::from("Jakarta Selatan")),
                 branch_owner: account_id_1.clone(),
-                created_at: DateTime::parse_rfc3339_str("2024-12-09T16:27:32.002Z").unwrap_or(current_date_time.clone()),
-                updated_at: DateTime::parse_rfc3339_str("2024-12-09T16:27:32.002Z").unwrap_or(current_date_time.clone()),
-                deleted:false
+                created_at: DateTime::parse_rfc3339_str("2024-12-09T16:27:32.002Z")
+                    .unwrap_or(current_date_time.clone()),
+                updated_at: DateTime::parse_rfc3339_str("2024-12-09T16:27:32.002Z")
+                    .unwrap_or(current_date_time.clone()),
+                deleted: false,
             },
             Branch {
                 id: branch_id_2.clone(),
@@ -310,25 +312,27 @@ pub async fn init_seeder(database: &Database) {
                 branch_phone_number: Some(String::from("+62812269998")),
                 branch_address: Some(String::from("Jakarta Selatan")),
                 branch_owner: account_id_1.clone(),
-                created_at: DateTime::parse_rfc3339_str("2024-12-10T16:27:32.002Z").unwrap_or(current_date_time.clone()),
-                updated_at: DateTime::parse_rfc3339_str("2024-12-10T16:27:32.002Z").unwrap_or(current_date_time.clone()),
-                deleted:false
+                created_at: DateTime::parse_rfc3339_str("2024-12-10T16:27:32.002Z")
+                    .unwrap_or(current_date_time.clone()),
+                updated_at: DateTime::parse_rfc3339_str("2024-12-10T16:27:32.002Z")
+                    .unwrap_or(current_date_time.clone()),
+                deleted: false,
             },
         ];
 
         for mut branch in branchs {
             let exist = Orm::get("branch")
                 .filter_object_id("_id", &branch.id.unwrap())
-                .one::<Branch>(&database)
+                .one::<Branch>(&db_client)
                 .await;
             if exist.is_err() {
-                let _save = Orm::insert("branch").one(branch, &database).await;
+                let _save = Orm::insert("branch").one(branch, &db_client).await;
             } else {
                 let id = &branch.id.unwrap();
                 branch.id = None;
                 let _index = Orm::update("branch")
                     .filter_object_id("_id", &id)
-                    .one(branch, &database)
+                    .one(branch, &db_client)
                     .await;
             }
         }
@@ -340,7 +344,7 @@ pub async fn init_seeder(database: &Database) {
         let pass = bcrypt::hash("12345678", DEFAULT_COST).unwrap_or(String::from("12345678"));
         let user_exist = Orm::get("account")
             .filter_object_id("_id", &account_id_1.unwrap())
-            .one::<Account>(&database)
+            .one::<Account>(&db_client)
             .await;
 
         if user_exist.is_err() {
@@ -355,12 +359,11 @@ pub async fn init_seeder(database: &Database) {
                         job_title: "OWNER".to_string(),
                         report_to: None,
                         branch_id: branch_id_1.clone(),
-                        date_of_birth: (NaiveDate::from_ymd_opt(2020, 1, 1)),
                         created_at: DateTime::now(),
                         updated_at: DateTime::now(),
-                        deleted:false
+                        deleted: false,
                     },
-                    &database,
+                    &db_client,
                 )
                 .await;
         }
@@ -380,25 +383,25 @@ pub async fn init_seeder(database: &Database) {
                     value: e.value.to_string(),
                     created_at: DateTime::now(),
                     updated_at: DateTime::now(),
-                    deleted:false
+                    deleted: false,
                 };
             })
             .collect();
         for mut permission in account_permission {
             let exist = Orm::get("account-permission")
                 .filter_object_id("_id", &permission.id.unwrap())
-                .one::<AccountPermission>(&database)
+                .one::<AccountPermission>(&db_client)
                 .await;
             if exist.is_err() {
                 let _save_account_permission = Orm::insert("account-permission")
-                    .one(permission, &database)
+                    .one(permission, &db_client)
                     .await;
             } else {
                 let id = &permission.id.unwrap();
                 permission.id = None;
                 let _index = Orm::update("account-permission")
                     .filter_object_id("_id", &id)
-                    .one(permission, &database)
+                    .one(permission, &db_client)
                     .await;
             }
         }
@@ -407,7 +410,8 @@ pub async fn init_seeder(database: &Database) {
     {
         info!(target: "seeder","99% seed index");
 
-        let _index_account = &database
+        let _index_account = &db_client
+            .database(DB_NAME)
             .collection::<Document>("account")
             .create_index(
                 IndexModel::builder()
@@ -422,7 +426,8 @@ pub async fn init_seeder(database: &Database) {
             )
             .await;
 
-        let _index_permission = &database
+        let _index_permission = &db_client
+            .database(DB_NAME)
             .collection::<Document>("permission")
             .create_index(
                 IndexModel::builder()
@@ -437,7 +442,8 @@ pub async fn init_seeder(database: &Database) {
             )
             .await;
 
-        let _index_coach = &database
+        let _index_coach = &db_client
+            .database(DB_NAME)
             .collection::<Document>("coach")
             .create_index(
                 IndexModel::builder()
@@ -452,7 +458,8 @@ pub async fn init_seeder(database: &Database) {
             )
             .await;
 
-        let _index_branch = &database
+        let _index_branch = &db_client
+            .database(DB_NAME)
             .collection::<Document>("branch")
             .create_index(
                 IndexModel::builder()

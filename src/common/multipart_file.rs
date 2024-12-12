@@ -44,6 +44,7 @@ impl MultipartFile {
             extension: "".to_string(),
             temp_path: "".to_string(),
         };
+        let mut file_find = false;
         // Process each part of the multipart form data
         while let Some(field) = multipart.next_field().await.unwrap() {
             let field_name = field.name().map(|name| name.to_string());
@@ -55,6 +56,12 @@ impl MultipartFile {
                     info!(target:"extract_multipart", "found field :{} ",metadata.ref_id.clone());
                 }
                 Some("file") => {
+                    //make sure receive only one file
+                    if file_find{
+                        info!(target:"extract_multipart","file already exist skip to next");
+                        continue;
+                    }
+                    file_find = true;
                     // Process the file field (file)
                     let original_file_name = field.file_name().unwrap().to_string();
                     let mime_type = field.content_type().map(|mime| mime);

@@ -1,6 +1,3 @@
-use std::collections::HashMap;
-use std::fmt::Debug;
-
 use crate::common::orm::delete::Delete;
 use crate::common::orm::get::Get;
 use crate::common::orm::insert::Insert;
@@ -8,18 +5,20 @@ use crate::common::orm::replace::Replace;
 use crate::common::orm::update::Update;
 use bson::{doc, oid::ObjectId, Document};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::fmt::Debug;
 
 pub fn create_lookup_field(
     target: &str,
     from_field: &str,
-    local_field: &str,
+    foreign_field: &str,
     alias: &str,
 ) -> Document {
     doc! {
         "$lookup":{
             "from":target,
             "localField":from_field,
-            "foreignField":local_field,
+            "foreignField":foreign_field,
             "as":alias
         }
     }
@@ -109,11 +108,11 @@ impl Orm {
     pub fn join_one(
         mut self,
         collection: &str,
-        local_field: &str,
         from_field: &str,
+        foreign_field: &str,
         alias: &str,
     ) -> Self {
-        let doc = create_lookup_field(collection, from_field, local_field, alias);
+        let doc = create_lookup_field(collection, from_field, foreign_field, alias);
         let unwind = create_unwind_field(format!("${}", alias).as_str());
         self.lookup.push(doc);
         self.unwind.push(unwind);
@@ -122,11 +121,11 @@ impl Orm {
     pub fn join_many(
         mut self,
         collection: &str,
-        local_field: &str,
         from_field: &str,
+        foreign_field: &str,
         alias: &str,
     ) -> Self {
-        let doc = create_lookup_field(collection, from_field, local_field, alias);
+        let doc = create_lookup_field(collection, from_field, foreign_field, alias);
         self.lookup.push(doc);
         self
     }
@@ -409,8 +408,10 @@ impl Orm {
                 if is_aggregate {
                     parent.insert("$match", upper_filter);
                     result.push(parent.clone());
+                    result_count.push(parent.clone());
                 } else {
                     result.push(upper_filter.clone());
+                    result_count.push(parent.clone());
                 }
             }
         } else {

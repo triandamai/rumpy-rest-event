@@ -1,7 +1,6 @@
 use crate::dto::member_dto::MemberDTO;
 use bson::oid::ObjectId;
 use bson::DateTime;
-use chrono::NaiveDate;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -15,7 +14,7 @@ pub struct Member {
     pub full_name: String,
     pub gender: Option<String>,
     pub email: Option<String>,
-    pub date_of_birth: Option<NaiveDate>,
+    pub identity_number: Option<String>,
     pub phone_number: Option<String>,
     pub is_member: bool,
     pub created_at: DateTime,
@@ -37,7 +36,7 @@ impl Member {
             full_name: self.full_name,
             gender: self.gender,
             email: self.email,
-            date_of_birth: self.date_of_birth,
+            identity_number: self.identity_number,
             phone_number: self.phone_number,
             profile_picture: None,
             created_at: self.created_at,

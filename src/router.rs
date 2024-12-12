@@ -86,7 +86,7 @@ pub fn init_routes(state: AppState) -> Router {
         )
         .route(
             "/product/update-product-image",
-            delete(feature::product::product::update_product_image),
+            post(feature::product::product::update_product_image),
         )
         //member
         .route(

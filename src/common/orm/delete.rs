@@ -1,7 +1,7 @@
 use crate::common::orm::orm::Orm;
 use bson::oid::ObjectId;
 use bson::{doc, Document};
-use mongodb::{Collection, Database};
+use mongodb::{ClientSession, Collection, Database};
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 
@@ -28,23 +28,17 @@ impl Delete {
         }
     }
 
-
-    pub async fn one(
-        self,
-        db: &Database,
-    ) -> Result<u64, String> {
-        if self.orm.collection_name.is_empty(){
-            return Err("Specify collection name before deleting...".to_string())
+    pub async fn one(self, db: &Database) -> Result<u64, String> {
+        if self.orm.collection_name.is_empty() {
+            return Err("Specify collection name before deleting...".to_string());
         }
-        if self.orm.filter.len() < 1 && self.orm.filters.len() < 1 { 
-            return Err("Specify filter before deleting...".to_string())
+        if self.orm.filter.len() < 1 && self.orm.filters.len() < 1 {
+            return Err("Specify filter before deleting...".to_string());
         }
         let collection: Collection<Document> = db.collection(self.orm.collection_name.as_str());
-        let  query = self.orm.get_filter_as_doc();
-        
-        let save = collection
-            .delete_one(query)
-            .await;
+        let query = self.orm.get_filter_as_doc();
+
+        let save = collection.delete_one(query).await;
 
         if save.is_err() {
             return Err(save.unwrap_err().to_string());
@@ -53,20 +47,59 @@ impl Delete {
         Ok(save.unwrap().deleted_count)
     }
 
-    pub async fn many(
+    pub async fn one_with_session(
         self,
         db: &Database,
+        session: &mut ClientSession,
+    ) -> Result<u64, String> {
+        if self.orm.collection_name.is_empty() {
+            return Err("Specify collection name before deleting...".to_string());
+        }
+        if self.orm.filter.len() < 1 && self.orm.filters.len() < 1 {
+            return Err("Specify filter before deleting...".to_string());
+        }
+        let collection: Collection<Document> = db.collection(self.orm.collection_name.as_str());
+        let query = self.orm.get_filter_as_doc();
+
+        let save = collection.delete_one(query).session(session).await;
+
+        if save.is_err() {
+            return Err(save.unwrap_err().to_string());
+        }
+
+        Ok(save.unwrap().deleted_count)
+    }
+
+    pub async fn many(self, db: &Database) -> Result<u64, String> {
+        if self.orm.filter.len() < 1 && self.orm.filters.len() < 1 {
+            return Err("Specify filter before deleting...".to_string());
+        }
+
+        let collection: Collection<Document> = db.collection(self.orm.collection_name.as_str());
+        let query = self.orm.get_filter_as_doc();
+
+        let save = collection.delete_many(query).await;
+
+        if save.is_err() {
+            return Err(save.unwrap_err().to_string());
+        }
+
+        Ok(save.unwrap().deleted_count)
+    }
+
+    pub async fn many_with_session(
+        self,
+        db: &Database,
+        session: &mut ClientSession,
     ) -> Result<u64, String> {
         if self.orm.filter.len() < 1 && self.orm.filters.len() < 1 {
-            return Err("Specify filter before deleting...".to_string())
+            return Err("Specify filter before deleting...".to_string());
         }
 
         let collection: Collection<Document> = db.collection(self.orm.collection_name.as_str());
-        let  query =self.orm.get_filter_as_doc();
+        let query = self.orm.get_filter_as_doc();
 
-        let save = collection
-            .delete_many(query)
-            .await;
+        let save = collection.delete_many(query).session(session).await;
 
         if save.is_err() {
             return Err(save.unwrap_err().to_string());
@@ -74,7 +107,6 @@ impl Delete {
 
         Ok(save.unwrap().deleted_count)
     }
-
 
     //query
     pub fn or(mut self) -> Self {
@@ -89,12 +121,17 @@ impl Delete {
         self
     }
 
-    pub fn filter_bool(mut self, column: &str, operator: Option<&str>, value: bool)->Self{
+    pub fn filter_bool(mut self, column: &str, operator: Option<&str>, value: bool) -> Self {
         let orm = self.orm.filter_bool(column, operator, value);
         self.orm = orm;
         self
     }
-    pub fn filter_array<T:Serialize>(mut self, column: &str, operator: Option<&str>, value: Vec<T>)->Self{
+    pub fn filter_array<T: Serialize>(
+        mut self,
+        column: &str,
+        operator: Option<&str>,
+        value: Vec<T>,
+    ) -> Self {
         let orm = self.orm.filter_array(column, operator, value);
         self.orm = orm;
         self

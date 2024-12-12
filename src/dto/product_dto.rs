@@ -10,14 +10,12 @@ use crate::dto::branch_dto::BranchDTO;
 pub struct ProductDTO {
     #[serde(
         rename = "_id",
-        skip_serializing_if = "Option::is_none",
         serialize_with = "serialize_object_id",
         deserialize_with = "deserialize_object_id"
     )]
     pub id: Option<ObjectId>,
     #[serde(
         rename = "branch_id",
-        skip_serializing_if = "Option::is_none",
         serialize_with = "serialize_object_id",
         deserialize_with = "deserialize_object_id"
     )]
@@ -31,7 +29,7 @@ pub struct ProductDTO {
     pub product_stock: i64,
     pub product_image: Option<FileAttachmentDTO>,
     #[serde(
-        rename = "created_by",
+        rename = "created_by_id",
         skip_serializing_if = "Option::is_none",
         serialize_with = "serialize_object_id",
         deserialize_with = "deserialize_object_id"

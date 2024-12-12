@@ -1,9 +1,10 @@
 use crate::common::orm::orm::Orm;
+use crate::common::orm::DB_NAME;
 use bson::oid::ObjectId;
 use bson::{doc, DateTime, Document};
 use chrono::NaiveDate;
 use log::info;
-use mongodb::{Collection, Database};
+use mongodb::{Client, ClientSession, Collection};
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 
@@ -90,16 +91,32 @@ impl Update {
         self
     }
 
-    pub async fn execute_one(self, db: &Database) -> Result<u64, String> {
+    pub async fn execute_one(self, client: &Client) -> Result<u64, String> {
         let set = &self.set.clone().unwrap_or(Document::new());
-        self.one(set, db).await
+        self.one(set, client).await
     }
-    pub async fn execute_many(self, db: &Database) -> Result<u64, String> {
+    pub async fn execute_one_with_session(
+        self,
+        client: &Client,
+        session: &mut ClientSession,
+    ) -> Result<u64, String> {
         let set = &self.set.clone().unwrap_or(Document::new());
-        self.many(set, db).await
+        self.one_with_session(set, client, session).await
+    }
+    pub async fn execute_many(self, client: &Client) -> Result<u64, String> {
+        let set = &self.set.clone().unwrap_or(Document::new());
+        self.many(set, client).await
     }
 
-    pub async fn one<T: Serialize>(self, update: T, db: &Database) -> Result<u64, String> {
+    pub async fn execute_many_with_session(
+        self,
+        client: &Client,
+        session: &mut ClientSession,
+    ) -> Result<u64, String> {
+        let set = &self.set.clone().unwrap_or(Document::new());
+        self.many_with_session(set, client, session).await
+    }
+    pub async fn one<T: Serialize>(self, update: T, client: &Client) -> Result<u64, String> {
         if self.orm.collection_name.is_empty() {
             return Err("Specify collection name before update...".to_string());
         }
@@ -113,6 +130,7 @@ impl Update {
             return Err(err);
         }
 
+        let db = client.database(DB_NAME);
         let collection: Collection<Document> = db.collection(self.orm.collection_name.as_str());
         let query = self.orm.get_filter_as_doc();
 
@@ -137,7 +155,52 @@ impl Update {
         Ok(save.modified_count)
     }
 
-    pub async fn many<T: Serialize>(self, update: T, db: &Database) -> Result<u64, String> {
+    pub async fn one_with_session<T: Serialize>(
+        self,
+        update: T,
+        client: &Client,
+        session: &mut ClientSession,
+    ) -> Result<u64, String> {
+        if self.orm.collection_name.is_empty() {
+            return Err("Specify collection name before update...".to_string());
+        }
+        if self.orm.filter.len() < 1 && self.orm.filters.len() < 1 {
+            return Err("Specify filter before update...".to_string());
+        }
+        let doc = bson::to_document(&update);
+        if doc.is_err() {
+            let err = doc.unwrap_err().to_string();
+            info!(target: "update 1","{:?}",err);
+            return Err(err);
+        }
+
+        let db = client.database(DB_NAME);
+        let collection: Collection<Document> = db.collection(self.orm.collection_name.as_str());
+        let query = self.orm.get_filter_as_doc();
+
+        let save = collection
+            .update_one(
+                query,
+                doc! {
+                    "$set":doc.unwrap()
+                },
+            )
+            .session(session)
+            .await;
+
+        if save.is_err() {
+            let err = save.unwrap_err().to_string();
+            info!(target: "update","{:?}",err);
+            return Err(err);
+        }
+
+        let save = save.unwrap();
+
+        // info!(target: "db::update::oke","Success update data");
+        Ok(save.modified_count)
+    }
+
+    pub async fn many<T: Serialize>(self, update: T, client: &Client) -> Result<u64, String> {
         //info!(target: "db::update","Start update data");
         if self.orm.collection_name.is_empty() {
             info!(target:"db::update::error", "Specify collection name before update...");
@@ -155,12 +218,56 @@ impl Update {
             return Err(err_message);
         }
 
+        let db = client.database(DB_NAME);
         let collection: Collection<Document> = db.collection(self.orm.collection_name.as_str());
 
         let query = self.orm.get_filter_as_doc();
 
         let save = collection
             .update_many(query, doc! {"$set":doc.unwrap()})
+            .await;
+
+        if save.is_err() {
+            let err_message = save.unwrap_err().to_string();
+            info!(target: "db::get::error","{}",err_message.clone());
+
+            return Err(err_message);
+        }
+        //info!(target: "db::get::ok","Success update data");
+        Ok(save.unwrap().modified_count)
+    }
+
+    pub async fn many_with_session<T: Serialize>(
+        self,
+        update: T,
+        client: &Client,
+        session: &mut ClientSession,
+    ) -> Result<u64, String> {
+        //info!(target: "db::update","Start update data");
+        if self.orm.collection_name.is_empty() {
+            info!(target:"db::update::error", "Specify collection name before update...");
+            return Err("Specify collection name before update...".to_string());
+        }
+        if self.orm.filter.len() < 1 && self.orm.filters.len() < 1 {
+            info!(target:"db::update::error", "Specify filter before update...");
+            return Err("Specify filter before update...".to_string());
+        }
+        let doc = bson::to_document(&update);
+        if doc.is_err() {
+            let err_message = doc.unwrap_err().to_string();
+            info!(target: "db::get::error","{}",err_message.clone());
+
+            return Err(err_message);
+        }
+
+        let db = client.database(DB_NAME);
+        let collection: Collection<Document> = db.collection(self.orm.collection_name.as_str());
+
+        let query = self.orm.get_filter_as_doc();
+
+        let save = collection
+            .update_many(query, doc! {"$set":doc.unwrap()})
+            .session(session)
             .await;
 
         if save.is_err() {

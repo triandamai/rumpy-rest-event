@@ -20,7 +20,6 @@ use axum::extract::{Multipart, Path, Query, State};
 use axum::Json;
 use bson::oid::ObjectId;
 use bson::DateTime;
-use chrono::NaiveDate;
 use log::info;
 use validator::Validate;
 
@@ -88,7 +87,7 @@ pub async fn get_detail_user(
     let find_user = Orm::get("account")
         .filter_object_id("_id", &id.unwrap())
         .join_one("account", "reply_to", "_id", "report")
-        .join_one("branch", "_id", "branch_id", "branch")
+        .join_one("branch", "branch_id", "_id", "branch")
         .join_many("account-permission", "_id", "account_id", "permission")
         .one::<AccountDetailDTO>(&state.db)
         .await;
@@ -114,10 +113,7 @@ pub async fn create_user(
     if validate.is_err() {
         return ApiResponse::error_validation(validate.unwrap_err(), translate!("", lang).as_str());
     }
-    let dob = body.date_of_birth.clone().map_or_else(
-        || None,
-        |v| NaiveDate::parse_from_str(v.as_str(), "%Y-%m-%d").map_or(None, |v| Some(v)),
-    );
+
     let account = Account {
         id: Some(ObjectId::new()),
         full_name: body.full_name.clone(),
@@ -127,7 +123,6 @@ pub async fn create_user(
         job_title: body.job_title.clone(),
         report_to: auth_context.user_id,
         branch_id: auth_context.branch_id,
-        date_of_birth: dob,
         created_at: DateTime::now(),
         updated_at: DateTime::now(),
         deleted: false,
@@ -219,16 +214,6 @@ pub async fn update_user(
         user.job_title = body.job_title.clone().unwrap();
         save = save.set_str("job_title", &body.job_title.clone().unwrap());
     }
-    if body.date_of_birth.is_some() {
-        let dob = body.date_of_birth.clone().map_or_else(
-            || None,
-            |v| NaiveDate::parse_from_str(v.as_str(), "%Y-%m-%d").map_or(None, |v| Some(v)),
-        );
-        user.date_of_birth = dob;
-        if dob.is_some() {
-            save = save.set_naive_date("date_of_birth", &dob.unwrap());
-        }
-    }
 
     let save_data = save
         .filter_object_id("_id", &user_id.unwrap())
@@ -306,7 +291,6 @@ pub async fn upload_profile_picture(
         .await;
 
     let minio = MinIO::new().await;
-    let mut filename = format!("{}.{}", extract.filename, extract.extension);
     let is_file_exists = find_exist_profile_picture.is_ok();
     let bucket_name = "profile-picture".to_string();
 
@@ -325,15 +309,18 @@ pub async fn upload_profile_picture(
     };
 
     if is_file_exists {
-        filename = attachment.filename.clone();
         let _delete_existing = minio
-            .delete_file(filename.clone(), bucket_name.clone())
+            .delete_file(attachment.filename.clone(), bucket_name.clone())
             .await;
     }
 
     //upload new
     let minio = minio
-        .upload_file(extract.temp_path.clone(), bucket_name, filename.clone())
+        .upload_file(
+            extract.temp_path.clone(),
+            bucket_name,
+            extract.filename.clone(),
+        )
         .await;
 
     if minio.is_err() {
@@ -348,7 +335,7 @@ pub async fn upload_profile_picture(
         true => {
             let update_profile_picture = Orm::update("file-attachment")
                 .filter_object_id("ref_id", &user_id.unwrap())
-                .set_str("filename", &filename.as_str())
+                .set_str("filename", &extract.filename.as_str())
                 .set_str("mime-type", &extract.mime_type.as_str())
                 .set_str("extension", &extract.extension.as_str())
                 .execute_one(&state.db)

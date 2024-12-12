@@ -7,16 +7,16 @@ use axum::{
     extract::{FromRef, FromRequestParts},
     http::request::Parts,
 };
-use mongodb::{Client as MongoClient, Database};
+use log::info;
+use mongodb::{Client as MongoClient};
 use redis::Client;
 use std::sync::Arc;
-use log::info;
 
 #[derive(Debug, Clone)]
 pub struct AppState {
     pub sse: Arc<SseBroadcaster>,
     pub redis: RedisClient,
-    pub db: Database,
+    pub db: MongoClient,
 }
 
 impl AppState {
@@ -26,10 +26,13 @@ impl AppState {
 
         let sse = SseBroadcaster::create();
         let database = MongoClient::with_uri_str(env.database_url.as_str()).await;
+
+
         if database.is_err() {
             panic!("{}",database.unwrap_err());
         }
-        let database = database.unwrap().database("strong-teams");
+        let database = database.unwrap();
+
         let redis = Client::open(env.redis_url.clone());
         if redis.is_err() {
             panic!("url {} -> {}", env.redis_url.clone(), redis.unwrap_err())

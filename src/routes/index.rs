@@ -2,22 +2,24 @@ use crate::common::api_response::ApiResponse;
 use crate::common::app_state::AppState;
 use crate::common::lang::Lang;
 use crate::common::minio::MinIO;
-use crate::common::orm::orm::Orm;
 use crate::translate;
 use axum::extract::State;
-use bson::Document;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Write;
+use bson::Document;
+use bson::oid::ObjectId;
+use crate::common::orm::orm::Orm;
 
-pub async fn index(_state: State<AppState>) -> ApiResponse<(Vec<Document>, Vec<Document>)> {
-    let _command = Orm::get("permission");
+pub async fn index(_state: State<AppState>) -> ApiResponse<Vec<Document>> {
+    let find_all_branch = Orm::get("product")
+        .and()
+        .filter_bool("deleted", None, false)
+        .filter_object_id("branch_id", &ObjectId::new())
+        .join_one("file-attachment", "_id", "ref_id", "product_image")
+        .join_one("account", "created_by_id", "_id", "created_by").show_merging();
 
-    let find_all_branch = Orm::get("account")
-        .group_by_desc("branch_name")
-        .join_one("account", "branch_owner", "_id", "owner")
-        .filter_bool("deleted", None, false);
-    ApiResponse::ok(find_all_branch.show_merging(), "test merge")
+    ApiResponse::ok(find_all_branch.1, "test merge")
 }
 
 pub async fn generate_locales() -> ApiResponse<String> {

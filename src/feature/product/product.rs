@@ -135,6 +135,11 @@ pub async fn create_product(
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
 
+    if auth_context.branch_id.is_none() {
+        info!(target: "product::create", "{} not permitted beacause not associated with any branch", auth_context.claims.sub);
+        return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
+    }
+
     let validate = body.validate();
     if validate.is_err() {
         return ApiResponse::error_validation(
@@ -321,11 +326,10 @@ pub async fn update_product_image(
         .await;
 
     let minio = MinIO::new().await;
-    let mut filename = format!("{}.{}", extract.filename, extract.extension);
     let is_file_exists = find_exist_profile_picture.is_ok();
-    let bucket_name = "product_image".to_string();
+    let bucket_name = "product-image".to_string();
 
-    let attachment = match find_exist_profile_picture {
+    let mut attachment = match find_exist_profile_picture {
         Ok(v) => v,
         Err(_) => FileAttachment {
             id: Some(ObjectId::new()),
@@ -340,15 +344,19 @@ pub async fn update_product_image(
     };
 
     if is_file_exists {
-        filename = attachment.filename.clone();
+        info!(target: "product::create", "file exist deleting {}",extract.filename);
         let _delete_existing = minio
-            .delete_file(filename.clone(), bucket_name.clone())
+            .delete_file(attachment.filename.clone(), bucket_name.clone())
             .await;
     }
 
     //upload new
     let minio = minio
-        .upload_file(extract.temp_path.clone(), bucket_name, filename.clone())
+        .upload_file(
+            extract.temp_path.clone(),
+            bucket_name,
+            extract.filename.clone(),
+        )
         .await;
 
     if minio.is_err() {
@@ -363,7 +371,7 @@ pub async fn update_product_image(
         true => {
             let update_profile_picture = Orm::update("file-attachment")
                 .filter_object_id("ref_id", &user_id.unwrap())
-                .set_str("filename", &filename.as_str())
+                .set_str("filename", &extract.filename.as_str())
                 .set_str("mime-type", &extract.mime_type.as_str())
                 .set_str("extension", &extract.extension.as_str())
                 .execute_one(&state.db)
@@ -374,6 +382,7 @@ pub async fn update_product_image(
             update_profile_picture.is_ok()
         }
         false => {
+            attachment.filename = extract.filename.clone();
             let save_profile_picture = Orm::insert("file-attachment")
                 .one(&attachment, &state.db)
                 .await;

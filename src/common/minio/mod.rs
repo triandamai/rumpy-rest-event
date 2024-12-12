@@ -118,7 +118,7 @@ impl MinIO {
             .delete_object(file_path.as_str())
             .await;
         match upload {
-            Ok(_) => Ok("Successfully uploaded file".to_string()),
+            Ok(_) => Ok("Successfully delete file".to_string()),
             Err(e) => {
                 Err(format!("Error uploading file: {}", e))
             }

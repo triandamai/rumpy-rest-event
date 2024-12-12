@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use validator::Validate;
-use crate::common::utils::{validate_gender,validate_date_of_birth_option};
+use crate::common::utils::{validate_gender};
 
 #[derive(Debug,Clone,Deserialize,Serialize,Validate)]
 pub struct CreateMemberRequest{
@@ -9,8 +9,7 @@ pub struct CreateMemberRequest{
     #[validate(custom(function="validate_gender"))]
     pub gender: Option<String>,
     pub email: Option<String>,
-    #[validate(custom(function="validate_date_of_birth_option"))]
-    pub date_of_birth: Option<String>,
+    pub identity_number: Option<String>,
     pub coach_id: Option<String>,
     pub phone_number: Option<String>,
 }
@@ -21,8 +20,7 @@ pub struct UpdateMemberRequest{
     #[validate(custom(function="validate_gender"))]
     pub gender: Option<String>,
     pub email: Option<String>,
-    #[validate(custom(function="validate_date_of_birth_option"))]
-    pub date_of_birth: Option<String>,
+    pub identity_number: Option<String>,
     pub coach_id: Option<String>,
     pub phone_number: Option<String>,
 }

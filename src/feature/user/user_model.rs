@@ -1,4 +1,4 @@
-use crate::common::utils::{validate_date_of_birth_option, validate_gender};
+use crate::common::utils::validate_gender;
 use serde::{Deserialize, Serialize};
 use validator::Validate;
 
@@ -12,8 +12,7 @@ pub struct CreateUserRequest {
     #[validate(length(min = 7))]
     pub password: String,
     pub job_title: String,
-    #[validate(length(min = 8), custom(function = "validate_date_of_birth_option"))]
-    pub date_of_birth: Option<String>,
+    pub access: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Validate)]
@@ -23,6 +22,4 @@ pub struct UpdateUserRequest {
     #[validate(custom(function = "validate_gender"))]
     pub gender: Option<String>,
     pub job_title: Option<String>,
-    #[validate(custom(function = "validate_date_of_birth_option"))]
-    pub date_of_birth: Option<String>,
 }

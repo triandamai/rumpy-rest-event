@@ -4,7 +4,6 @@ use crate::dto::branch_dto::BranchDTO;
 use crate::dto::file_attachment_dto::FileAttachmentDTO;
 use bson::oid::ObjectId;
 use bson::DateTime;
-use chrono::NaiveDate;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone,Serialize, Deserialize)]
@@ -34,7 +33,6 @@ pub struct AccountDTO {
         deserialize_with = "deserialize_object_id"
     )]
     pub branch_id: Option<ObjectId>,
-    pub date_of_birth: Option<NaiveDate>,
     #[serde(serialize_with = "serialize_datetime")]
     pub created_at: DateTime,
     #[serde(serialize_with = "serialize_datetime")]
@@ -71,7 +69,6 @@ pub struct AccountDetailDTO {
     )]
     pub branch_id: Option<ObjectId>,
     pub branch: Option<BranchDTO>,
-    pub date_of_birth: Option<NaiveDate>,
     pub profile_picture:Option<FileAttachmentDTO>,
     pub permission: Option<Vec<AccountPermissionDTO>>,
     #[serde(serialize_with = "serialize_datetime")]

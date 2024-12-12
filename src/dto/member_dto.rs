@@ -4,7 +4,6 @@ use crate::dto::branch_dto::BranchDTO;
 use crate::dto::coach::CoachDTO;
 use bson::oid::ObjectId;
 use bson::DateTime;
-use chrono::NaiveDate;
 use serde::{Deserialize, Serialize};
 use crate::dto::file_attachment_dto::FileAttachmentDTO;
 
@@ -45,7 +44,7 @@ pub struct MemberDTO{
     pub full_name:String,
     pub gender:Option<String>,
     pub email:Option<String>,
-    pub date_of_birth:Option<NaiveDate>,
+    pub identity_number:Option<String>,
     pub phone_number:Option<String>,
     pub profile_picture:Option<FileAttachmentDTO>,
     #[serde(serialize_with = "serialize_datetime")]

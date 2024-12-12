@@ -1,8 +1,9 @@
 use crate::common::orm::orm::Orm;
+use crate::common::orm::DB_NAME;
 use bson::oid::ObjectId;
 use bson::{doc, Document};
 use log::info;
-use mongodb::{Collection, Database};
+use mongodb::{Client, ClientSession, Collection};
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 
@@ -28,19 +29,15 @@ impl Replace {
             },
         }
     }
-    pub async fn one<T: Serialize>(
-        self,
-        update: T,
-        db: &Database,
-    ) -> Result<u64, String> {
+    pub async fn one<T: Serialize>(self, update: T, client: &Client) -> Result<u64, String> {
         //info!(target: "db::replace","Starting replace data");
-        if self.orm.collection_name.is_empty(){
+        if self.orm.collection_name.is_empty() {
             info!(target: "db::replace::error","Replace collection name is empty");
-            return Err("Specify collection name before replace...".to_string())
+            return Err("Specify collection name before replace...".to_string());
         }
         if self.orm.filter.len() < 1 && self.orm.filters.len() < 1 {
             info!(target: "db::replace::error","Replace filter is empty");
-            return Err("Specify filter before replace...".to_string())
+            return Err("Specify filter before replace...".to_string());
         }
         let doc = bson::to_document(&update);
         if doc.is_err() {
@@ -48,7 +45,7 @@ impl Replace {
             info!(target: "db::replace::error","{}",err_message.clone());
             return Err(err_message);
         }
-        
+        let db = client.database(DB_NAME);
         let collection: Collection<Document> = db.collection(self.orm.collection_name.as_str());
         let query = self.orm.get_filter_as_doc();
         let save = collection.replace_one(query, doc.unwrap()).await;
@@ -63,6 +60,44 @@ impl Replace {
         Ok(save.unwrap().modified_count)
     }
 
+    pub async fn one_with_session<T: Serialize>(
+        self,
+        update: T,
+        client: &Client,
+        session: &mut ClientSession,
+    ) -> Result<u64, String> {
+        //info!(target: "db::replace","Starting replace data");
+        if self.orm.collection_name.is_empty() {
+            info!(target: "db::replace::error","Replace collection name is empty");
+            return Err("Specify collection name before replace...".to_string());
+        }
+        if self.orm.filter.len() < 1 && self.orm.filters.len() < 1 {
+            info!(target: "db::replace::error","Replace filter is empty");
+            return Err("Specify filter before replace...".to_string());
+        }
+        let doc = bson::to_document(&update);
+        if doc.is_err() {
+            let err_message = doc.unwrap_err().to_string();
+            info!(target: "db::replace::error","{}",err_message.clone());
+            return Err(err_message);
+        }
+        let db = client.database(DB_NAME);
+        let collection: Collection<Document> = db.collection(self.orm.collection_name.as_str());
+        let query = self.orm.get_filter_as_doc();
+        let save = collection
+            .replace_one(query, doc.unwrap())
+            .session(session)
+            .await;
+
+        if save.is_err() {
+            let err_message = save.unwrap_err().to_string();
+            info!(target: "db::replace::error","{}",err_message.clone());
+            return Err(err_message);
+        }
+
+        //info!(target: "db::replace::ok","Finished replace data");
+        Ok(save.unwrap().modified_count)
+    }
 
     //query
 
@@ -78,13 +113,18 @@ impl Replace {
         self
     }
 
-    pub fn filter_bool(mut self, column: &str, operator: Option<&str>, value: bool)->Self{
+    pub fn filter_bool(mut self, column: &str, operator: Option<&str>, value: bool) -> Self {
         let orm = self.orm.filter_bool(column, operator, value);
         self.orm = orm;
         self
     }
 
-    pub fn filter_array<T:Serialize>(mut self, column: &str, operator: Option<&str>, value: Vec<T>)->Self{
+    pub fn filter_array<T: Serialize>(
+        mut self,
+        column: &str,
+        operator: Option<&str>,
+        value: Vec<T>,
+    ) -> Self {
         let orm = self.orm.filter_array(column, operator, value);
         self.orm = orm;
         self

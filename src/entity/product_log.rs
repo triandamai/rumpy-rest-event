@@ -4,7 +4,7 @@ use bson::DateTime;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct Product {
+pub struct ProductLog {
     #[serde(rename = "_id", skip_serializing_if = "Option::is_none")]
     pub id: Option<ObjectId>,
     pub branch_id: Option<ObjectId>,
@@ -17,7 +17,7 @@ pub struct Product {
     pub deleted: bool,
 }
 
-impl Product {
+impl ProductLog {
     pub fn to_dto(self) -> ProductLogDTO {
         ProductLogDTO {
             id: self.id,

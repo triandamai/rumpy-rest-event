@@ -4,3 +4,6 @@ pub mod update;
 pub mod replace;
 pub mod orm;
 pub mod delete;
+
+
+pub const DB_NAME:&str = "strong-teams";

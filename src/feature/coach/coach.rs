@@ -131,7 +131,6 @@ pub async fn create_coach(
         info!(target: "coach::create", "{} not permitted", auth_context.claims.sub);
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
-
     if auth_context.branch_id.is_none() {
         info!(target: "coach::detail", "Branch id null");
         return ApiResponse::failed(translate!("coach.create.failed", lang).as_str());

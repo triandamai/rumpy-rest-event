@@ -19,7 +19,6 @@ use axum::extract::{Multipart, Path, Query, State};
 use axum::Json;
 use bson::oid::ObjectId;
 use bson::DateTime;
-use chrono::NaiveDate;
 use log::info;
 use validator::Validate;
 
@@ -144,10 +143,6 @@ pub async fn create_member(
         );
     }
 
-    let dob = body.date_of_birth.clone().map_or_else(
-        || None,
-        |v| NaiveDate::parse_from_str(v.as_str(), "%Y-%m-%d").map_or(None, |v| Some(v)),
-    );
     let coach_id = match body.coach_id.clone() {
         None => None,
         Some(coach_id) => create_object_id_option(coach_id.as_str()),
@@ -163,7 +158,7 @@ pub async fn create_member(
         full_name: body.full_name.clone(),
         gender: body.gender.clone(),
         email: body.email.clone(),
-        date_of_birth: dob,
+        identity_number: body.identity_number.clone(),
         phone_number: body.phone_number.clone(),
         is_member: true,
         created_at: DateTime::now(),
@@ -238,13 +233,12 @@ pub async fn update_member(
         save = save.set_str("gender", &body.gender.clone().unwrap());
     }
 
-    if body.date_of_birth.is_some() {
-        let dob = body.date_of_birth.clone().map_or_else(
-            || None,
-            |v| NaiveDate::parse_from_str(v.as_str(), "%Y-%m-%d").map_or(None, |v| Some(v)),
+    if body.identity_number.is_some() {
+        member.identity_number = body.identity_number.clone();
+        save = save.set_str(
+            "identity_number",
+            body.identity_number.clone().unwrap().as_str(),
         );
-        member.date_of_birth = dob;
-        save = save.set_naive_date("date_of_birth", &dob.unwrap());
     }
 
     if body.coach_id.is_some() {
@@ -343,7 +337,6 @@ pub async fn update_profile_picture(
         .await;
 
     let minio = MinIO::new().await;
-    let mut filename = format!("{}.{}", extract.filename, extract.extension);
     let is_file_exists = find_exist_profile_picture.is_ok();
     let bucket_name = "member-profile-picture".to_string();
 
@@ -362,15 +355,18 @@ pub async fn update_profile_picture(
     };
 
     if is_file_exists {
-        filename = attachment.filename.clone();
         let _delete_existing = minio
-            .delete_file(filename.clone(), bucket_name.clone())
+            .delete_file(attachment.filename.clone(), bucket_name.clone())
             .await;
     }
 
     //upload new
     let minio = minio
-        .upload_file(extract.temp_path.clone(), bucket_name, filename.clone())
+        .upload_file(
+            extract.temp_path.clone(),
+            bucket_name,
+            extract.filename.clone(),
+        )
         .await;
 
     if minio.is_err() {
@@ -385,7 +381,7 @@ pub async fn update_profile_picture(
         true => {
             let update_profile_picture = Orm::update("file-attachment")
                 .filter_object_id("ref_id", &user_id.unwrap())
-                .set_str("filename", &filename.as_str())
+                .set_str("filename", &extract.filename.as_str())
                 .set_str("mime-type", &extract.mime_type.as_str())
                 .set_str("extension", &extract.extension.as_str())
                 .execute_one(&state.db)
