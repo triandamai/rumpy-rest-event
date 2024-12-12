@@ -128,7 +128,7 @@ pub async fn create_discount(
         id: Some(discount_id.clone()),
         title: body.title.clone(),
         amount: body.amount,
-        created_by: auth_context.user_id,
+        created_by_id: auth_context.user_id,
         created_at: current_time.clone(),
         updated_at: current_time,
         deleted: false,

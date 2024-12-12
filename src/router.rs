@@ -108,7 +108,7 @@ pub fn init_routes(state: AppState) -> Router {
         )
         .route(
             "/member/update-profile-picture",
-            delete(feature::member::member::update_profile_picture),
+            post(feature::member::member::update_profile_picture),
         )
         //coach
         .route("/coach/list", get(feature::coach::coach::get_list_coach))
@@ -160,6 +160,10 @@ pub fn init_routes(state: AppState) -> Router {
             get(feature::membership::membership::get_detail_membership),
         )
         .route(
+            "/membership",
+            post(feature::membership::membership::create_membership),
+        )
+        .route(
             "/membership/:membership_id",
             put(feature::membership::membership::update_membership),
         )
@@ -167,6 +171,13 @@ pub fn init_routes(state: AppState) -> Router {
             "/membership/:membership_id",
             delete(feature::membership::membership::delete_membership),
         )
+        //stock
+        .route("/stock/list", get(feature::stock::stock::get_list_stock))
+        .route(
+            "/stock/:product_id",
+            get(feature::stock::stock::get_detail_stock),
+        )
+        .route("/stock", post(feature::stock::stock::update_stock))
         .fallback(handle_404)
         .with_state(state)
 }

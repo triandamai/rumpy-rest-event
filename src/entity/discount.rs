@@ -9,7 +9,7 @@ pub struct Discount {
     pub id: Option<ObjectId>,
     pub title: String,
     pub amount: f64,
-    pub created_by: Option<ObjectId>,
+    pub created_by_id: Option<ObjectId>,
     pub created_at: DateTime,
     pub updated_at: DateTime,
     pub deleted: bool,
@@ -21,7 +21,8 @@ impl Discount {
             id: self.id,
             title: self.title,
             amount: self.amount,
-            created_by: self.created_by,
+            created_by_id: self.created_by_id,
+            created_by: None,
             created_at: self.created_at,
             updated_at: self.updated_at,
             deleted: self.deleted

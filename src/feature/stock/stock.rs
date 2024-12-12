@@ -7,15 +7,17 @@ use crate::common::utils::{
     create_object_id_option, QUERY_ASC, QUERY_DESC, QUERY_LATEST, QUERY_OLDEST,
 };
 use crate::dto::product_dto::ProductDTO;
+use crate::dto::product_log_dto::ProductLogDTO;
 use crate::entity::product_log::ProductLog;
 use crate::feature::stock::stock_model::UpdateStockRequest;
 use crate::translate;
-use axum::extract::{Query, State};
+use axum::extract::{Path, Query, State};
 use axum::Json;
-use bson::{doc, DateTime, Document};
+use bson::oid::ObjectId;
+use bson::{doc, DateTime};
 use log::info;
 
-pub async fn get_lis_stock(
+pub async fn get_list_stock(
     state: State<AppState>,
     auth_context: AuthContext,
     lang: Lang,
@@ -72,6 +74,49 @@ pub async fn get_lis_stock(
     )
 }
 
+pub async fn get_detail_stock(
+    state: State<AppState>,
+    auth_context: AuthContext,
+    lang: Lang,
+    Path(product_id): Path<String>,
+    query: Query<PaginationRequest>,
+) -> ApiResponse<PagingResponse<ProductLogDTO>> {
+    info!(target: "stock::detail","{} trying to get detail stock",auth_context.claims.sub);
+    if !auth_context.authorize("app::stock::read") {
+        info!(target: "stock::detail","{} not permitted",auth_context.claims.sub);
+        return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
+    }
+
+    if auth_context.branch_id.is_none() {
+        info!(target:"stock::detail","failed to get stock id");
+        return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
+    }
+
+    let product_id = create_object_id_option(product_id.as_str());
+    if product_id.is_none() {
+        info!(target:"stock::detail","failed create product id");
+        return ApiResponse::failed(translate!("stock.detail.not-found", lang).as_str());
+    }
+
+    let find_stock = Orm::get("product-log")
+        .and()
+        .filter_object_id("product_id", &product_id.unwrap())
+        .filter_bool("deleted", None, false)
+        .pageable::<ProductLogDTO>(query.page.unwrap_or(1), query.size.unwrap_or(10), &state.db)
+        .await;
+    if find_stock.is_err() {
+        let err = find_stock.unwrap_err();
+        info!(target:"stock::detail","{}",err);
+        return ApiResponse::failed(translate!("stock::detail.not-found", lang).as_str());
+    }
+
+    info!(target: "stock::detail","successfully get detail stock");
+    ApiResponse::ok(
+        find_stock.unwrap(),
+        translate!("stock.detail.found", lang).as_str(),
+    )
+}
+
 pub async fn update_stock(
     state: State<AppState>,
     auth_context: AuthContext,
@@ -82,6 +127,11 @@ pub async fn update_stock(
     if !auth_context.authorize("app::stock::write") {
         info!(target: "stock::update","{} not permitted", auth_context.claims.sub);
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
+    }
+
+    if auth_context.branch_id.is_none() {
+        info!(target:"stock::update","failed to get branch id");
+        return ApiResponse::failed(translate!("stock.update.failed", lang).as_str());
     }
 
     let product_id = create_object_id_option(body.product_id.clone().as_str());
@@ -99,12 +149,13 @@ pub async fn update_stock(
     let _start = session.start_transaction();
 
     let product_log = ProductLog {
-        id: None,
-        branch_id: None,
-        description: "".to_string(),
-        log_type: "".to_string(),
-        stock: 0,
-        created_by_id: None,
+        id: Some(ObjectId::new()),
+        branch_id: auth_context.branch_id,
+        product_id,
+        description: "Update Stock".to_string(),
+        log_type: "stock::update".to_string(),
+        stock: body.stock,
+        created_by_id: auth_context.user_id,
         created_at: DateTime::now(),
         updated_at: DateTime::now(),
         deleted: false,
@@ -123,14 +174,9 @@ pub async fn update_stock(
 
     let update_product = Orm::update("product")
         .filter_object_id("_id", &product_id.unwrap())
-        .one_with_session::<Document>(
-            doc! {
-                "$inc":{"product_stock":1},
-                "$set":{"updated_at":DateTime::now()}
-            },
-            &state.db,
-            &mut session,
-        )
+        .set(doc! {"updated_at":DateTime::now()})
+        .inc(doc! {"product_stock":body.stock})
+        .execute_one_with_session(&state.db, &mut session)
         .await;
 
     if update_product.is_err() {

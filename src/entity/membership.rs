@@ -21,6 +21,7 @@ impl Membership {
         MembershipDTO {
             id: self.id,
             branch_id: self.branch_id,
+            branch: None,
             name: self.name,
             price: self.price,
             quota: self.quota,

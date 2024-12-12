@@ -21,6 +21,7 @@ use bson::oid::ObjectId;
 use bson::DateTime;
 use log::info;
 use validator::Validate;
+use crate::dto::coach::CoachDTO;
 
 pub async fn get_list_member(
     state: State<AppState>,
@@ -67,7 +68,7 @@ pub async fn get_list_member(
         .and()
         .filter_bool("deleted", None, false)
         .filter_object_id("branch_id", &auth_context.branch_id.unwrap())
-        .join_one("account", "create_by_id", "_id", "created_by")
+        .join_one("account", "created_by_id", "_id", "created_by")
         .join_one("coach", "coach_id", "_id", "coach")
         .join_one("file-attachment", "_id", "ref_id", "profile_picture")
         .pageable::<MemberDTO>(query.page.unwrap_or(1), query.size.unwrap_or(10), &state.db)
@@ -147,6 +148,19 @@ pub async fn create_member(
         None => None,
         Some(coach_id) => create_object_id_option(coach_id.as_str()),
     };
+
+    if coach_id.is_none() {
+        info!(target: "member::create","coach doesn't exist");
+        return ApiResponse::failed(translate!("coach.not-found", lang).as_str());
+    }
+    let find_coach = Orm::get("coach")
+        .filter_object_id("_id",&coach_id.unwrap())
+        .one::<CoachDTO>(&state.db)
+        .await;
+    if find_coach.is_err() {
+        info!(target: "member::create","coach doesn't exist");
+        return ApiResponse::failed(translate!("coach.not-found", lang).as_str());
+    }
 
     let member_code = generate_member_code(body.full_name.as_str());
     let product = Member {

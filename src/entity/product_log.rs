@@ -8,6 +8,7 @@ pub struct ProductLog {
     #[serde(rename = "_id", skip_serializing_if = "Option::is_none")]
     pub id: Option<ObjectId>,
     pub branch_id: Option<ObjectId>,
+    pub product_id: Option<ObjectId>,
     pub description: String,
     pub log_type: String,
     pub stock: i64,
@@ -22,6 +23,9 @@ impl ProductLog {
         ProductLogDTO {
             id: self.id,
             branch_id: self.branch_id,
+            branch: None,
+            product_id: self.product_id,
+            product: None,
             description: self.description,
             log_type: self.log_type,
             stock: self.stock,

@@ -12,6 +12,8 @@ use std::fmt::Debug;
 pub struct Update {
     orm: Orm,
     set: Option<Document>,
+    inc: Option<Document>,
+    dec: Option<Document>,
 }
 
 impl Update {
@@ -30,6 +32,8 @@ impl Update {
                 limit: None,
             },
             set: None,
+            inc: None,
+            dec: None,
         }
     }
 
@@ -78,6 +82,18 @@ impl Update {
         self.set = Some(set);
         self
     }
+    pub fn set(mut self, doc: Document) -> Self {
+        self.set = Some(doc);
+        self
+    }
+    pub fn inc(mut self, doc: Document) -> Self {
+        self.inc = Some(doc);
+        self
+    }
+    pub fn dec(mut self, doc: Document) -> Self {
+        self.inc = Some(doc);
+        self
+    }
     pub fn set_object_id(mut self, column: &str, value: &ObjectId) -> Self {
         let mut set = self.set.unwrap_or(Document::new());
         set.insert(column, value);
@@ -123,25 +139,33 @@ impl Update {
         if self.orm.filter.len() < 1 && self.orm.filters.len() < 1 {
             return Err("Specify filter before update...".to_string());
         }
-        let doc = bson::to_document(&update);
-        if doc.is_err() {
-            let err = doc.unwrap_err().to_string();
-            info!(target: "update 1","{:?}",err);
-            return Err(err);
-        }
 
         let db = client.database(DB_NAME);
         let collection: Collection<Document> = db.collection(self.orm.collection_name.as_str());
         let query = self.orm.get_filter_as_doc();
+        let mut doc = Document::new();
 
-        let save = collection
-            .update_one(
-                query,
-                doc! {
-                    "$set":doc.unwrap()
-                },
-            )
-            .await;
+        if self.set.is_none() {
+            let data = bson::to_document(&update);
+            if data.is_err() {
+                let err = data.unwrap_err().to_string();
+                info!(target: "update 1","{:?}",err);
+                return Err(err);
+            }
+            doc.insert("$set", data.unwrap());
+        } else {
+            doc.insert("$set", self.set.unwrap());
+        }
+
+        if self.inc.is_some() {
+            doc.insert("$inc", self.inc.unwrap());
+        }
+
+        if self.dec.is_some() {
+            doc.insert("$dec", self.dec.unwrap());
+        }
+
+        let save = collection.update_one(query, doc).await;
 
         if save.is_err() {
             let err = save.unwrap_err().to_string();
@@ -167,26 +191,32 @@ impl Update {
         if self.orm.filter.len() < 1 && self.orm.filters.len() < 1 {
             return Err("Specify filter before update...".to_string());
         }
-        let doc = bson::to_document(&update);
-        if doc.is_err() {
-            let err = doc.unwrap_err().to_string();
-            info!(target: "update 1","{:?}",err);
-            return Err(err);
-        }
-
         let db = client.database(DB_NAME);
         let collection: Collection<Document> = db.collection(self.orm.collection_name.as_str());
         let query = self.orm.get_filter_as_doc();
+        let mut doc = Document::new();
 
-        let save = collection
-            .update_one(
-                query,
-                doc! {
-                    "$set":doc.unwrap()
-                },
-            )
-            .session(session)
-            .await;
+        if self.set.is_none() {
+            let data = bson::to_document(&update);
+            if data.is_err() {
+                let err = data.unwrap_err().to_string();
+                info!(target: "update 1","{:?}",err);
+                return Err(err);
+            }
+            doc.insert("$set", data.unwrap());
+        } else {
+            doc.insert("$set", self.set.unwrap());
+        }
+
+        if self.inc.is_some() {
+            doc.insert("$inc", self.inc.unwrap());
+        }
+
+        if self.dec.is_some() {
+            doc.insert("$dec", self.dec.unwrap());
+        }
+
+        let save = collection.update_one(query, doc).session(session).await;
 
         if save.is_err() {
             let err = save.unwrap_err().to_string();
@@ -210,22 +240,32 @@ impl Update {
             info!(target:"db::update::error", "Specify filter before update...");
             return Err("Specify filter before update...".to_string());
         }
-        let doc = bson::to_document(&update);
-        if doc.is_err() {
-            let err_message = doc.unwrap_err().to_string();
-            info!(target: "db::get::error","{}",err_message.clone());
-
-            return Err(err_message);
-        }
-
         let db = client.database(DB_NAME);
         let collection: Collection<Document> = db.collection(self.orm.collection_name.as_str());
-
         let query = self.orm.get_filter_as_doc();
+        let mut doc = Document::new();
 
-        let save = collection
-            .update_many(query, doc! {"$set":doc.unwrap()})
-            .await;
+        if self.set.is_none() {
+            let data = bson::to_document(&update);
+            if data.is_err() {
+                let err = data.unwrap_err().to_string();
+                info!(target: "update 1","{:?}",err);
+                return Err(err);
+            }
+            doc.insert("$set", data.unwrap());
+        } else {
+            doc.insert("$set", self.set.unwrap());
+        }
+
+        if self.inc.is_some() {
+            doc.insert("$inc", self.inc.unwrap());
+        }
+
+        if self.dec.is_some() {
+            doc.insert("$dec", self.dec.unwrap());
+        }
+
+        let save = collection.update_many(query, doc).await;
 
         if save.is_err() {
             let err_message = save.unwrap_err().to_string();
@@ -252,23 +292,32 @@ impl Update {
             info!(target:"db::update::error", "Specify filter before update...");
             return Err("Specify filter before update...".to_string());
         }
-        let doc = bson::to_document(&update);
-        if doc.is_err() {
-            let err_message = doc.unwrap_err().to_string();
-            info!(target: "db::get::error","{}",err_message.clone());
-
-            return Err(err_message);
-        }
-
         let db = client.database(DB_NAME);
         let collection: Collection<Document> = db.collection(self.orm.collection_name.as_str());
-
         let query = self.orm.get_filter_as_doc();
+        let mut doc = Document::new();
 
-        let save = collection
-            .update_many(query, doc! {"$set":doc.unwrap()})
-            .session(session)
-            .await;
+        if self.set.is_none() {
+            let data = bson::to_document(&update);
+            if data.is_err() {
+                let err = data.unwrap_err().to_string();
+                info!(target: "update 1","{:?}",err);
+                return Err(err);
+            }
+            doc.insert("$set", data.unwrap());
+        } else {
+            doc.insert("$set", self.set.unwrap());
+        }
+
+        if self.inc.is_some() {
+            doc.insert("$inc", self.inc.unwrap());
+        }
+
+        if self.dec.is_some() {
+            doc.insert("$dec", self.dec.unwrap());
+        }
+
+        let save = collection.update_many(query, doc).session(session).await;
 
         if save.is_err() {
             let err_message = save.unwrap_err().to_string();

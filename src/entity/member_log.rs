@@ -21,7 +21,9 @@ impl MemberLog {
         MemberLogDTO {
             id: self.id,
             member_id: self.member_id,
+            member: None,
             created_by_id: self.created_by_id,
+            created_by: None,
             name: self.name,
             value: self.value,
             created_at: self.created_at,

@@ -66,7 +66,7 @@ pub async fn get_list_coach(
         .and()
         .filter_bool("deleted", None, false)
         .filter_object_id("branch_id", &auth_context.branch_id.unwrap())
-        .join_one("account", "create_by_id", "_id", "created_by")
+        .join_one("account", "created_by_id", "_id", "created_by")
         .join_one("file-attachment", "_id", "ref_id", "profile_picture")
         .pageable::<CoachDTO>(query.page.unwrap_or(1), query.size.unwrap_or(10), &state.db)
         .await;
@@ -96,7 +96,7 @@ pub async fn get_detail_coach(
     let id = create_object_id_option(coach_id.as_str());
     if id.is_none() {
         info!(target: "coach::detail", "Failed create ObjectId");
-        return ApiResponse::un_authorized(translate!("coach.not-found", lang).as_str());
+        return ApiResponse::not_found(translate!("coach.not-found", lang).as_str());
     }
 
     let find_coach = Orm::get("coach")
@@ -157,7 +157,7 @@ pub async fn create_coach(
         deleted: false,
     };
 
-    let save = Orm::insert("member").one(&coach, &state.db).await;
+    let save = Orm::insert("coach").one(&coach, &state.db).await;
     if save.is_err() {
         info!(target: "coach::create", "{}",save.unwrap_err());
         return ApiResponse::failed(translate!("coach.create.failed", lang).as_str());
@@ -186,17 +186,17 @@ pub async fn update_coach(
     if validate.is_err() {
         return ApiResponse::error_validation(
             validate.unwrap_err(),
-            translate!("member.update.failed", lang).as_str(),
+            translate!("coach.update.failed", lang).as_str(),
         );
     }
 
     let coach_id = create_object_id_option(coach_id.as_str());
     if coach_id.is_none() {
         info!(target: "coach::update", "Failed create ObjectId");
-        return ApiResponse::un_authorized(translate!("coach.not-found", lang).as_str());
+        return ApiResponse::not_found(translate!("coach.not-found", lang).as_str());
     }
 
-    let find_coach = Orm::get("member")
+    let find_coach = Orm::get("coach")
         .filter_object_id("_id", &coach_id.unwrap())
         .join_one("account", "create_by_id", "_id", "created_by")
         .join_one("file-attachment", "_id", "ref_id", "profile_picture")
@@ -204,11 +204,11 @@ pub async fn update_coach(
         .await;
     if find_coach.is_err() {
         info!(target: "coach::update", "{}",find_coach.unwrap_err());
-        return ApiResponse::not_found(translate!("member.not-found", lang).as_str());
+        return ApiResponse::not_found(translate!("coach.not-found", lang).as_str());
     }
     let mut coach = find_coach.unwrap();
 
-    let mut save = Orm::update("member");
+    let mut save = Orm::update("coach");
     if body.full_name.is_some() {
         coach.full_name = body.full_name.clone().unwrap();
         save = save.set_str("full_name", &body.full_name.clone().unwrap());

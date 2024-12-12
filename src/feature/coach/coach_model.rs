@@ -8,7 +8,7 @@ pub struct CreateCoachRequest {
     pub full_name: String,
     #[validate(email)]
     pub email: String,
-    #[validate(length(min = 0))]
+    #[validate(length(min = 4))]
     pub phone_number: String,
     #[validate(length(min = 0))]
     pub coach_address: String,

@@ -7,14 +7,12 @@ use serde::{Deserialize, Serialize};
 pub struct DetailTransactionDTO{
     #[serde(
         rename = "_id",
-        skip_serializing_if = "Option::is_none",
         serialize_with = "serialize_object_id",
         deserialize_with = "deserialize_object_id"
     )]
     pub id:Option<ObjectId>,
     #[serde(
         rename = "product_id",
-        skip_serializing_if = "Option::is_none",
         serialize_with = "serialize_object_id",
         deserialize_with = "deserialize_object_id"
     )]

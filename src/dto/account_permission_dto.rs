@@ -9,21 +9,18 @@ use serde::{Deserialize, Serialize};
 pub struct AccountPermissionDTO {
     #[serde(
         rename = "_id",
-        skip_serializing_if = "Option::is_none",
         serialize_with = "serialize_object_id",
         deserialize_with = "deserialize_object_id"
     )]
     pub id: Option<ObjectId>,
     #[serde(
         rename = "account_id",
-        skip_serializing_if = "Option::is_none",
         serialize_with = "serialize_object_id",
         deserialize_with = "deserialize_object_id"
     )]
     pub account_id: Option<ObjectId>,
     #[serde(
         rename = "permission_id",
-        skip_serializing_if = "Option::is_none",
         serialize_with = "serialize_object_id",
         deserialize_with = "deserialize_object_id"
     )]

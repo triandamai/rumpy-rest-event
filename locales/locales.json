@@ -124,8 +124,8 @@
     "id-ID": "Data Produk"
   },
   "product.create.failed": {
-    "en": "",
-    "id-ID": ""
+    "en": "Failed to cerate new product",
+    "id-ID": "Gagal membuat produk"
   },
   "product.create.success": {
     "en": "",
@@ -160,20 +160,20 @@
     "id-ID": ""
   },
   "member.list.success": {
-    "en": "",
-    "id-ID": ""
+    "en": "Data Member.",
+    "id-ID": "Daftar Data Member."
   },
   "member.list.failed": {
-    "en": "",
-    "id-ID": ""
+    "en": "Failed to fetch Data",
+    "id-ID": "Gagal mendapatkan data."
   },
   "member.not-found": {
-    "en": "",
-    "id-ID": ""
+    "en": "Member not found.",
+    "id-ID": "Gagal menemukan member."
   },
   "member.found": {
-    "en": "",
-    "id-ID": ""
+    "en": "Detail Member.",
+    "id-ID": "Detail Data Member."
   },
   "member.create.failed": {
     "en": "",
@@ -212,20 +212,20 @@
     "id-ID": ""
   },
   "discount.list.success": {
-    "en": "",
-    "id-ID": ""
+    "en": "Data Discount",
+    "id-ID": "Daftar Discount."
   },
   "discount.not-found": {
-    "en": "",
-    "id-ID": ""
+    "en": "Can't find discount",
+    "id-ID": "Tidak menemukan data diskon"
   },
   "discount.found": {
-    "en": "",
-    "id-ID": ""
+    "en": "Data discount",
+    "id-ID": "Data Diskon"
   },
   "discount.create.failed": {
-    "en": "",
-    "id-ID": ""
+    "en": "Failed to create discount",
+    "id-ID": "Gagal menambahkan diskon"
   },
   "discount.update.failed": {
     "en": "",
@@ -272,12 +272,12 @@
     "id-ID": ""
   },
   "coach.list.success": {
-    "en": "",
-    "id-ID": ""
+    "en": "Data Coach",
+    "id-ID": "Daftar Coach"
   },
   "coach.not-found": {
-    "en": "",
-    "id-ID": ""
+    "en": "Cannot find data coach.",
+    "id-ID": "Gagal menemukan data coach."
   },
   "coach.create.failed": {
     "en": "",
@@ -292,24 +292,24 @@
     "id-ID": ""
   },
   "coach.update.success": {
-    "en": "",
-    "id-ID": ""
+    "en": "Successfully updating coach",
+    "id-ID": "Berhasil mengupdate coach"
   },
   "coach.delete.failed": {
-    "en": "",
-    "id-ID": ""
+    "en": "Failed to delete coach",
+    "id-ID": "Gagal menghapus coach"
   },
   "coach.delete.success": {
-    "en": "",
-    "id-ID": ""
+    "en": "Successfully delete coach",
+    "id-ID": "Berhasil menghapus coach"
   },
   "coach.profile-picture.failed": {
-    "en": "",
-    "id-ID": ""
+    "en": "Failed to uploading profile picture.",
+    "id-ID": "Gagal mengupload foto profile"
   },
   "coach.profile-picture.not-found": {
-    "en": "",
-    "id-ID": ""
+    "en": "Cannot find profile picture coach",
+    "id-ID": "Tidak menemukan foto profil coach"
   },
   "coach.profile-picture.success": {
     "en": "Success updating profile picture coach",
