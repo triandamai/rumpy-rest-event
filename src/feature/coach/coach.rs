@@ -14,6 +14,7 @@ use crate::entity::coach::Coach;
 use crate::entity::file_attachment::FileAttachment;
 use crate::feature::coach::coach_model::{CreateCoachRequest, UpdateCoachRequest};
 use crate::translate;
+use axum::extract::rejection::JsonRejection;
 use axum::extract::{Multipart, Path, Query, State};
 use axum::Json;
 use bson::oid::ObjectId;
@@ -124,7 +125,7 @@ pub async fn create_coach(
     state: State<AppState>,
     lang: Lang,
     auth_context: AuthContext,
-    body: Json<CreateCoachRequest>,
+    body: Result<Json<CreateCoachRequest>, JsonRejection>,
 ) -> ApiResponse<CoachDTO> {
     info!(target: "coach::create", "{} trying create coach", auth_context.claims.sub);
     if !auth_context.authorize("app::coach::write") {
@@ -136,6 +137,10 @@ pub async fn create_coach(
         return ApiResponse::failed(translate!("coach.create.failed", lang).as_str());
     }
 
+    if body.is_err() {
+        return ApiResponse::bad_request(translate!("validation.error").as_str());
+    }
+    let body = body.unwrap();
     let validate = body.validate();
     if validate.is_err() {
         return ApiResponse::error_validation(
@@ -174,7 +179,7 @@ pub async fn update_coach(
     lang: Lang,
     auth_context: AuthContext,
     Path(coach_id): Path<String>,
-    body: Json<UpdateCoachRequest>,
+    body: Result<Json<UpdateCoachRequest>,JsonRejection>,
 ) -> ApiResponse<CoachDTO> {
     info!(target: "coach::update", "{} trying update coach", auth_context.claims.sub);
     if !auth_context.authorize("app::coach::write") {
@@ -182,6 +187,10 @@ pub async fn update_coach(
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
 
+    if body.is_err() {
+        return ApiResponse::bad_request(translate!("validation.error").as_str());
+    }
+    let body = body.unwrap();
     let validate = body.validate();
     if validate.is_err() {
         return ApiResponse::error_validation(
@@ -287,14 +296,17 @@ pub async fn update_profile_picture(
     state: State<AppState>,
     auth_context: AuthContext,
     lang: Lang,
-    multipart: Multipart,
+    multipart: Result<Multipart,JsonRejection>,
 ) -> ApiResponse<FileAttachmentDTO> {
     info!(target: "coach::profile-picture", "{} trying update prpfile picture coach", auth_context.claims.sub);
     if !auth_context.authorize("app::coach::write") {
         info!(target: "coach::profile-picture", "{} not permitted", auth_context.claims.sub);
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
-
+    if multipart.is_err() {
+        return ApiResponse::bad_request(translate!("validation.error").as_str());
+    }
+    let body = multipart.unwrap();
     let extract = MultipartFile::extract_multipart(multipart).await;
 
     let validate = extract.validate();

@@ -20,12 +20,12 @@ pub struct AccountDTO {
     pub gender: String,
     pub job_title: String,
     #[serde(
-        rename = "report_to",
+        rename = "report_to_id",
         skip_serializing_if = "Option::is_none",
         serialize_with = "serialize_object_id",
         deserialize_with = "deserialize_object_id"
     )]
-    pub report_to: Option<ObjectId>,
+    pub report_to_id: Option<ObjectId>,
     #[serde(
         rename = "branch_id",
         skip_serializing_if = "Option::is_none",

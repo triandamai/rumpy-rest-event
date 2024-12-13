@@ -6,6 +6,7 @@ pub struct CreateProductRequest {
     #[validate(length(min = 1))]
     pub product_name:String,
     pub product_description:String,
+    pub product_type:String,
     pub product_price:f64,
     pub product_selling_price:f64,
     pub product_profit:f64,

@@ -15,6 +15,7 @@ use crate::entity::file_attachment::FileAttachment;
 use crate::entity::product::Product;
 use crate::feature::product::product_model::{CreateProductRequest, UpdateProductRequest};
 use crate::translate;
+use axum::extract::rejection::JsonRejection;
 use axum::extract::{Multipart, Path, Query, State};
 use axum::Json;
 use bson::oid::ObjectId;
@@ -127,13 +128,17 @@ pub async fn create_product(
     state: State<AppState>,
     auth_context: AuthContext,
     lang: Lang,
-    body: Json<CreateProductRequest>,
+    body: Result<Json<CreateProductRequest>, JsonRejection>,
 ) -> ApiResponse<ProductDTO> {
     info!(target: "product::create", "{} trying to create product", auth_context.claims.sub);
     if !auth_context.authorize("app::product::write") {
         info!(target: "product::create", "{} not permitted", auth_context.claims.sub);
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
+    if body.is_err() {
+        return ApiResponse::bad_request(translate!("validation.error").as_str());
+    }
+    let body = body.unwrap();
 
     if auth_context.branch_id.is_none() {
         info!(target: "product::create", "{} not permitted beacause not associated with any branch", auth_context.claims.sub);
@@ -181,14 +186,17 @@ pub async fn update_product(
     auth_context: AuthContext,
     lang: Lang,
     Path(product_id): Path<String>,
-    body: Json<UpdateProductRequest>,
+    body: Result<Json<UpdateProductRequest>, JsonRejection>,
 ) -> ApiResponse<ProductDTO> {
     info!(target: "product::update", "{} trying to update product", auth_context.claims.sub);
     if !auth_context.authorize("app::product::write") {
         info!(target: "product::update", "{} not permitted", auth_context.claims.sub);
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
-
+    if body.is_err() {
+        return ApiResponse::bad_request(translate!("validation.error").as_str());
+    }
+    let body = body.unwrap();
     let validate = body.validate();
     if validate.is_err() {
         return ApiResponse::error_validation(
@@ -295,7 +303,7 @@ pub async fn update_product_image(
     state: State<AppState>,
     auth_context: AuthContext,
     lang: Lang,
-    multipart: Multipart,
+    multipart: Result<Multipart, JsonRejection>,
 ) -> ApiResponse<FileAttachmentDTO> {
     info!(target: "product::create", "{} trying to update product image", auth_context.claims.sub);
     if !auth_context.authorize("app::product::write") {
@@ -303,6 +311,10 @@ pub async fn update_product_image(
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
 
+    if multipart.is_err() {
+        return ApiResponse::bad_request(translate!("validation.error").as_str());
+    }
+    let multipart = multipart.unwrap();
     let extract = MultipartFile::extract_multipart(multipart).await;
 
     let validate = extract.validate();

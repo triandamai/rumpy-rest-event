@@ -16,6 +16,7 @@ use crate::entity::member::Member;
 use crate::feature::member::member_model::{CreateMemberRequest, UpdateMemberRequest};
 use crate::translate;
 use axum::extract::{Multipart, Path, Query, State};
+use axum::extract::rejection::JsonRejection;
 use axum::Json;
 use bson::oid::ObjectId;
 use bson::DateTime;
@@ -196,7 +197,7 @@ pub async fn update_member(
     auth_context: AuthContext,
     lang: Lang,
     Path(member_id): Path<String>,
-    body: Json<UpdateMemberRequest>,
+    body: Result<Json<UpdateMemberRequest>,JsonRejection>,
 ) -> ApiResponse<MemberDTO> {
     info!(target: "member::update", "{} trying get list member",auth_context.claims.sub);
     if !auth_context.authorize("app::member::write") {
@@ -204,6 +205,10 @@ pub async fn update_member(
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
 
+    if body.is_err() {
+        return ApiResponse::bad_request(translate!("validation.error").as_str());
+    }
+    let body = body.unwrap();
     let validate = body.validate();
     if validate.is_err() {
         return ApiResponse::error_validation(
@@ -323,12 +328,16 @@ pub async fn update_profile_picture(
     state: State<AppState>,
     auth_context: AuthContext,
     lang: Lang,
-    multipart: Multipart,
+    multipart: Result<Multipart,JsonRejection>,
 ) -> ApiResponse<FileAttachmentDTO> {
     if !auth_context.authorize("app::member::write") {
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
 
+    if multipart.is_err() {
+        return ApiResponse::bad_request(translate!("validation.error").as_str());
+    }
+    let multipart = multipart.unwrap();
     let extract = MultipartFile::extract_multipart(multipart).await;
 
     let validate = extract.validate();
@@ -428,3 +437,5 @@ pub async fn update_profile_picture(
         translate!("member.profile-picture.success", lang).as_str(),
     )
 }
+
+

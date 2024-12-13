@@ -16,6 +16,7 @@ use crate::entity::account_permission::AccountPermission;
 use crate::entity::file_attachment::FileAttachment;
 use crate::feature::user::user_model::{CreateUserRequest, UpdateUserRequest};
 use crate::translate;
+use axum::extract::rejection::JsonRejection;
 use axum::extract::{Multipart, Path, Query, State};
 use axum::Json;
 use bson::oid::ObjectId;
@@ -81,7 +82,7 @@ pub async fn get_detail_user(
 
     let id = create_object_id_option(user_id.as_str());
     if id.is_none() {
-        return ApiResponse::un_authorized(translate!("user.not-found", lang).as_str());
+        return ApiResponse::bad_request(translate!("user.id.invalid", lang).as_str());
     }
 
     let find_user = Orm::get("account")
@@ -103,12 +104,15 @@ pub async fn create_user(
     state: State<AppState>,
     auth_context: AuthContext,
     lang: Lang,
-    body: Json<CreateUserRequest>,
+    body: Result<Json<CreateUserRequest>, JsonRejection>,
 ) -> ApiResponse<AccountDTO> {
     if !auth_context.authorize("app::account::write") {
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
-
+    if body.is_err() {
+        return ApiResponse::bad_request(translate!("validation.error").as_str());
+    }
+    let body = body.unwrap();
     let validate = body.validate();
     if validate.is_err() {
         return ApiResponse::error_validation(validate.unwrap_err(), translate!("", lang).as_str());
@@ -121,7 +125,7 @@ pub async fn create_user(
         password: body.password.clone(),
         gender: body.gender.clone(),
         job_title: body.job_title.clone(),
-        report_to: auth_context.user_id,
+        report_to_id: auth_context.user_id,
         branch_id: auth_context.branch_id,
         created_at: DateTime::now(),
         updated_at: DateTime::now(),
@@ -168,12 +172,15 @@ pub async fn update_user(
     auth_context: AuthContext,
     lang: Lang,
     Path(user_id): Path<String>,
-    body: Json<UpdateUserRequest>,
+    body: Result<Json<UpdateUserRequest>, JsonRejection>,
 ) -> ApiResponse<AccountDTO> {
     if !auth_context.authorize("app::account::write") {
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
-
+    if body.is_err() {
+        return ApiResponse::bad_request(translate!("validation.error").as_str());
+    }
+    let body = body.unwrap();
     let validate = body.validate();
     if validate.is_err() {
         return ApiResponse::error_validation(
@@ -265,12 +272,15 @@ pub async fn upload_profile_picture(
     state: State<AppState>,
     auth_context: AuthContext,
     lang: Lang,
-    multipart: Multipart,
+    multipart: Result<Multipart, JsonRejection>,
 ) -> ApiResponse<FileAttachmentDTO> {
     if !auth_context.authorize("app::account::write") {
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
-
+    if multipart.is_err() {
+        return ApiResponse::bad_request(translate!("validation.error").as_str());
+    }
+    let multipart = multipart.unwrap();
     let extract = MultipartFile::extract_multipart(multipart).await;
 
     let validate = extract.validate();

@@ -13,6 +13,7 @@ use crate::feature::membership::membership_model::{
     CreateMembershipRequest, UpdateMembershipRequest,
 };
 use crate::translate;
+use axum::extract::rejection::JsonRejection;
 use axum::extract::{Path, Query, State};
 use axum::Json;
 use bson::oid::ObjectId;
@@ -107,7 +108,7 @@ pub async fn create_membership(
     state: State<AppState>,
     auth_context: AuthContext,
     lang: Lang,
-    body: Json<CreateMembershipRequest>,
+    body: Result<Json<CreateMembershipRequest>, JsonRejection>,
 ) -> ApiResponse<MembershipDTO> {
     info!(target: "membership::create", "{} trying to create new membership",auth_context.claims.sub);
     if !auth_context.authorize("app::membership::write") {
@@ -115,6 +116,10 @@ pub async fn create_membership(
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
 
+    if body.is_err() {
+        return ApiResponse::bad_request(translate!("validation.error").as_str());
+    }
+    let body = body.unwrap();
     let validate = body.validate();
     if validate.is_err() {
         info!(target: "membership::create", "validation failed {}.",validate.clone().unwrap_err());

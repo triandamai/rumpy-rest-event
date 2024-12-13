@@ -397,7 +397,7 @@ pub async fn init_seeder(db_client: &Client) {
                         password: pass,
                         gender: "M".to_string(),
                         job_title: "OWNER".to_string(),
-                        report_to: None,
+                        report_to_id: None,
                         branch_id: branch_id_1.clone(),
                         created_at: DateTime::now(),
                         updated_at: DateTime::now(),

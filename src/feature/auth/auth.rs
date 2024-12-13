@@ -9,6 +9,7 @@ use crate::feature::auth::auth_model::{
     ChangePasswordRequest, SignInRequest, SignInResponse, BRANCH_ID_KEY, TOKEN_KEY, USER_ID_KEY,
 };
 use crate::translate;
+use axum::extract::rejection::JsonRejection;
 use axum::extract::State;
 use axum::Json;
 use bcrypt::DEFAULT_COST;
@@ -17,8 +18,12 @@ use validator::Validate;
 pub async fn sign_in(
     mut state: State<AppState>,
     lang: Lang,
-    body: Json<SignInRequest>,
+    body: Result<Json<SignInRequest>, JsonRejection>,
 ) -> ApiResponse<SignInResponse> {
+    if body.is_err() {
+        return ApiResponse::failed(translate!("validation.error").as_str());
+    }
+    let body = body.unwrap();
     let validate = body.validate();
     if !validate.is_ok() {
         return ApiResponse::error_validation(
@@ -47,7 +52,7 @@ pub async fn sign_in(
     }
     let get_account = Orm::get("account")
         .filter_object_id("_id", &find.id.unwrap())
-        .join_one("account", "reply_to", "_id", "report")
+        .join_one("account", "reply_to_id", "_id", "report")
         .join_one("branch", "branch_id", "_id", "branch")
         .join_one("file-attachment", "_id", "ref_id", "profile_picture")
         .join_many("account-permission", "_id", "account_id", "permission")

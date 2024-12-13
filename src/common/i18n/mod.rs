@@ -10,7 +10,7 @@ use std::sync::Once;
 
 #[derive(Debug, Default)]
 pub struct I18n {
-    pub locales: HashMap<String, HashMap<String, String>>
+    pub locales: HashMap<String, HashMap<String, String>>,
 }
 
 impl I18n {
@@ -57,10 +57,7 @@ pub fn get_global_i18n() -> &'static Mutex<I18n> {
         GLOBAL_I18N.as_ref().expect("Global I18n not initialized")
     }
 }
-pub fn replace_placeholders(
-    template: &str,
-    values: &HashMap<&str, &str>,
-) -> String {
+pub fn replace_placeholders(template: &str, values: &HashMap<&str, &str>) -> String {
     let mut result = template.to_string();
 
     for (key, value) in values {
@@ -82,7 +79,11 @@ pub fn tr(name: &str, lang: &str, params: HashMap<String, String>) -> String {
                 let placeholder = format!("${{{}}}", key); // Create placeholder like ${key}
                 str = str.replace(&placeholder, value.as_str());
             }
+        } else {
+            str = name.to_string();
         }
+    } else {
+        str = name.to_string();
     }
     str
 }
@@ -98,7 +99,11 @@ pub fn tr_ty_lang(name: &str, lang: Lang, params: HashMap<String, String>) -> St
                 let placeholder = format!("${{{}}}", key); // Create placeholder like ${key}
                 str = str.replace(&placeholder, value.as_str());
             }
+        } else {
+            str = name.to_string();
         }
+    } else {
+        str = name.to_string();
     }
     str
 }

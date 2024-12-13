@@ -12,6 +12,7 @@ use crate::entity::branch::Branch;
 use crate::feature::auth::auth_model::USER_ID_KEY;
 use crate::feature::branch::branch_model::{CreateBranchRequest, UpdateBranchRequest};
 use crate::translate;
+use axum::extract::rejection::JsonRejection;
 use axum::extract::{Path, Query, State};
 use axum::Json;
 use bson::oid::ObjectId;
@@ -97,7 +98,7 @@ pub async fn create_branch(
     mut state: State<AppState>,
     lang: Lang,
     auth_context: AuthContext,
-    body: Json<CreateBranchRequest>,
+    body: Result<Json<CreateBranchRequest>,JsonRejection>,
 ) -> ApiResponse<BranchDTO> {
     info!(target: "branch::create", "{} trying to create new branch",auth_context.claims.sub);
 
@@ -106,6 +107,10 @@ pub async fn create_branch(
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
 
+    if body.is_err() {
+        return ApiResponse::bad_request(translate!("validation.error").as_str());
+    }
+    let body = body.unwrap();
     let validate = body.validate();
     if validate.is_err() {
         info!(target: "branch::create", "validation failed {}.",validate.clone().unwrap_err());
@@ -164,12 +169,17 @@ pub async fn update_branch(
     lang: Lang,
     auth_context: AuthContext,
     Path(branch_id): Path<String>,
-    body: Json<UpdateBranchRequest>,
+    body: Result<Json<UpdateBranchRequest>,JsonRejection>,
 ) -> ApiResponse<BranchDTO> {
     if !auth_context.authorize("app::branch::write") {
         info!(target: "branch::create", "Failed to create new branch because user does not permitted.");
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
+
+    if body.is_err() {
+        return ApiResponse::bad_request(translate!("validation.error").as_str());
+    }
+    let body = body.unwrap();
     let validate = body.validate();
     if validate.is_err() {
         return ApiResponse::error_validation(

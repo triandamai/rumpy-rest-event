@@ -10,6 +10,5 @@ pub mod product_log;
 pub mod membership;
 pub mod transaction;
 pub mod detail_transaction;
-pub mod promotion;
 pub mod discount;
 pub mod file_attachment;

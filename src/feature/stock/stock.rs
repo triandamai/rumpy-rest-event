@@ -12,6 +12,7 @@ use crate::entity::product_log::ProductLog;
 use crate::feature::stock::stock_model::UpdateStockRequest;
 use crate::translate;
 use axum::extract::{Path, Query, State};
+use axum::extract::rejection::JsonRejection;
 use axum::Json;
 use bson::oid::ObjectId;
 use bson::{doc, DateTime};
@@ -121,7 +122,7 @@ pub async fn update_stock(
     state: State<AppState>,
     auth_context: AuthContext,
     lang: Lang,
-    body: Json<UpdateStockRequest>,
+    body: Result<Json<UpdateStockRequest>,JsonRejection>,
 ) -> ApiResponse<ProductDTO> {
     info!(target: "stock::update","{} trying to update stock",auth_context.claims.sub);
     if !auth_context.authorize("app::stock::write") {
