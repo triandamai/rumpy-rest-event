@@ -16,6 +16,7 @@ use crate::entity::member::Member;
 use crate::feature::member::member_model::{CreateMemberRequest, UpdateMemberRequest};
 use crate::translate;
 use axum::extract::{Multipart, Path, Query, State};
+use axum::extract::multipart::MultipartRejection;
 use axum::extract::rejection::JsonRejection;
 use axum::Json;
 use bson::oid::ObjectId;
@@ -328,7 +329,7 @@ pub async fn update_profile_picture(
     state: State<AppState>,
     auth_context: AuthContext,
     lang: Lang,
-    multipart: Result<Multipart,JsonRejection>,
+    multipart: Result<Multipart,MultipartRejection>,
 ) -> ApiResponse<FileAttachmentDTO> {
     if !auth_context.authorize("app::member::write") {
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());

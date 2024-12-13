@@ -130,6 +130,11 @@ pub async fn update_stock(
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
 
+    if body.is_err() {
+        return ApiResponse::bad_request(translate!("validation.error").as_str());
+    }
+    let body = body.unwrap();
+
     if auth_context.branch_id.is_none() {
         info!(target:"stock::update","failed to get branch id");
         return ApiResponse::failed(translate!("stock.update.failed", lang).as_str());

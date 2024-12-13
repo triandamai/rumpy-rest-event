@@ -69,43 +69,41 @@ pub fn replace_placeholders(template: &str, values: &HashMap<&str, &str>) -> Str
 }
 
 pub fn tr(name: &str, lang: &str, params: HashMap<String, String>) -> String {
-    let mut str = String::new();
     let i18n = get_global_i18n().lock().unwrap();
     if let Some(locale) = i18n.locales.get(name) {
         if let Some(greeting) = locale.get(lang) {
-            str = greeting.to_string();
+            let mut str = greeting.to_string();
             info!(target: "i18n::translating","{}",name);
             for (key, value) in params {
                 let placeholder = format!("${{{}}}", key); // Create placeholder like ${key}
                 str = str.replace(&placeholder, value.as_str());
             }
+            str
         } else {
-            str = name.to_string();
+            name.to_string()
         }
     } else {
-        str = name.to_string();
+        name.to_string()
     }
-    str
 }
 
 pub fn tr_ty_lang(name: &str, lang: Lang, params: HashMap<String, String>) -> String {
-    let mut str = String::new();
     let i18n = get_global_i18n().lock().unwrap();
     if let Some(locale) = i18n.locales.get(name) {
         if let Some(greeting) = locale.get(&lang.locale_code.to_string()) {
-            str = greeting.to_string();
+            let mut str = greeting.to_string();
             info!(target: "i18n::translating","{}",name);
             for (key, value) in params {
                 let placeholder = format!("${{{}}}", key); // Create placeholder like ${key}
                 str = str.replace(&placeholder, value.as_str());
             }
+            str
         } else {
-            str = name.to_string();
+            name.to_string()
         }
     } else {
-        str = name.to_string();
+        name.to_string()
     }
-    str
 }
 
 // Define a macro to create the placeholder replacement map and perform replacements

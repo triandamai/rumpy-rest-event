@@ -21,5 +21,7 @@ RUN apt update \
     && apt clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 COPY --from=builder /app/target/release/strong-teams /usr/local/bin
+COPY --from=builder /app/locales /usr/local/bin/locales
+COPY --from=builder /app/uploads /usr/local/bin/uploads
 
 ENTRYPOINT ["/usr/local/bin/strong-teams"]

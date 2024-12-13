@@ -15,6 +15,7 @@ use crate::entity::file_attachment::FileAttachment;
 use crate::entity::product::Product;
 use crate::feature::product::product_model::{CreateProductRequest, UpdateProductRequest};
 use crate::translate;
+use axum::extract::multipart::MultipartRejection;
 use axum::extract::rejection::JsonRejection;
 use axum::extract::{Multipart, Path, Query, State};
 use axum::Json;
@@ -303,7 +304,7 @@ pub async fn update_product_image(
     state: State<AppState>,
     auth_context: AuthContext,
     lang: Lang,
-    multipart: Result<Multipart, JsonRejection>,
+    multipart: Result<Multipart, MultipartRejection>,
 ) -> ApiResponse<FileAttachmentDTO> {
     info!(target: "product::create", "{} trying to update product image", auth_context.claims.sub);
     if !auth_context.authorize("app::product::write") {

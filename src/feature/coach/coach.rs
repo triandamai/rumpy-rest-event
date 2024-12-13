@@ -16,6 +16,7 @@ use crate::feature::coach::coach_model::{CreateCoachRequest, UpdateCoachRequest}
 use crate::translate;
 use axum::extract::rejection::JsonRejection;
 use axum::extract::{Multipart, Path, Query, State};
+use axum::extract::multipart::MultipartRejection;
 use axum::Json;
 use bson::oid::ObjectId;
 use bson::DateTime;
@@ -296,7 +297,7 @@ pub async fn update_profile_picture(
     state: State<AppState>,
     auth_context: AuthContext,
     lang: Lang,
-    multipart: Result<Multipart,JsonRejection>,
+    multipart: Result<Multipart,MultipartRejection>,
 ) -> ApiResponse<FileAttachmentDTO> {
     info!(target: "coach::profile-picture", "{} trying update prpfile picture coach", auth_context.claims.sub);
     if !auth_context.authorize("app::coach::write") {
@@ -306,7 +307,7 @@ pub async fn update_profile_picture(
     if multipart.is_err() {
         return ApiResponse::bad_request(translate!("validation.error").as_str());
     }
-    let body = multipart.unwrap();
+    let multipart = multipart.unwrap();
     let extract = MultipartFile::extract_multipart(multipart).await;
 
     let validate = extract.validate();
