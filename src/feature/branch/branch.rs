@@ -187,8 +187,8 @@ pub async fn update_branch(
             translate!("validation", lang).as_str(),
         );
     }
-    let branch_id = create_or_new_object_id(branch_id.as_str());
 
+    let branch_id = create_or_new_object_id(branch_id.as_str());
     let find_branch = Orm::get("branch")
         .filter_object_id("_id", &branch_id.unwrap())
         .one::<Branch>(&state.db)
