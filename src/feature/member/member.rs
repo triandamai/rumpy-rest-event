@@ -16,6 +16,7 @@ use crate::dto::file_attachment_dto::FileAttachmentDTO;
 use crate::dto::member_dto::MemberDTO;
 use crate::dto::member_log_dto::MemberLogDTO;
 use crate::dto::membership_dto::MembershipDTO;
+use crate::dto::transaction_dto::TransactionDTO;
 use crate::entity::detail_transaction::DetailTransaction;
 use crate::entity::file_attachment::FileAttachment;
 use crate::entity::member::Member;
@@ -24,7 +25,7 @@ use crate::entity::member_subscription::MemberSubscription;
 use crate::entity::transaction::Transaction;
 use crate::feature::member::member_model::{CreateMemberRequest, UpdateMemberRequest};
 use crate::translate;
-use axum::extract::{ Path, Query, State};
+use axum::extract::{Path, Query, State};
 use bson::oid::ObjectId;
 use bson::{doc, DateTime};
 use log::info;
@@ -266,6 +267,7 @@ pub async fn create_member(
     let detail_transaction = DetailTransaction {
         id: Some(ObjectId::new()),
         product_id: membership_id,
+        transaction_id: transaction.id,
         kind: "MEMBERSHIP".to_string(),
         notes: format!("Paket langganan {}", membership.name),
         quantity: 1,
@@ -489,6 +491,7 @@ pub async fn update_member(
         let detail_transaction = DetailTransaction {
             id: Some(ObjectId::new()),
             product_id: membership.id,
+            transaction_id: transaction.id,
             kind: "MEMBERSHIP".to_string(),
             notes: format!("Paket langganan {}", membership.name),
             quantity: 1,
@@ -892,6 +895,45 @@ pub async fn upload_progress(
 
     ApiResponse::ok(
         dto,
+        translate!("member.profile-picture.failed", lang).as_str(),
+    )
+}
+
+
+//transaction
+pub async fn get_member_transaction(
+    state:State<AppState>,
+    auth_context: AuthContext,
+    lang:Lang,
+    Path(member_id):Path<String>,
+    query:Query<PaginationRequest>
+)->ApiResponse<PagingResponse<TransactionDTO>>{
+    if !auth_context.authorize(app::transaction::READ) {
+        return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
+    }
+
+    if auth_context.branch_id.is_none(){
+        return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
+    }
+
+    let member_id = create_object_id_option(member_id.as_str());
+
+    let find = Orm::get("transaction")
+        .filter_object_id("member_id",&member_id.unwrap())
+        .join_one("member","member_id","_id","member")
+        .join_one("account","created_by_id","_id","created_by")
+        .join_many("detail-transaction","transaction_id","","details")
+        .pageable::<TransactionDTO>(
+            query.page.unwrap_or(0),
+            query.size.unwrap_or(0),
+            &state.db
+        ).await;
+
+    if find.is_err() {
+        return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
+    }
+    ApiResponse::ok(
+        find.unwrap(),
         translate!("member.profile-picture.failed", lang).as_str(),
     )
 }

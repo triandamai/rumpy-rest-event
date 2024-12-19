@@ -17,6 +17,12 @@ pub struct DetailTransactionDTO{
         deserialize_with = "deserialize_object_id"
     )]
     pub product_id:Option<ObjectId>,
+    #[serde(
+        rename = "transaction_id",
+        serialize_with = "serialize_object_id",
+        deserialize_with = "deserialize_object_id"
+    )]
+    pub transaction_id:Option<ObjectId>,
     pub kind:String,
     pub notes:String,
     pub quantity:i64,

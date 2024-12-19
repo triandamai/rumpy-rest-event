@@ -1,7 +1,7 @@
+use crate::dto::transaction_dto::TransactionDTO;
 use bson::oid::ObjectId;
 use bson::DateTime;
 use serde::{Deserialize, Serialize};
-use crate::dto::transaction_dto::TransactionDTO;
 
 #[derive(Debug,Serialize,Deserialize)]
 pub struct Transaction{
@@ -28,13 +28,17 @@ impl Transaction{
         TransactionDTO{
             id: self.id,
             branch_id: self.branch_id,
+            branch: None,
             member_id: self.member_id,
+            member: None,
             total_price_before_discount: self.total_price_before_discount,
             notes: self.notes,
             total_price: self.total_price,
             total_discount: self.total_discount,
             is_membership: self.is_membership,
-            created_by: self.created_by_id,
+            details: None,
+            created_by_id: self.created_by_id,
+            created_by: None,
             created_at: self.created_at,
             updated_at: self.updated_at,
             deleted: self.deleted,
