@@ -1,5 +1,5 @@
 FROM rustlang/rust:nightly-slim AS builder
-RUN apt update \
+RUN apt UPDATE \
     && apt install -y pkg-config \
     && apt install -y libssl-dev
 WORKDIR /app
@@ -15,7 +15,7 @@ RUN cargo +nightly build --release
 
 
 FROM debian:stable-slim
-RUN apt update \
+RUN apt UPDATE \
     && apt install -y pkg-config \
     && apt install -y libssl-dev \
     && apt install -y openssl ca-certificates \

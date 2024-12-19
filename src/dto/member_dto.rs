@@ -1,13 +1,14 @@
 use crate::common::bson::{deserialize_object_id, serialize_datetime, serialize_object_id};
 use crate::dto::account_dto::AccountDTO;
 use crate::dto::branch_dto::BranchDTO;
-use crate::dto::coach::CoachDTO;
+use crate::dto::coach_dto::CoachDTO;
 use crate::dto::file_attachment_dto::FileAttachmentDTO;
+use crate::dto::member_subscription_dto::MemberSubscriptionDTO;
 use bson::oid::ObjectId;
 use bson::DateTime;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct MemberDTO {
     #[serde(
         rename = "_id",
@@ -38,8 +39,10 @@ pub struct MemberDTO {
         deserialize_with = "deserialize_object_id"
     )]
     pub coach_id: Option<ObjectId>,
+    pub subscription: Option<MemberSubscriptionDTO>,
     #[serde(rename = "coach", skip_serializing_if = "Option::is_none")]
     pub coach: Option<CoachDTO>,
+    pub nfc_id: Option<String>,
     pub full_name: String,
     pub gender: Option<String>,
     pub email: Option<String>,

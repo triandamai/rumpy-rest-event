@@ -2,22 +2,21 @@ use crate::common::api_response::{ApiResponse, PaginationRequest, PagingResponse
 use crate::common::app_state::AppState;
 use crate::common::jwt::AuthContext;
 use crate::common::lang::Lang;
+use crate::common::middleware::Json;
 use crate::common::minio::MinIO;
-use crate::common::multipart_file::MultipartFile;
+use crate::common::multipart_file::SingleFileExtractor;
 use crate::common::orm::orm::Orm;
+use crate::common::permission::permission::app;
 use crate::common::utils::{
     create_object_id_option, QUERY_ASC, QUERY_DESC, QUERY_LATEST, QUERY_OLDEST,
 };
-use crate::dto::coach::CoachDTO;
+use crate::dto::coach_dto::CoachDTO;
 use crate::dto::file_attachment_dto::FileAttachmentDTO;
 use crate::entity::coach::Coach;
 use crate::entity::file_attachment::FileAttachment;
 use crate::feature::coach::coach_model::{CreateCoachRequest, UpdateCoachRequest};
 use crate::translate;
-use axum::extract::rejection::JsonRejection;
-use axum::extract::{Multipart, Path, Query, State};
-use axum::extract::multipart::MultipartRejection;
-use axum::Json;
+use axum::extract::{Path, Query, State};
 use bson::oid::ObjectId;
 use bson::DateTime;
 use log::info;
@@ -30,7 +29,7 @@ pub async fn get_list_coach(
     query: Query<PaginationRequest>,
 ) -> ApiResponse<PagingResponse<CoachDTO>> {
     info!(target: "coach::list", "{} trying get list coach", auth_context.claims.sub);
-    if !auth_context.authorize("app::coach::read") {
+    if !auth_context.authorize(app::coach::READ) {
         info!(target: "coach::list", "{} not permitted", auth_context.claims.sub);
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
@@ -86,7 +85,7 @@ pub async fn get_detail_coach(
     Path(coach_id): Path<String>,
 ) -> ApiResponse<CoachDTO> {
     info!(target: "coach::detail", "{} trying get detail coach", auth_context.claims.sub);
-    if !auth_context.authorize("app::coach::read") {
+    if !auth_context.authorize(app::coach::READ) {
         info!(target: "coach::detail", "{} not permitted", auth_context.claims.sub);
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
@@ -97,7 +96,7 @@ pub async fn get_detail_coach(
 
     let id = create_object_id_option(coach_id.as_str());
     if id.is_none() {
-        info!(target: "coach::detail", "Failed create ObjectId");
+        info!(target: "coach::detail", "Failed CREATE ObjectId");
         return ApiResponse::not_found(translate!("coach.not-found", lang).as_str());
     }
 
@@ -126,11 +125,11 @@ pub async fn create_coach(
     state: State<AppState>,
     lang: Lang,
     auth_context: AuthContext,
-    body: Result<Json<CreateCoachRequest>, JsonRejection>,
+    Json(body): Json<CreateCoachRequest>,
 ) -> ApiResponse<CoachDTO> {
-    info!(target: "coach::create", "{} trying create coach", auth_context.claims.sub);
-    if !auth_context.authorize("app::coach::write") {
-        info!(target: "coach::create", "{} not permitted", auth_context.claims.sub);
+    info!(target: "coach::CREATE", "{} trying CREATE coach", auth_context.claims.sub);
+    if !auth_context.authorize(app::coach::CREATE) {
+        info!(target: "coach::CREATE", "{} not permitted", auth_context.claims.sub);
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
     if auth_context.branch_id.is_none() {
@@ -138,10 +137,6 @@ pub async fn create_coach(
         return ApiResponse::failed(translate!("coach.create.failed", lang).as_str());
     }
 
-    if body.is_err() {
-        return ApiResponse::bad_request(translate!("validation.error").as_str());
-    }
-    let body = body.unwrap();
     let validate = body.validate();
     if validate.is_err() {
         return ApiResponse::error_validation(
@@ -165,10 +160,10 @@ pub async fn create_coach(
 
     let save = Orm::insert("coach").one(&coach, &state.db).await;
     if save.is_err() {
-        info!(target: "coach::create", "{}",save.unwrap_err());
+        info!(target: "coach::CREATE", "{}",save.unwrap_err());
         return ApiResponse::failed(translate!("coach.create.failed", lang).as_str());
     }
-    info!(target: "coach::create","Successfully created Coach");
+    info!(target: "coach::CREATE","Successfully created Coach");
     ApiResponse::ok(
         coach.to_dto(),
         translate!("coach.create.success", lang).as_str(),
@@ -180,18 +175,14 @@ pub async fn update_coach(
     lang: Lang,
     auth_context: AuthContext,
     Path(coach_id): Path<String>,
-    body: Result<Json<UpdateCoachRequest>,JsonRejection>,
+    Json(body): Json<UpdateCoachRequest>,
 ) -> ApiResponse<CoachDTO> {
-    info!(target: "coach::update", "{} trying update coach", auth_context.claims.sub);
-    if !auth_context.authorize("app::coach::write") {
-        info!(target: "coach::update", "{} not permitted", auth_context.claims.sub);
+    info!(target: "coach::UPDATE", "{} trying UPDATE coach", auth_context.claims.sub);
+    if !auth_context.authorize(app::coach::UPDATE) {
+        info!(target: "coach::UPDATE", "{} not permitted", auth_context.claims.sub);
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
 
-    if body.is_err() {
-        return ApiResponse::bad_request(translate!("validation.error").as_str());
-    }
-    let body = body.unwrap();
     let validate = body.validate();
     if validate.is_err() {
         return ApiResponse::error_validation(
@@ -202,7 +193,7 @@ pub async fn update_coach(
 
     let coach_id = create_object_id_option(coach_id.as_str());
     if coach_id.is_none() {
-        info!(target: "coach::update", "Failed create ObjectId");
+        info!(target: "coach::UPDATE", "Failed CREATE ObjectId");
         return ApiResponse::not_found(translate!("coach.not-found", lang).as_str());
     }
 
@@ -213,7 +204,7 @@ pub async fn update_coach(
         .one::<CoachDTO>(&state.db)
         .await;
     if find_coach.is_err() {
-        info!(target: "coach::update", "{}",find_coach.unwrap_err());
+        info!(target: "coach::UPDATE", "{}",find_coach.unwrap_err());
         return ApiResponse::not_found(translate!("coach.not-found", lang).as_str());
     }
     let mut coach = find_coach.unwrap();
@@ -248,12 +239,12 @@ pub async fn update_coach(
         .await;
 
     if save_data.is_err() {
-        info!(target: "coach::update", "{}",save_data.unwrap_err());
+        info!(target: "coach::UPDATE", "{}",save_data.unwrap_err());
 
         return ApiResponse::failed(translate!("coach.update.failed", lang).as_str());
     }
 
-    info!(target: "coach::update", "Successfully updated Coach");
+    info!(target: "coach::UPDATE", "Successfully updated Coach");
     ApiResponse::ok(coach, translate!("coach.update.success", lang).as_str())
 }
 
@@ -263,15 +254,15 @@ pub async fn delete_coach(
     lang: Lang,
     Path(coach_id): Path<String>,
 ) -> ApiResponse<String> {
-    info!(target: "coach::delete", "{} trying delete coach", auth_context.claims.sub);
-    if !auth_context.authorize("app::coach::write") {
-        info!(target: "coach::delete", "{} not permitted", auth_context.claims.sub);
+    info!(target: "coach::DELETE", "{} trying DELETE coach", auth_context.claims.sub);
+    if !auth_context.authorize(app::coach::DELETE) {
+        info!(target: "coach::DELETE", "{} not permitted", auth_context.claims.sub);
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
 
     let id = create_object_id_option(coach_id.as_str());
     if id.is_none() {
-        info!(target: "coach::delete", "Failed create ObjectId");
+        info!(target: "coach::DELETE", "Failed CREATE ObjectId");
         return ApiResponse::un_authorized(translate!("coach.not-found", lang).as_str());
     }
 
@@ -282,11 +273,11 @@ pub async fn delete_coach(
         .await;
 
     if update.is_err() {
-        info!(target: "coach::delete","{}",update.unwrap_err());
+        info!(target: "coach::DELETE","{}",update.unwrap_err());
         return ApiResponse::failed(translate!("coach.delete.failed", lang).as_str());
     }
 
-    info!(target: "coach::delete", "Successfully deleted Coach");
+    info!(target: "coach::DELETE", "Successfully deleted Coach");
     ApiResponse::ok(
         "OK".to_string(),
         translate!("coach.delete.success", lang).as_str(),
@@ -297,20 +288,16 @@ pub async fn update_profile_picture(
     state: State<AppState>,
     auth_context: AuthContext,
     lang: Lang,
-    multipart: Result<Multipart,MultipartRejection>,
+    multipart: SingleFileExtractor,
 ) -> ApiResponse<FileAttachmentDTO> {
-    info!(target: "coach::profile-picture", "{} trying update prpfile picture coach", auth_context.claims.sub);
-    if !auth_context.authorize("app::coach::write") {
+    info!(target: "coach::profile-picture", "{} trying UPDATE prpfile picture coach", auth_context.claims.sub);
+    if !auth_context.authorize(app::coach::UPDATE) {
         info!(target: "coach::profile-picture", "{} not permitted", auth_context.claims.sub);
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
-    if multipart.is_err() {
-        return ApiResponse::bad_request(translate!("validation.error").as_str());
-    }
-    let multipart = multipart.unwrap();
-    let extract = MultipartFile::extract_multipart(multipart).await;
 
-    let validate = extract.validate();
+
+    let validate = multipart.validate_body();
     if validate.is_err() {
         return ApiResponse::error_validation(
             validate.unwrap_err(),
@@ -318,9 +305,9 @@ pub async fn update_profile_picture(
         );
     }
 
-    let user_id = create_object_id_option(extract.ref_id.as_str());
+    let user_id = create_object_id_option(multipart.ref_id.as_str());
     if user_id.is_none() {
-        info!(target: "coach::profile-picture", "Failed create ObjectId");
+        info!(target: "coach::profile-picture", "Failed CREATE ObjectId");
         return ApiResponse::not_found(
             translate!("coach.profile-picture.not-found", lang).as_str(),
         );
@@ -330,8 +317,9 @@ pub async fn update_profile_picture(
         .one::<FileAttachment>(&state.db)
         .await;
 
+    let multipart = multipart.file();
     let minio = MinIO::new().await;
-    let mut filename = format!("{}.{}", extract.filename, extract.extension);
+    let mut filename = format!("{}.{}", multipart.filename, multipart.extension);
     let is_file_exists = find_exist_profile_picture.is_ok();
     let bucket_name = "coach-profile-picture".to_string();
 
@@ -339,10 +327,10 @@ pub async fn update_profile_picture(
         Ok(v) => v,
         Err(_) => FileAttachment {
             id: Some(ObjectId::new()),
-            ref_id: create_object_id_option(extract.ref_id.as_str()),
-            filename: extract.filename.clone(),
-            mime_type: extract.mime_type.clone(),
-            extension: extract.extension.clone(),
+            ref_id: create_object_id_option(multipart.ref_id.as_str()),
+            filename: multipart.filename.clone(),
+            mime_type: multipart.mime_type.clone(),
+            extension: multipart.extension.clone(),
             kind: "COACH".to_string(),
             create_at: DateTime::now(),
             updated_at: DateTime::now(),
@@ -358,13 +346,13 @@ pub async fn update_profile_picture(
 
     //upload new
     let minio = minio
-        .upload_file(extract.temp_path.clone(), bucket_name, filename.clone())
+        .upload_file(multipart.temp_path.clone(), bucket_name, filename.clone())
         .await;
 
     if minio.is_err() {
         let err = minio.unwrap_err();
         info!(target: "coach::profile-picture", "{}", err);
-        let _remove = extract.remove_file();
+        let _remove = multipart.remove_file();
         return ApiResponse::failed(translate!("coach.profile-picture.failed", lang).as_str());
     }
 
@@ -374,8 +362,8 @@ pub async fn update_profile_picture(
             let update_profile_picture = Orm::update("file-attachment")
                 .filter_object_id("ref_id", &user_id.unwrap())
                 .set_str("filename", &filename.as_str())
-                .set_str("mime-type", &extract.mime_type.as_str())
-                .set_str("extension", &extract.extension.as_str())
+                .set_str("mime-type", &multipart.mime_type.as_str())
+                .set_str("extension", &multipart.extension.as_str())
                 .execute_one(&state.db)
                 .await;
             if update_profile_picture.is_err() {
@@ -396,12 +384,12 @@ pub async fn update_profile_picture(
 
     if !success {
         info!(target: "coach::profile-picture", "{}", error_message);
-        let _remove = extract.remove_file();
+        let _remove = multipart.remove_file();
         return ApiResponse::failed(translate!("coach.profile-picture.failed", lang).as_str());
     }
 
-    let _remove = extract.remove_file();
-    info!(target: "coach::profile-picture", "Successfully update picture coach");
+    let _remove = multipart.remove_file();
+    info!(target: "coach::profile-picture", "Successfully UPDATE picture coach");
     ApiResponse::ok(
         attachment.to_dto(),
         translate!("coach.profile-picture.success", lang).as_str(),

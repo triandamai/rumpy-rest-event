@@ -106,7 +106,7 @@ pub fn tr_ty_lang(name: &str, lang: Lang, params: HashMap<String, String>) -> St
     }
 }
 
-// Define a macro to create the placeholder replacement map and perform replacements
+// Define a macro to CREATE the placeholder replacement map and perform replacements
 #[macro_export]
 macro_rules! translate {
     //

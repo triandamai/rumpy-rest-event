@@ -4,7 +4,7 @@ use bson::DateTime;
 use serde::{Deserialize, Serialize};
 use validator::Validate;
 
-#[derive(Deserialize, Serialize, Debug,Validate)]
+#[derive(Deserialize, Serialize, Debug,Clone,Validate)]
 pub struct FileAttachment {
     pub id:Option<ObjectId>,
     pub ref_id: Option<ObjectId>,

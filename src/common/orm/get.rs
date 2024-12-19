@@ -71,7 +71,7 @@ impl Get {
     }
 
     pub async fn all<T: DeserializeOwned + Debug>(self, client: &Client) -> Result<Vec<T>, String> {
-        //info!(target: "db::get","starting get all..");
+        //info!(target: "db::get","starting get ALL..");
         let db = client.database(DB_NAME);
         let collection: Collection<Document> = db.collection(self.orm.collection_name.as_str());
         let pipeline = self.orm.merge_field_all(true);
@@ -181,6 +181,7 @@ impl Get {
         })
     }
 
+
     pub async fn find_one<T: DeserializeOwned>(
         self,
         query: Document,
@@ -204,6 +205,7 @@ impl Get {
             },
         )
     }
+
 
     pub async fn find_many<T: DeserializeOwned>(self, query: Document, client: &Client) -> Vec<T> {
         let db = client.database(DB_NAME);

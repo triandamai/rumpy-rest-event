@@ -3,22 +3,21 @@ use crate::common::app_state::AppState;
 use crate::common::jwt::AuthContext;
 use crate::common::lang::Lang;
 use crate::common::minio::MinIO;
-use crate::common::multipart_file::MultipartFile;
+use crate::common::multipart_file::SingleFileExtractor;
 use crate::common::orm::orm::Orm;
 use crate::common::utils::{
     create_object_id_option, QUERY_ASC, QUERY_DESC, QUERY_LATEST, QUERY_OLDEST,
 };
 
+use crate::common::middleware::Json;
+use crate::common::permission::permission::app;
 use crate::dto::file_attachment_dto::FileAttachmentDTO;
 use crate::dto::product_dto::ProductDTO;
 use crate::entity::file_attachment::FileAttachment;
 use crate::entity::product::Product;
 use crate::feature::product::product_model::{CreateProductRequest, UpdateProductRequest};
 use crate::translate;
-use axum::extract::multipart::MultipartRejection;
-use axum::extract::rejection::JsonRejection;
-use axum::extract::{Multipart, Path, Query, State};
-use axum::Json;
+use axum::extract::{Path, Query, State};
 use bson::oid::ObjectId;
 use bson::DateTime;
 use log::info;
@@ -31,7 +30,7 @@ pub async fn get_list_product(
     query: Query<PaginationRequest>,
 ) -> ApiResponse<PagingResponse<ProductDTO>> {
     info!(target: "product::list","{} trying to get list product",auth_context.claims.sub);
-    if !auth_context.authorize("app::product::read") {
+    if !auth_context.authorize(app::product::READ) {
         info!(target:"product::list","{} not permitted", auth_context.claims.sub);
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
@@ -88,7 +87,7 @@ pub async fn get_detail_product(
     Path(product_id): Path<String>,
 ) -> ApiResponse<ProductDTO> {
     info!(target: "product::detail", "{} trying to get product detail",auth_context.claims.sub);
-    if !auth_context.authorize("app::product::read") {
+    if !auth_context.authorize(app::product::READ) {
         info!(target:"product::detail","{} not permitted", auth_context.claims.sub);
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
@@ -100,7 +99,7 @@ pub async fn get_detail_product(
 
     let id = create_object_id_option(product_id.as_str());
     if id.is_none() {
-        info!(target: "product::detail","Failed create ObjectId");
+        info!(target: "product::detail","Failed CREATE ObjectId");
         return ApiResponse::un_authorized(translate!("product.not-found", lang).as_str());
     }
 
@@ -129,17 +128,13 @@ pub async fn create_product(
     state: State<AppState>,
     auth_context: AuthContext,
     lang: Lang,
-    body: Result<Json<CreateProductRequest>, JsonRejection>,
+    Json(body): Json<CreateProductRequest>
 ) -> ApiResponse<ProductDTO> {
-    info!(target: "product::create", "{} trying to create product", auth_context.claims.sub);
-    if !auth_context.authorize("app::product::write") {
+    info!(target: "product::create", "{} trying to CREATE product", auth_context.claims.sub);
+    if !auth_context.authorize(app::product::CREATE) {
         info!(target: "product::create", "{} not permitted", auth_context.claims.sub);
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
-    if body.is_err() {
-        return ApiResponse::bad_request(translate!("validation.error").as_str());
-    }
-    let body = body.unwrap();
 
     if auth_context.branch_id.is_none() {
         info!(target: "product::create", "{} not permitted beacause not associated with any branch", auth_context.claims.sub);
@@ -175,7 +170,7 @@ pub async fn create_product(
         return ApiResponse::failed(translate!("product.create.failed", lang).as_str());
     }
 
-    info!(target: "product::create", "Successfully create product");
+    info!(target: "product::create", "Successfully CREATE product");
     ApiResponse::ok(
         product.to_dto(),
         translate!("product.create.success", lang).as_str(),
@@ -187,17 +182,14 @@ pub async fn update_product(
     auth_context: AuthContext,
     lang: Lang,
     Path(product_id): Path<String>,
-    body: Result<Json<UpdateProductRequest>, JsonRejection>,
+    Json(body): Json<UpdateProductRequest>,
 ) -> ApiResponse<ProductDTO> {
-    info!(target: "product::update", "{} trying to update product", auth_context.claims.sub);
-    if !auth_context.authorize("app::product::write") {
+    info!(target: "product::update", "{} trying to UPDATE product", auth_context.claims.sub);
+    if !auth_context.authorize(app::product::UPDATE) {
         info!(target: "product::update", "{} not permitted", auth_context.claims.sub);
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
-    if body.is_err() {
-        return ApiResponse::bad_request(translate!("validation.error").as_str());
-    }
-    let body = body.unwrap();
+
     let validate = body.validate();
     if validate.is_err() {
         return ApiResponse::error_validation(
@@ -208,7 +200,7 @@ pub async fn update_product(
 
     let product_id = create_object_id_option(product_id.as_str());
     if product_id.is_none() {
-        info!(target: "product::update", "Failed create ObjectId");
+        info!(target: "product::update", "Failed CREATE ObjectId");
         return ApiResponse::un_authorized(translate!("product.not-found", lang).as_str());
     }
 
@@ -259,10 +251,10 @@ pub async fn update_product(
         .await;
 
     if save_data.is_err() {
-        info!(target: "product::update", "Failed update product");
+        info!(target: "product::update", "Failed UPDATE product");
         return ApiResponse::failed(translate!("product.update.failed", lang).as_str());
     }
-    info!(target: "product::update", "Successfully update product");
+    info!(target: "product::update", "Successfully UPDATE product");
     ApiResponse::ok(product, translate!("product.update.success", lang).as_str())
 }
 
@@ -272,9 +264,9 @@ pub async fn delete_product(
     lang: Lang,
     Path(product_id): Path<String>,
 ) -> ApiResponse<String> {
-    info!(target: "product::delete", "{} trying to delete product", auth_context.claims.sub);
-    if !auth_context.authorize("app::product::write") {
-        info!(target: "product::delete", "{} trying to delete product", auth_context.claims.sub);
+    info!(target: "product::delete", "{} trying to DELETE product", auth_context.claims.sub);
+    if !auth_context.authorize(app::product::DELETE) {
+        info!(target: "product::delete", "{} trying to DELETE product", auth_context.claims.sub);
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
 
@@ -290,7 +282,7 @@ pub async fn delete_product(
         .await;
 
     if update.is_err() {
-        info!(target: "product::delete", "{} trying to delete product", auth_context.claims.sub);
+        info!(target: "product::delete", "{} trying to DELETE product", auth_context.claims.sub);
         return ApiResponse::failed(translate!("product.delete.failed", lang).as_str());
     }
     info!(target: "product::delete", "successfully deleted product");
@@ -304,21 +296,15 @@ pub async fn update_product_image(
     state: State<AppState>,
     auth_context: AuthContext,
     lang: Lang,
-    multipart: Result<Multipart, MultipartRejection>,
+    multipart: SingleFileExtractor,
 ) -> ApiResponse<FileAttachmentDTO> {
-    info!(target: "product::create", "{} trying to update product image", auth_context.claims.sub);
+    info!(target: "product::create", "{} trying to UPDATE product image", auth_context.claims.sub);
     if !auth_context.authorize("app::product::write") {
         info!(target: "product::create", "{} not permitted", auth_context.claims.sub);
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
 
-    if multipart.is_err() {
-        return ApiResponse::bad_request(translate!("validation.error").as_str());
-    }
-    let multipart = multipart.unwrap();
-    let extract = MultipartFile::extract_multipart(multipart).await;
-
-    let validate = extract.validate();
+    let validate = multipart.validate_body();
     if validate.is_err() {
         return ApiResponse::error_validation(
             validate.unwrap_err(),
@@ -326,9 +312,9 @@ pub async fn update_product_image(
         );
     }
 
-    let user_id = create_object_id_option(extract.ref_id.as_str());
+    let user_id = create_object_id_option(multipart.ref_id.as_str());
     if user_id.is_none() {
-        info!(target: "product::create", "failed create ObjectId");
+        info!(target: "product::create", "failed CREATE ObjectId");
         return ApiResponse::not_found(
             translate!("product.product-image.not-found", lang).as_str(),
         );
@@ -338,6 +324,7 @@ pub async fn update_product_image(
         .one::<FileAttachment>(&state.db)
         .await;
 
+    let multipart = multipart.file();
     let minio = MinIO::new().await;
     let is_file_exists = find_exist_profile_picture.is_ok();
     let bucket_name = "product-image".to_string();
@@ -346,10 +333,10 @@ pub async fn update_product_image(
         Ok(v) => v,
         Err(_) => FileAttachment {
             id: Some(ObjectId::new()),
-            ref_id: create_object_id_option(extract.ref_id.as_str()),
-            filename: extract.filename.clone(),
-            mime_type: extract.mime_type.clone(),
-            extension: extract.extension.clone(),
+            ref_id: create_object_id_option(multipart.ref_id.as_str()),
+            filename: multipart.filename.clone(),
+            mime_type: multipart.mime_type.clone(),
+            extension: multipart.extension.clone(),
             kind: "PRODUCT".to_string(),
             create_at: DateTime::now(),
             updated_at: DateTime::now(),
@@ -357,7 +344,7 @@ pub async fn update_product_image(
     };
 
     if is_file_exists {
-        info!(target: "product::create", "file exist deleting {}",extract.filename);
+        info!(target: "product::create", "file exist deleting {}",multipart.filename);
         let _delete_existing = minio
             .delete_file(attachment.filename.clone(), bucket_name.clone())
             .await;
@@ -366,16 +353,16 @@ pub async fn update_product_image(
     //upload new
     let minio = minio
         .upload_file(
-            extract.temp_path.clone(),
+            multipart.temp_path.clone(),
             bucket_name,
-            extract.filename.clone(),
+            multipart.filename.clone(),
         )
         .await;
 
     if minio.is_err() {
         let err = minio.unwrap_err();
         info!(target: "product::update-image", "{}", err);
-        let _remove = extract.remove_file();
+        let _remove = multipart.remove_file();
         return ApiResponse::failed(translate!("product.product-image.failed", lang).as_str());
     }
 
@@ -384,9 +371,9 @@ pub async fn update_product_image(
         true => {
             let update_profile_picture = Orm::update("file-attachment")
                 .filter_object_id("ref_id", &user_id.unwrap())
-                .set_str("filename", &extract.filename.as_str())
-                .set_str("mime-type", &extract.mime_type.as_str())
-                .set_str("extension", &extract.extension.as_str())
+                .set_str("filename", &multipart.filename.as_str())
+                .set_str("mime-type", &multipart.mime_type.as_str())
+                .set_str("extension", &multipart.extension.as_str())
                 .execute_one(&state.db)
                 .await;
             if update_profile_picture.is_err() {
@@ -395,7 +382,7 @@ pub async fn update_product_image(
             update_profile_picture.is_ok()
         }
         false => {
-            attachment.filename = extract.filename.clone();
+            attachment.filename = multipart.filename.clone();
             let save_profile_picture = Orm::insert("file-attachment")
                 .one(&attachment, &state.db)
                 .await;
@@ -408,12 +395,12 @@ pub async fn update_product_image(
 
     if !success {
         info!(target: "product::update-image", "{}", error_message);
-        let _remove = extract.remove_file();
+        let _remove = multipart.remove_file();
         return ApiResponse::failed(translate!("product.product-image.failed", lang).as_str());
     }
 
-    let _remove = extract.remove_file();
-    info!(target: "product::update-image", "suucessfully update product image");
+    let _remove = multipart.remove_file();
+    info!(target: "product::update-image", "suucessfully UPDATE product image");
     ApiResponse::ok(
         attachment.to_dto(),
         translate!("product.product-image.success", lang).as_str(),

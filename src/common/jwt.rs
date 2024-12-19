@@ -22,6 +22,7 @@ use crate::common::api_response::ApiResponse;
 use crate::common::env_config::EnvConfig;
 use crate::common::utils::{create_object_id_option, create_or_new_object_id};
 use crate::feature::auth::auth_model::{BRANCH_ID_KEY, USER_ID_KEY};
+use crate::translate;
 
 pub struct JwtUtil {
     pub claims: JwtClaims,
@@ -94,14 +95,54 @@ impl AuthContext {
         branch_id.eq(id)
     }
     pub fn authorize(&self, permission: &str) -> bool {
+        if self.permissions.contains_key("app::admin::ALL") {
+            return true;
+        }
         self.permissions.get(&permission.to_string()).is_some()
     }
 
     pub fn authorize_multiple(&self, permissions: Vec<&str>) -> bool {
+        if self.permissions.contains_key("app::admin::ALL") {
+            return true;
+        }
         permissions
             .iter()
             .map(|v| v.to_string())
             .all(|v| self.permissions.get(&v).is_some())
+    }
+
+    pub fn authorize_result(&self, permission: &str) -> Result<bool,ApiResponse<String>> {
+        if self.permissions.contains_key("app::admin::ALL") {
+            return Ok(true);
+        }
+        let allow = self.permissions.get(&permission.to_string()).is_some();
+
+        if allow {
+            return Ok(allow);
+        }
+
+        Err(ApiResponse::un_authorized(
+            translate!("unauthorized").as_str(),
+        ))
+    }
+
+    pub fn authorize_multiple_result(
+        &self,
+        permissions: Vec<&str>,
+    ) -> Result<bool, ApiResponse<String>> {
+        if self.permissions.contains_key("app::admin::ALL") {
+            return Ok(true);
+        }
+        let allow = permissions
+            .iter()
+            .map(|v| v.to_string())
+            .all(|v| self.permissions.get(&v).is_some());
+        if allow {
+            return Ok(true);
+        }
+        Err(ApiResponse::un_authorized(
+            translate!("unauthorized").as_str(),
+        ))
     }
 }
 
@@ -160,32 +201,30 @@ where
         }
         let mut state = state.unwrap();
 
-        let default_hashmap:HashMap<String,String> = HashMap::new();
+        let default_hashmap: HashMap<String, String> = HashMap::new();
         let default = String::from("");
-        let session = state
-            .redis
-            .get_session_sign_in(claims.sub.clone().as_str());
+        let session = state.redis.get_session_sign_in(claims.sub.clone().as_str());
 
-        if session.is_err(){
+        if session.is_err() {
             return Err(AuthError::MissingCredentials);
         }
 
         let session = &session.unwrap();
 
-        if session.is_empty(){
+        if session.is_empty() {
             return Err(AuthError::MissingCredentials);
         }
 
-        let user_id = session.get(USER_ID_KEY).map_or(None, |s| create_object_id_option(s.as_str()));
+        let user_id = session
+            .get(USER_ID_KEY)
+            .map_or(None, |s| create_object_id_option(s.as_str()));
         let branch_id = session.get(BRANCH_ID_KEY).unwrap_or(&default);
         let branch_id = create_or_new_object_id(branch_id);
-
 
         let permissions = &state
             .redis
             .get_session_permission(claims.sub.clone().as_str())
-            .map_or(default_hashmap.clone(),|p|p);
-
+            .map_or(default_hashmap.clone(), |p| p);
 
         Ok(AuthContext {
             claims,

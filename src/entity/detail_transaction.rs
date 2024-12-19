@@ -8,6 +8,7 @@ pub struct DetailTransaction {
     #[serde(rename = "_id", skip_serializing_if = "Option::is_none")]
     pub id: Option<ObjectId>,
     pub product_id: Option<ObjectId>,
+    pub kind: String,
     pub notes: String,
     pub quantity: i64,
     pub total: f64,
@@ -21,6 +22,7 @@ impl DetailTransaction {
         DetailTransactionDTO {
             id: self.id,
             product_id: self.product_id,
+            kind: self.kind,
             notes: self.notes,
             quantity: self.quantity,
             total: self.total,

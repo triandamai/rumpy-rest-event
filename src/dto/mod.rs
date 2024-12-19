@@ -1,7 +1,7 @@
 pub mod branch_dto;
 pub mod account_dto;
 pub mod account_permission_dto;
-pub mod coach;
+pub mod coach_dto;
 pub mod detail_transaction;
 pub mod member_dto;
 pub mod member_log_dto;
@@ -12,3 +12,4 @@ pub mod product_log_dto;
 pub mod transaction_dto;
 pub mod discount_dto;
 pub mod file_attachment_dto;
+pub mod member_subscription_dto;

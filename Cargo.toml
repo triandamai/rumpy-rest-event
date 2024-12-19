@@ -32,6 +32,8 @@ rust-s3 = "0.35.1"
 bson = {version = "2.13.0"}
 serde-helpers = {version = "0.1.0",features = ["serde_json","default"]}
 serde_with = "3.11.0"
+tower = "0.5.2"
+xlsxwriter = "0.6.1"
 
 [dependencies.mongodb]
 version = "3.1.0"

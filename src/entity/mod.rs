@@ -12,3 +12,4 @@ pub mod transaction;
 pub mod detail_transaction;
 pub mod discount;
 pub mod file_attachment;
+pub mod member_subscription;

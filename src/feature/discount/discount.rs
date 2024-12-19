@@ -2,7 +2,9 @@ use crate::common::api_response::{ApiResponse, PaginationRequest, PagingResponse
 use crate::common::app_state::AppState;
 use crate::common::jwt::AuthContext;
 use crate::common::lang::Lang;
+use crate::common::middleware::Json;
 use crate::common::orm::orm::Orm;
+use crate::common::permission::permission::app;
 use crate::common::utils::{
     create_object_id_option, create_or_new_object_id, QUERY_ASC, QUERY_DESC, QUERY_LATEST,
     QUERY_OLDEST,
@@ -12,7 +14,6 @@ use crate::entity::discount::Discount;
 use crate::feature::discount::discount_model::{CreateDiscountRequest, UpdateDiscountRequest};
 use crate::translate;
 use axum::extract::{Path, Query, State};
-use axum::Json;
 use bson::oid::ObjectId;
 use bson::DateTime;
 use log::info;
@@ -25,7 +26,7 @@ pub async fn get_list_discount(
     query: Query<PaginationRequest>,
 ) -> ApiResponse<PagingResponse<DiscountDTO>> {
     info!(target: "discount::list", "{} trying get list discount",auth_context.claims.sub);
-    if !auth_context.authorize("app::discount::read") {
+    if !auth_context.authorize(app::discount::READ) {
         info!(target: "discount::list", "{} is not permitted",auth_context.claims.sub);
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
@@ -75,13 +76,13 @@ pub async fn get_detail_discount(
     Path(discount_id): Path<String>,
 ) -> ApiResponse<DiscountDTO> {
     info!(target: "discount::detail", "{} trying get detail discount",auth_context.claims.sub);
-    if !auth_context.authorize("app::discount::read") {
+    if !auth_context.authorize(app::discount::READ) {
         info!(target: "discount::detail", "{} not permitted",auth_context.claims.sub);
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
     let discount_id = create_object_id_option(discount_id.as_str());
     if discount_id.is_none() {
-        info!(target: "discount::detail", "failed to create id");
+        info!(target: "discount::detail", "failed to CREATE id");
         return ApiResponse::not_found(translate!("discount.not-found", lang).as_str());
     }
     let discount_id = discount_id.unwrap();
@@ -105,17 +106,17 @@ pub async fn create_discount(
     state: State<AppState>,
     auth_context: AuthContext,
     lang: Lang,
-    body: Json<CreateDiscountRequest>,
+    Json(body): Json<CreateDiscountRequest>,
 ) -> ApiResponse<DiscountDTO> {
-    info!(target: "discount::create", "{} trying to create new discount",auth_context.claims.sub);
-    if !auth_context.authorize("app::discount::write") {
-        info!(target: "branch::create", "{} not permitted.",auth_context.claims.sub);
+    info!(target: "discount::CREATE", "{} trying to CREATE new discount",auth_context.claims.sub);
+    if !auth_context.authorize(app::discount::CREATE) {
+        info!(target: "branch::CREATE", "{} not permitted.",auth_context.claims.sub);
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
 
     let validate = body.validate();
     if validate.is_err() {
-        info!(target: "discount::create", "validation failed {}.",validate.clone().unwrap_err());
+        info!(target: "discount::CREATE", "validation failed {}.",validate.clone().unwrap_err());
         return ApiResponse::error_validation(
             validate.unwrap_err(),
             translate!("validation.error", lang).as_str(),
@@ -137,12 +138,12 @@ pub async fn create_discount(
     let save = Orm::insert("discount").one(&discount, &state.db).await;
 
     if save.is_err() {
-        info!(target: "discount::create", "failed to save discount {}",save.unwrap_err());
+        info!(target: "discount::CREATE", "failed to save discount {}",save.unwrap_err());
         return ApiResponse::failed(translate!("discount.create.failed", lang).as_str());
     }
     let create_discount_id = save.unwrap();
 
-    info!(target: "discount::create", "created discount {}",create_discount_id);
+    info!(target: "discount::CREATE", "created discount {}",create_discount_id);
     ApiResponse::ok(
         discount.to_dto(),
         translate!("discount.create.success", lang).as_str(),
@@ -154,11 +155,11 @@ pub async fn update_discount(
     auth_context: AuthContext,
     lang: Lang,
     Path(discount_id):Path<String>,
-    body: Json<UpdateDiscountRequest>
+    Json(body): Json<UpdateDiscountRequest>
 ) -> ApiResponse<DiscountDTO> {
 
-    if !auth_context.authorize("app::discount::write") {
-        info!(target: "discount::update", "Failed to create new discount because user does not permitted.");
+    if !auth_context.authorize(app::discount::UPDATE) {
+        info!(target: "discount::UPDATE", "Failed to CREATE new discount because user does not permitted.");
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
     let validate = body.validate();
@@ -176,7 +177,7 @@ pub async fn update_discount(
         .await;
 
     if find_branch.is_err() {
-        info!(target: "discount::update", "discount not found");
+        info!(target: "discount::UPDATE", "discount not found");
         return ApiResponse::not_found(translate!("discount.not-found", lang).as_str());
     }
     let mut discount = find_branch.unwrap();
@@ -215,15 +216,15 @@ pub async fn delete_discount(
     lang: Lang,
     Path(discount_id): Path<String>,
 ) -> ApiResponse<String> {
-    info!(target: "discount::delete", "{} trying delete discount",auth_context.claims.sub);
-    if !auth_context.authorize("app::discount::write") {
-        info!(target: "discount::delete", "{} not permitted",auth_context.claims.sub);
+    info!(target: "discount::DELETE", "{} trying DELETE discount",auth_context.claims.sub);
+    if !auth_context.authorize(app::discount::DELETE) {
+        info!(target: "discount::DELETE", "{} not permitted",auth_context.claims.sub);
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
 
     let create_id = create_object_id_option(discount_id.as_str());
     if create_id.is_none() {
-        info!(target: "discount::delete", "failed create ObjectId");
+        info!(target: "discount::DELETE", "failed CREATE ObjectId");
         return ApiResponse::not_found(translate!("discount.not_found", lang).as_str());
     }
     let update = Orm::update("discount")
@@ -233,10 +234,10 @@ pub async fn delete_discount(
         .await;
 
     if update.is_err() {
-        info!(target: "discount::delete","failed updating discount");
+        info!(target: "discount::DELETE","failed updating discount");
         return ApiResponse::failed(translate!("discount.delete.failed").as_str());
     }
-    info!(target: "discount::delete","success deleted discount");
+    info!(target: "discount::DELETE","success deleted discount");
     ApiResponse::ok(
         "OK".to_string(),
         translate!("discount.delete.success", lang).as_str(),

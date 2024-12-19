@@ -12,6 +12,12 @@ impl Lang {
     pub fn get(&self) -> &str {
         self.locale_code.as_str()
     }
+
+    pub fn from(locale_code: &str) -> Self {
+        Lang{
+            locale_code: locale_code.to_string(),
+        }
+    }
 }
 
 #[async_trait]

@@ -17,6 +17,7 @@ pub struct DetailTransactionDTO{
         deserialize_with = "deserialize_object_id"
     )]
     pub product_id:Option<ObjectId>,
+    pub kind:String,
     pub notes:String,
     pub quantity:i64,
     pub total:f64,

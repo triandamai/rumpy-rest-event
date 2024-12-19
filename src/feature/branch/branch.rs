@@ -2,7 +2,9 @@ use crate::common::api_response::{ApiResponse, PaginationRequest, PagingResponse
 use crate::common::app_state::AppState;
 use crate::common::jwt::AuthContext;
 use crate::common::lang::Lang;
+use crate::common::middleware::Json;
 use crate::common::orm::orm::Orm;
+use crate::common::permission::permission::app;
 use crate::common::utils::{
     create_object_id_option, create_or_new_object_id, QUERY_ASC, QUERY_DESC, QUERY_LATEST,
     QUERY_OLDEST,
@@ -12,9 +14,7 @@ use crate::entity::branch::Branch;
 use crate::feature::auth::auth_model::USER_ID_KEY;
 use crate::feature::branch::branch_model::{CreateBranchRequest, UpdateBranchRequest};
 use crate::translate;
-use axum::extract::rejection::JsonRejection;
 use axum::extract::{Path, Query, State};
-use axum::Json;
 use bson::oid::ObjectId;
 use bson::DateTime;
 use log::info;
@@ -26,8 +26,10 @@ pub async fn get_list_branch(
     auth_context: AuthContext,
     query: Query<PaginationRequest>,
 ) -> ApiResponse<PagingResponse<BranchDTO>> {
-    if !auth_context.authorize("app::branch::read") {
-        return ApiResponse::un_authorized(translate!("", lang).as_str());
+    info!(target: "branch::list","{} get list branch",auth_context.claims.sub);
+    if !auth_context.authorize(app::branch::READ) {
+        info!(target: "branch::list","{} not permitted",auth_context.claims.sub);
+        return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
 
     let default = String::new();
@@ -72,25 +74,30 @@ pub async fn get_detail_branch(
     auth_context: AuthContext,
     Path(branch_id): Path<String>,
 ) -> ApiResponse<BranchDTO> {
-    if !auth_context.authorize("app::branch::read") {
-        return ApiResponse::un_authorized(translate!("", lang).as_str());
+    info!(target: "branch::detail","{} trying get detail branch",auth_context.claims.sub);
+    if !auth_context.authorize(app::branch::READ) {
+        info!(target: "branch::detail","{} not permitted",auth_context.claims.sub);
+        return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
     let branch_id = create_object_id_option(branch_id.as_str());
     if branch_id.is_none() {
+        info!(target: "branch::detail","branch_id not exists");
         return ApiResponse::not_found(translate!("branch.not-found", lang).as_str());
     }
     let branch_id = branch_id.unwrap();
-    let find_all_branch = Orm::get("branch")
+    let find_branch = Orm::get("branch")
         .filter_object_id("_id", &branch_id)
         .one::<BranchDTO>(&state.db)
         .await;
 
-    if find_all_branch.is_err() {
+    if find_branch.is_err() {
+        info!(target: "branch::detail","branch not exists");
         return ApiResponse::not_found(translate!("branch.not-found", lang).as_str());
     }
+
     ApiResponse::ok(
-        find_all_branch.unwrap(),
-        translate!("branch.success", lang).as_str(),
+        find_branch.unwrap(),
+        translate!("branch.found", lang).as_str(),
     )
 }
 
@@ -98,22 +105,18 @@ pub async fn create_branch(
     mut state: State<AppState>,
     lang: Lang,
     auth_context: AuthContext,
-    body: Result<Json<CreateBranchRequest>,JsonRejection>,
+    Json(body): Json<CreateBranchRequest>,
 ) -> ApiResponse<BranchDTO> {
-    info!(target: "branch::create", "{} trying to create new branch",auth_context.claims.sub);
+    info!(target: "branch::CREATE", "{} trying to CREATE new branch",auth_context.claims.sub);
 
-    if !auth_context.authorize("app::branch::write") {
-        info!(target: "branch::create", "Failed to create new branch because user does not permitted.");
+    if !auth_context.authorize(app::branch::CREATE) {
+        info!(target: "branch::CREATE", "Failed to CREATE new branch because user does not permitted.");
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
 
-    if body.is_err() {
-        return ApiResponse::bad_request(translate!("validation.error").as_str());
-    }
-    let body = body.unwrap();
     let validate = body.validate();
     if validate.is_err() {
-        info!(target: "branch::create", "validation failed {}.",validate.clone().unwrap_err());
+        info!(target: "branch::CREATE", "validation failed {}.",validate.clone().unwrap_err());
         return ApiResponse::error_validation(
             validate.unwrap_err(),
             translate!("validation", lang).as_str(),
@@ -126,7 +129,7 @@ pub async fn create_branch(
 
     if get_session.is_err() {
         let err = get_session.unwrap_err();
-        info!(target: "branch::create", "get_session failed {}.",err);
+        info!(target: "branch::CREATE", "get_session failed {}.",err);
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
     let session = get_session.unwrap();
@@ -152,12 +155,12 @@ pub async fn create_branch(
     let save = Orm::insert("branch").one(&branch, &state.db).await;
 
     if save.is_err() {
-        info!(target: "branch::create", "failed to save branch {}",save.unwrap_err());
+        info!(target: "branch::CREATE", "failed to save branch {}",save.unwrap_err());
         return ApiResponse::failed(translate!("branch.insert.failed", lang).as_str());
     }
     let saved_branch_id = save.unwrap();
 
-    info!(target: "branch::create", "created branch {}",saved_branch_id);
+    info!(target: "branch::CREATE", "created branch {}",saved_branch_id);
     ApiResponse::ok(
         branch.to_dto(),
         translate!("branch.insert.success", lang).as_str(),
@@ -169,17 +172,13 @@ pub async fn update_branch(
     lang: Lang,
     auth_context: AuthContext,
     Path(branch_id): Path<String>,
-    body: Result<Json<UpdateBranchRequest>,JsonRejection>,
+    Json(body): Json<UpdateBranchRequest>,
 ) -> ApiResponse<BranchDTO> {
-    if !auth_context.authorize("app::branch::write") {
-        info!(target: "branch::create", "Failed to create new branch because user does not permitted.");
+    if !auth_context.authorize(app::branch::UPDATE) {
+        info!(target: "branch::CREATE", "Failed to CREATE new branch because user does not permitted.");
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
 
-    if body.is_err() {
-        return ApiResponse::bad_request(translate!("validation.error").as_str());
-    }
-    let body = body.unwrap();
     let validate = body.validate();
     if validate.is_err() {
         return ApiResponse::error_validation(
@@ -195,7 +194,7 @@ pub async fn update_branch(
         .await;
 
     if find_branch.is_err() {
-        info!(target: "branch::create", "branch not found");
+        info!(target: "branch::CREATE", "branch not found");
         return ApiResponse::not_found(translate!("branch.not-found", lang).as_str());
     }
     let mut branch = find_branch.unwrap();
@@ -239,7 +238,7 @@ pub async fn update_branch(
         .await;
 
     if save.is_err() {
-        info!(target: "branch::create", "failed to save branch {}",save.unwrap_err());
+        info!(target: "branch::CREATE", "failed to save branch {}",save.unwrap_err());
         return ApiResponse::failed(translate!("branch.update.failed", lang).as_str());
     }
 
@@ -255,7 +254,7 @@ pub async fn delete_branch(
     lang: Lang,
     Path(branch_id): Path<String>,
 ) -> ApiResponse<String> {
-    if !auth_context.authorize("app::branch::write") {
+    if !auth_context.authorize(app::branch::DELETE) {
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
 
@@ -270,7 +269,7 @@ pub async fn delete_branch(
         .await;
 
     if update.is_err() {
-        info!(target: "branch::delete", "failed to delete branch {}",update.unwrap_err());
+        info!(target: "branch::DELETE", "failed to DELETE branch {}",update.unwrap_err());
         return ApiResponse::failed(translate!("branch.delete.failed").as_str());
     }
 

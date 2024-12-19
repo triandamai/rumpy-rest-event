@@ -1,3 +1,4 @@
+use axum::extract::rejection::JsonRejection;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::Json;
@@ -181,5 +182,15 @@ where
         }
 
         (StatusCode::BAD_REQUEST, Json(self)).into_response()
+    }
+}
+
+impl From<JsonRejection> for ApiResponse<String> {
+    fn from(value: JsonRejection) -> Self {
+        ApiResponse::create(
+            422,
+            "".to_string(),
+            format!("{}", value.to_string()).as_str(),
+        )
     }
 }

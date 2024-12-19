@@ -1,19 +1,21 @@
 use crate::common::utils::get_extension_from_mime;
+use axum::extract::multipart::Field;
 use axum::extract::Multipart;
 use chrono::Utc;
 use headers::ContentType;
 use log::info;
 use mime::Mime;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::fs;
 use std::fs::File;
 use std::io::Write;
 use std::path::Path as FilePath;
 use std::str::FromStr;
-use validator::Validate;
+use validator::{Validate, ValidationError, ValidationErrors};
 
-#[derive(Deserialize, Serialize, Debug,Validate)]
-pub struct MultipartFile {
+#[derive(Debug, Clone, Deserialize, Serialize, Validate)]
+pub struct FileTemp {
     #[validate(length(min = 1))]
     pub ref_id: String,
     #[validate(length(min = 1))]
@@ -23,12 +25,11 @@ pub struct MultipartFile {
     #[validate(length(min = 1))]
     pub extension: String,
     #[validate(length(min = 1))]
-    pub temp_path:String
+    pub temp_path: String,
 }
-
-impl MultipartFile {
-    pub fn to_dto(self)-> MultipartFile {
-        MultipartFile {
+impl FileTemp {
+    pub fn to_dto(self) -> FileTemp {
+        FileTemp {
             ref_id: self.ref_id,
             filename: self.filename,
             mime_type: self.mime_type,
@@ -36,13 +37,104 @@ impl MultipartFile {
             temp_path: self.temp_path,
         }
     }
-    pub async fn extract_multipart(mut multipart: Multipart) -> MultipartFile {
-        let mut metadata = MultipartFile {
+
+    pub fn validate_file(&self) -> Result<bool, ValidationErrors> {
+        let validate = self.validate();
+        if validate.is_err() {
+            return Err(validate.unwrap_err());
+        }
+        Ok(validate.is_ok())
+    }
+
+    pub fn remove_file(&self) -> Result<String, String> {
+        remove_temp_file(self.temp_path.as_str())
+    }
+}
+#[derive(Deserialize, Serialize, Debug, Validate)]
+pub struct MultiFileExtractor {
+    #[validate(length(min = 1))]
+    pub ref_id: String,
+    pub temp_file: HashMap<String, FileTemp>,
+}
+
+impl MultiFileExtractor {
+    pub async fn extract(mut multipart: Multipart) -> MultiFileExtractor {
+        let mut temporary = HashMap::<String, FileTemp>::new();
+        let mut ref_id = String::new();
+
+        // Process each part of the multipart form data
+        while let Some(field) = multipart.next_field().await.unwrap() {
+            let field_name = field.name().map(|name| name.to_string());
+            let field_type = field
+                .content_type()
+                .map(|mime| mime.to_string())
+                .unwrap_or(String::from("text/*"));
+
+            match field_name.as_deref() {
+                Some("ref_id") => {
+                    // Process the text field (username)
+                    ref_id = field.text().await.unwrap();
+                    info!(target:"extract_multipart", "found field :{} ",ref_id.clone());
+                }
+                name => {
+                    if field_type.starts_with("image/") {
+                        let file = field_to_temp_file(&ref_id, field).await;
+                        temporary.insert(name.unwrap_or("").to_string(), file);
+                    } else {
+                        info!(target: "extract_multipart","Unknown field encountered {}.",field_type);
+                    }
+                }
+            }
+        }
+
+        MultiFileExtractor {
+            ref_id,
+            temp_file: temporary,
+        }
+    }
+
+    pub fn remove_file(&self) -> Result<String, String> {
+        self.temp_file.iter().for_each(|(_, value)| {
+            let _ok = value.remove_file();
+        });
+        Ok("Success clearing temporary file.".to_string())
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug, Validate)]
+pub struct SingleFileExtractor {
+    #[validate(length(min = 1))]
+    pub ref_id: String,
+    pub multipart_temp_file: Option<FileTemp>,
+}
+
+impl SingleFileExtractor {
+    pub fn to_dto(self) -> SingleFileExtractor {
+        SingleFileExtractor {
+            ref_id: self.ref_id,
+            multipart_temp_file: self.multipart_temp_file,
+        }
+    }
+
+    pub fn validate_body(&self) -> Result<bool, ValidationErrors> {
+        let body = self.validate();
+        if body.is_err() {
+            return Err(body.unwrap_err());
+        }
+        match &self.multipart_temp_file {
+            None => {
+                let mut errors = ValidationErrors::new();
+                let _add = errors.add("file", ValidationError::new("file cannot empty"));
+                Err(errors)
+            }
+            Some(file) => file.validate_file(),
+        }
+    }
+
+    pub async fn extract(mut multipart: Multipart) -> SingleFileExtractor {
+        let mut metadata = SingleFileExtractor {
             ref_id: "".to_string(),
-            filename: "".to_string(),
-            mime_type: "".to_string(),
-            extension: "".to_string(),
-            temp_path: "".to_string(),
+            multipart_temp_file: None,
         };
         let mut file_find = false;
         // Process each part of the multipart form data
@@ -57,51 +149,71 @@ impl MultipartFile {
                 }
                 Some("file") => {
                     //make sure receive only one file
-                    if file_find{
+                    if file_find {
                         info!(target:"extract_multipart","file already exist skip to next");
                         continue;
                     }
                     file_find = true;
-                    // Process the file field (file)
-                    let original_file_name = field.file_name().unwrap().to_string();
-                    let mime_type = field.content_type().map(|mime| mime);
-                    let mime_type = mime_type.unwrap_or("image/png");
-                    let mime_type = Mime::from_str(mime_type).unwrap_or(Mime::from(ContentType::png()));
-                    let ext = get_extension_from_mime(&mime_type).unwrap_or(".png");
-                    let original_file_name = original_file_name.replace(format!(".{}",ext).as_str(),"");
-
-                    let current_time = Utc::now().timestamp();
-                    let final_filename = format!("{}-{}.{}", original_file_name, current_time,ext);
-                    let location = format!("uploads/{}", final_filename);
-                    // Read the file contents
-                    let data = field.bytes().await.unwrap();
-
-                    // Save the file to the "uploads" folder
-                    let mut file = File::create(format!("uploads/{}", final_filename)).unwrap();
-                    file.write_all(&data).unwrap();
-
-                    metadata.filename = final_filename;
-                    metadata.mime_type = mime_type.to_string();
-                    metadata.extension = ext.to_string();
-                    metadata.temp_path = location.clone();
-                    info!(target:"extract_multipart", "temporary file place :{} ",location);
+                    let file = field_to_temp_file(&metadata.ref_id.clone(), field).await;
+                    metadata.multipart_temp_file = Some(file);
                 }
                 _ => {
                     info!(target: "extract_multipart","Unknown field encountered.");
                 }
             }
-
         }
         metadata
     }
 
-    pub fn remove_file(&self)->Result<String,String>{
-        if FilePath::new(self.temp_path.clone().as_str()).exists() {
-            let _remove = fs::remove_file(self.temp_path.clone().as_str());
-            info!(target:"remove file after used","File '{}' was removed successfully.", self.temp_path.clone());
-        } else {
-            info!(target:"remove file after used, failed","File '{}' does not exist.", self.temp_path.clone());
+    pub fn remove_file(&self) -> Result<String, String> {
+        if let Some(temp_file) = &self.multipart_temp_file {
+            return remove_temp_file(temp_file.temp_path.as_str());
         }
-        Ok("file was removed successfully.".to_string())
+        Ok("Success clearing temporary file.".to_string())
     }
+
+    pub fn file(&self) -> FileTemp {
+        self.multipart_temp_file.clone().unwrap()
+    }
+}
+
+pub async fn field_to_temp_file(ref_id: &String, field: Field<'_>) -> FileTemp {
+    //make sure receive only one file
+    // Process the file field (file)
+    let original_file_name = field.file_name().unwrap().to_string();
+    let mime_type = field.content_type().map(|mime| mime);
+    let mime_type = mime_type.unwrap_or("image/png");
+    let mime_type = Mime::from_str(mime_type).unwrap_or(Mime::from(ContentType::png()));
+    let ext = get_extension_from_mime(&mime_type).unwrap_or(".png");
+    let original_file_name = original_file_name.replace(format!(".{}", ext).as_str(), "");
+
+    let current_time = Utc::now().timestamp();
+    let final_filename = format!("{}-{}.{}", original_file_name, current_time, ext);
+    let location = format!("uploads/{}", final_filename);
+    // Read the file contents
+    let data = field.bytes().await.unwrap();
+
+    // Save the file to the "uploads" folder
+    let mut file = File::create(format!("uploads/{}", final_filename)).unwrap();
+    file.write_all(&data).unwrap();
+
+    let temp_file = FileTemp {
+        ref_id: ref_id.clone(),
+        filename: final_filename,
+        mime_type: mime_type.to_string(),
+        extension: ext.to_string(),
+        temp_path: location.clone(),
+    };
+    info!(target:"extract_multipart", "temporary file place :{} ",location);
+    temp_file
+}
+
+pub fn remove_temp_file(path: &str) -> Result<String, String> {
+    if FilePath::new(path).exists() {
+        let _remove = fs::remove_file(path);
+        info!(target:"remove file after used","File '{}' was removed successfully.", path);
+    } else {
+        info!(target:"remove file after used, failed","File '{}' does not exist.", path);
+    }
+    Ok("file was removed successfully.".to_string())
 }

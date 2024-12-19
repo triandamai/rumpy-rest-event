@@ -134,10 +134,10 @@ impl Update {
     }
     pub async fn one<T: Serialize>(self, update: T, client: &Client) -> Result<u64, String> {
         if self.orm.collection_name.is_empty() {
-            return Err("Specify collection name before update...".to_string());
+            return Err("Specify collection name before UPDATE...".to_string());
         }
         if self.orm.filter.len() < 1 && self.orm.filters.len() < 1 {
-            return Err("Specify filter before update...".to_string());
+            return Err("Specify filter before UPDATE...".to_string());
         }
 
         let db = client.database(DB_NAME);
@@ -149,7 +149,7 @@ impl Update {
             let data = bson::to_document(&update);
             if data.is_err() {
                 let err = data.unwrap_err().to_string();
-                info!(target: "update 1","{:?}",err);
+                info!(target: "UPDATE 1","{:?}",err);
                 return Err(err);
             }
             doc.insert("$set", data.unwrap());
@@ -169,13 +169,13 @@ impl Update {
 
         if save.is_err() {
             let err = save.unwrap_err().to_string();
-            info!(target: "update","{:?}",err);
+            info!(target: "UPDATE","{:?}",err);
             return Err(err);
         }
 
         let save = save.unwrap();
 
-        // info!(target: "db::update::oke","Success update data");
+        // info!(target: "db::UPDATE::oke","Success UPDATE data");
         Ok(save.modified_count)
     }
 
@@ -186,10 +186,10 @@ impl Update {
         session: &mut ClientSession,
     ) -> Result<u64, String> {
         if self.orm.collection_name.is_empty() {
-            return Err("Specify collection name before update...".to_string());
+            return Err("Specify collection name before UPDATE...".to_string());
         }
         if self.orm.filter.len() < 1 && self.orm.filters.len() < 1 {
-            return Err("Specify filter before update...".to_string());
+            return Err("Specify filter before UPDATE...".to_string());
         }
         let db = client.database(DB_NAME);
         let collection: Collection<Document> = db.collection(self.orm.collection_name.as_str());
@@ -200,7 +200,7 @@ impl Update {
             let data = bson::to_document(&update);
             if data.is_err() {
                 let err = data.unwrap_err().to_string();
-                info!(target: "update 1","{:?}",err);
+                info!(target: "UPDATE 1","{:?}",err);
                 return Err(err);
             }
             doc.insert("$set", data.unwrap());
@@ -220,25 +220,25 @@ impl Update {
 
         if save.is_err() {
             let err = save.unwrap_err().to_string();
-            info!(target: "update","{:?}",err);
+            info!(target: "UPDATE","{:?}",err);
             return Err(err);
         }
 
         let save = save.unwrap();
 
-        // info!(target: "db::update::oke","Success update data");
+        // info!(target: "db::UPDATE::oke","Success UPDATE data");
         Ok(save.modified_count)
     }
 
     pub async fn many<T: Serialize>(self, update: T, client: &Client) -> Result<u64, String> {
-        //info!(target: "db::update","Start update data");
+        //info!(target: "db::UPDATE","Start UPDATE data");
         if self.orm.collection_name.is_empty() {
-            info!(target:"db::update::error", "Specify collection name before update...");
-            return Err("Specify collection name before update...".to_string());
+            info!(target:"db::UPDATE::error", "Specify collection name before UPDATE...");
+            return Err("Specify collection name before UPDATE...".to_string());
         }
         if self.orm.filter.len() < 1 && self.orm.filters.len() < 1 {
-            info!(target:"db::update::error", "Specify filter before update...");
-            return Err("Specify filter before update...".to_string());
+            info!(target:"db::UPDATE::error", "Specify filter before UPDATE...");
+            return Err("Specify filter before UPDATE...".to_string());
         }
         let db = client.database(DB_NAME);
         let collection: Collection<Document> = db.collection(self.orm.collection_name.as_str());
@@ -249,7 +249,7 @@ impl Update {
             let data = bson::to_document(&update);
             if data.is_err() {
                 let err = data.unwrap_err().to_string();
-                info!(target: "update 1","{:?}",err);
+                info!(target: "UPDATE 1","{:?}",err);
                 return Err(err);
             }
             doc.insert("$set", data.unwrap());
@@ -273,7 +273,7 @@ impl Update {
 
             return Err(err_message);
         }
-        //info!(target: "db::get::ok","Success update data");
+        //info!(target: "db::get::ok","Success UPDATE data");
         Ok(save.unwrap().modified_count)
     }
 
@@ -283,14 +283,14 @@ impl Update {
         client: &Client,
         session: &mut ClientSession,
     ) -> Result<u64, String> {
-        //info!(target: "db::update","Start update data");
+        //info!(target: "db::UPDATE","Start UPDATE data");
         if self.orm.collection_name.is_empty() {
-            info!(target:"db::update::error", "Specify collection name before update...");
-            return Err("Specify collection name before update...".to_string());
+            info!(target:"db::UPDATE::error", "Specify collection name before UPDATE...");
+            return Err("Specify collection name before UPDATE...".to_string());
         }
         if self.orm.filter.len() < 1 && self.orm.filters.len() < 1 {
-            info!(target:"db::update::error", "Specify filter before update...");
-            return Err("Specify filter before update...".to_string());
+            info!(target:"db::UPDATE::error", "Specify filter before UPDATE...");
+            return Err("Specify filter before UPDATE...".to_string());
         }
         let db = client.database(DB_NAME);
         let collection: Collection<Document> = db.collection(self.orm.collection_name.as_str());
@@ -301,7 +301,7 @@ impl Update {
             let data = bson::to_document(&update);
             if data.is_err() {
                 let err = data.unwrap_err().to_string();
-                info!(target: "update 1","{:?}",err);
+                info!(target: "UPDATE 1","{:?}",err);
                 return Err(err);
             }
             doc.insert("$set", data.unwrap());
@@ -325,7 +325,7 @@ impl Update {
 
             return Err(err_message);
         }
-        //info!(target: "db::get::ok","Success update data");
+        //info!(target: "db::get::ok","Success UPDATE data");
         Ok(save.unwrap().modified_count)
     }
 

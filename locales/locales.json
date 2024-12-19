@@ -3,6 +3,10 @@
     "en": "Hello, ${name}. ${hohoe}",
     "id-ID": "Halo, ${name}. ${hohoe}"
   },
+  "method-not-allowed": {
+    "en": "Method Not Allowed.",
+    "id-ID": "Http Request Tidak Diperbolehkan(405)."
+  },
   "unauthorized": {
     "en": "Unauthorized access.",
     "id-ID": "Anda tidak memiliki izin."
@@ -15,25 +19,37 @@
     "en": "Request Body Not Valid.",
     "id-ID": "Request Body Tidak Valid."
   },
+  "body.invalid": {
+    "en": "Body not valid, because ${message}",
+    "id-ID": "Body tidak valid, error ${message}"
+  },
+  "sign-in.account.not-found": {
+    "en": "Account not found, try using another account you have.",
+    "id-ID": "Tidak dapat menemukan akun, silahkan gunakan akun yang sudah terdaftar."
+  },
   "sign-in.failed": {
-    "en": "Account not found, wrong username or password.",
-    "id-ID": "Akun tidak ditemukan, username atau password salah."
+    "en": "Sign In failed, username or password invalid, try again later.",
+    "id-ID": "Login gagal, username atau password salah, silahkan coba lagi."
   },
   "sign-in.success": {
     "en": "Sign In Success.",
     "id-ID": "Login Berhasil."
+  },
+  "sign-out.success": {
+    "en": "Successfully Sign Out From Account",
+    "id-ID": "Behasil keluar dari akun."
   },
   "change-password.account.not-failed": {
     "en": "Failed change password, account not found.",
     "id-ID": "Gagal merubah password akun tidak ditemukan."
   },
   "change-password.password-invalid": {
-    "en": "Failed change password, account not found.",
-    "id-ID": "Gagal merubah password akun tidak ditemukan."
+    "en": "Failed change password, current password not valid",
+    "id-ID": "Gagal merubah password, password sekarang tidak sesuai."
   },
   "change-password.new-password-invalid": {
-    "en": "Failed change password, account not found.",
-    "id-ID": "Gagal merubah password akun tidak ditemukan."
+    "en": "Failed change password,new password doesn't match.",
+    "id-ID": "Gagal merubah password, password baru tidak valid."
   },
   "change-password.failed": {
     "en": "Failed to change password, try again later.",
@@ -43,9 +59,17 @@
     "en": "Password has been change.",
     "id-ID": "Password berhasil dirubah."
   },
+  "branch.list.success": {
+    "en": "Successfully get list branch.",
+    "id-ID": "Data Daftar Cabang."
+  },
   "branch.not-found": {
     "en": "Branch Not Found.",
     "id-ID": "Cabang tidak ditemukan."
+  },
+  "branch.found": {
+    "en": "Detail branch.",
+    "id-ID": "Data cabang."
   },
   "branch.insert.success": {
     "en": "Success Create Branch.",

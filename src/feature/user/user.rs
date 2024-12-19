@@ -2,9 +2,11 @@ use crate::common::api_response::{ApiResponse, PaginationRequest, PagingResponse
 use crate::common::app_state::AppState;
 use crate::common::jwt::AuthContext;
 use crate::common::lang::Lang;
+use crate::common::middleware::Json;
 use crate::common::minio::MinIO;
-use crate::common::multipart_file::MultipartFile;
+use crate::common::multipart_file::SingleFileExtractor;
 use crate::common::orm::orm::Orm;
+use crate::common::permission::permission::app;
 use crate::common::seeder::get_list_permission;
 use crate::common::utils::{
     create_object_id_option, QUERY_ASC, QUERY_DESC, QUERY_LATEST, QUERY_OLDEST,
@@ -16,10 +18,7 @@ use crate::entity::account_permission::AccountPermission;
 use crate::entity::file_attachment::FileAttachment;
 use crate::feature::user::user_model::{CreateUserRequest, UpdateUserRequest};
 use crate::translate;
-use axum::extract::rejection::JsonRejection;
-use axum::extract::{Multipart, Path, Query, State};
-use axum::extract::multipart::MultipartRejection;
-use axum::Json;
+use axum::extract::{Path, Query, State};
 use bson::oid::ObjectId;
 use bson::DateTime;
 use log::info;
@@ -31,7 +30,7 @@ pub async fn get_list_user(
     auth_context: AuthContext,
     query: Query<PaginationRequest>,
 ) -> ApiResponse<PagingResponse<AccountDTO>> {
-    if !auth_context.authorize("app::account::read") {
+    if !auth_context.authorize(app::user::READ) {
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
 
@@ -77,7 +76,7 @@ pub async fn get_detail_user(
     auth_context: AuthContext,
     Path(user_id): Path<String>,
 ) -> ApiResponse<AccountDetailDTO> {
-    if !auth_context.authorize("app::account::read") {
+    if !auth_context.authorize(app::user::READ) {
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
 
@@ -105,15 +104,12 @@ pub async fn create_user(
     state: State<AppState>,
     auth_context: AuthContext,
     lang: Lang,
-    body: Result<Json<CreateUserRequest>, JsonRejection>,
+    Json(body): Json<CreateUserRequest>,
 ) -> ApiResponse<AccountDTO> {
-    if !auth_context.authorize("app::account::write") {
+    if !auth_context.authorize(app::user::CREATE) {
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
-    if body.is_err() {
-        return ApiResponse::bad_request(translate!("validation.error").as_str());
-    }
-    let body = body.unwrap();
+
     let validate = body.validate();
     if validate.is_err() {
         return ApiResponse::error_validation(validate.unwrap_err(), translate!("", lang).as_str());
@@ -173,15 +169,12 @@ pub async fn update_user(
     auth_context: AuthContext,
     lang: Lang,
     Path(user_id): Path<String>,
-    body: Result<Json<UpdateUserRequest>, JsonRejection>,
+    Json(body): Json<UpdateUserRequest>,
 ) -> ApiResponse<AccountDTO> {
-    if !auth_context.authorize("app::account::write") {
+    if !auth_context.authorize(app::user::UPDATE) {
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
-    if body.is_err() {
-        return ApiResponse::bad_request(translate!("validation.error").as_str());
-    }
-    let body = body.unwrap();
+
     let validate = body.validate();
     if validate.is_err() {
         return ApiResponse::error_validation(
@@ -244,7 +237,7 @@ pub async fn delete_user(
     lang: Lang,
     Path(user_id): Path<String>,
 ) -> ApiResponse<String> {
-    if !auth_context.authorize("app::account::write") {
+    if !auth_context.authorize(app::user::DELETE) {
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
 
@@ -273,18 +266,15 @@ pub async fn upload_profile_picture(
     state: State<AppState>,
     auth_context: AuthContext,
     lang: Lang,
-    multipart: Result<Multipart, MultipartRejection>,
+    multipart: SingleFileExtractor,
 ) -> ApiResponse<FileAttachmentDTO> {
     if !auth_context.authorize("app::account::write") {
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
-    if multipart.is_err() {
-        return ApiResponse::bad_request(translate!("validation.error").as_str());
-    }
-    let multipart = multipart.unwrap();
-    let extract = MultipartFile::extract_multipart(multipart).await;
 
-    let validate = extract.validate();
+
+
+    let validate = multipart.validate_body();
     if validate.is_err() {
         return ApiResponse::error_validation(
             validate.unwrap_err(),
@@ -292,7 +282,7 @@ pub async fn upload_profile_picture(
         );
     }
 
-    let user_id = create_object_id_option(extract.ref_id.as_str());
+    let user_id = create_object_id_option(multipart.ref_id.as_str());
     if user_id.is_none() {
         return ApiResponse::not_found(translate!("user.profile-picture.not-found", lang).as_str());
     }
@@ -301,6 +291,7 @@ pub async fn upload_profile_picture(
         .one::<FileAttachment>(&state.db)
         .await;
 
+    let file = multipart.file();
     let minio = MinIO::new().await;
     let is_file_exists = find_exist_profile_picture.is_ok();
     let bucket_name = "profile-picture".to_string();
@@ -309,10 +300,10 @@ pub async fn upload_profile_picture(
         Ok(v) => v,
         Err(_) => FileAttachment {
             id: Some(ObjectId::new()),
-            ref_id: create_object_id_option(extract.ref_id.as_str()),
-            filename: extract.filename.clone(),
-            mime_type: extract.mime_type.clone(),
-            extension: extract.extension.clone(),
+            ref_id: create_object_id_option(file.ref_id.as_str()),
+            filename: file.filename.clone(),
+            mime_type: file.mime_type.clone(),
+            extension: file.extension.clone(),
             kind: "USER".to_string(),
             create_at: DateTime::now(),
             updated_at: DateTime::now(),
@@ -328,16 +319,16 @@ pub async fn upload_profile_picture(
     //upload new
     let minio = minio
         .upload_file(
-            extract.temp_path.clone(),
+            file.temp_path.clone(),
             bucket_name,
-            extract.filename.clone(),
+            file.filename.clone(),
         )
         .await;
 
     if minio.is_err() {
         let err = minio.unwrap_err();
         info!(target: "upload-profile-picture", "{}", err);
-        let _remove = extract.remove_file();
+        let _remove = file.remove_file();
         return ApiResponse::failed(translate!("user.profile-picture.failed", lang).as_str());
     }
 
@@ -346,9 +337,9 @@ pub async fn upload_profile_picture(
         true => {
             let update_profile_picture = Orm::update("file-attachment")
                 .filter_object_id("ref_id", &user_id.unwrap())
-                .set_str("filename", &extract.filename.as_str())
-                .set_str("mime-type", &extract.mime_type.as_str())
-                .set_str("extension", &extract.extension.as_str())
+                .set_str("filename", &file.filename.as_str())
+                .set_str("mime-type", &file.mime_type.as_str())
+                .set_str("extension", &file.extension.as_str())
                 .execute_one(&state.db)
                 .await;
             if update_profile_picture.is_err() {
@@ -369,11 +360,11 @@ pub async fn upload_profile_picture(
 
     if !success {
         info!(target: "upload-profile-picture", "{}", error_message);
-        let _remove = extract.remove_file();
+        let _remove = file.remove_file();
         return ApiResponse::failed(translate!("user.profile-picture.failed", lang).as_str());
     }
 
-    let _remove = extract.remove_file();
+    let _remove = file.remove_file();
     ApiResponse::ok(
         attachment.to_dto(),
         translate!("user.profile-picture.success", lang).as_str(),

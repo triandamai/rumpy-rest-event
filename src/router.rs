@@ -1,5 +1,6 @@
 use crate::common::api_response::ApiResponse;
 use crate::common::app_state::AppState;
+use crate::common::middleware::method_not_allowed;
 use crate::feature;
 use crate::routes;
 use axum::routing::{delete, get, post, put};
@@ -28,16 +29,8 @@ pub fn init_routes(state: AppState) -> Router {
         )
         //auth
         .route("/auth/sign-in", post(feature::auth::auth::sign_in))
+        .route("/auth/change-password", post(feature::auth::auth::change_password))
         .route("/auth/sign-out", post(feature::auth::auth::sign_out))
-        //permission
-        .route(
-            "/permission/assign",
-            post(feature::permission::permission::assign_permission),
-        )
-        .route(
-            "/permission/account/:account_id",
-            get(feature::permission::permission::get_user_permission),
-        )
         //branch
         .route(
             "/branch/list",
@@ -95,6 +88,10 @@ pub fn init_routes(state: AppState) -> Router {
         )
         .route(
             "/member/:product_id",
+            get(feature::member::member::get_detail_member),
+        )
+        .route(
+            "/member/nfc/:product_id",
             get(feature::member::member::get_detail_member),
         )
         .route("/member", post(feature::member::member::create_member))
@@ -178,6 +175,7 @@ pub fn init_routes(state: AppState) -> Router {
             get(feature::stock::stock::get_detail_stock),
         )
         .route("/stock", post(feature::stock::stock::update_stock))
+        .layer(axum::middleware::from_fn(method_not_allowed))
         .fallback(handle_404)
         .with_state(state)
 }

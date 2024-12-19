@@ -2,6 +2,7 @@ use crate::common::api_response::ApiResponse;
 use crate::common::app_state::AppState;
 use crate::common::jwt::{AuthContext, JwtUtil};
 use crate::common::lang::Lang;
+use crate::common::middleware::Json;
 use crate::common::orm::orm::Orm;
 use crate::dto::account_dto::AccountDetailDTO;
 use crate::entity::account::Account;
@@ -9,27 +10,22 @@ use crate::feature::auth::auth_model::{
     ChangePasswordRequest, SignInRequest, SignInResponse, BRANCH_ID_KEY, TOKEN_KEY, USER_ID_KEY,
 };
 use crate::translate;
-use axum::extract::rejection::JsonRejection;
 use axum::extract::State;
-use axum::Json;
 use bcrypt::DEFAULT_COST;
+use log::info;
 use validator::Validate;
 
 pub async fn sign_in(
     mut state: State<AppState>,
     lang: Lang,
-    body: Result<Json<SignInRequest>, JsonRejection>,
+    Json(body): Json<SignInRequest>,
 ) -> ApiResponse<SignInResponse> {
-    if body.is_err() {
-        return ApiResponse::failed(translate!("validation.error").as_str());
-    }
-    let body = body.unwrap();
+    info!(target:"auth::sign-in", "trying to login");
     let validate = body.validate();
     if !validate.is_ok() {
-        return ApiResponse::error_validation(
-            validate.unwrap_err(),
-            translate!("validation.error", lang),
-        );
+        let err = validate.unwrap_err();
+        info!(target:"auth::sign-in::error", "body invalid {:?}",err);
+        return ApiResponse::error_validation(err, translate!("validation.error", lang));
     }
 
     let find_by_email = Orm::get("account")
@@ -38,7 +34,8 @@ pub async fn sign_in(
         .await;
 
     if find_by_email.is_err() {
-        return ApiResponse::failed(translate!("sign-in.failed", lang));
+        info!(target:"auth::sign-in::error", "{} trying to login, but cannot find account",body.email.as_str());
+        return ApiResponse::failed(translate!("sign-in.account.not-found", lang));
     }
     let find = find_by_email.unwrap();
     let verify = bcrypt::verify(body.password.as_str(), &find.password).unwrap_or(false);
@@ -48,6 +45,7 @@ pub async fn sign_in(
     }
     let create_token = JwtUtil::encode(find.email.clone());
     if create_token.is_none() {
+        info!(target:"auth::sign-in::error", "{} trying to login, but failed to CREATE session", body.email.as_str());
         return ApiResponse::failed(translate!("sign-in.failed", lang));
     }
     let get_account = Orm::get("account")
@@ -59,6 +57,7 @@ pub async fn sign_in(
         .one::<AccountDetailDTO>(&state.db)
         .await;
     if get_account.is_err() {
+        info!(target:"auth::sign-in::error", "{} trying to login, but failed to fetch profile", body.email.as_str());
         return ApiResponse::failed(translate!("sign-in.failed", lang));
     }
     let get_account = get_account.unwrap();
@@ -73,6 +72,7 @@ pub async fn sign_in(
         ],
     );
     if save_session.is_err() {
+        info!(target:"auth::sign-in::error", "{} trying to login, but failed to CREATE session to redis", body.email.as_str());
         return ApiResponse::failed(translate!("sign-in.failed", lang).as_str());
     }
 
@@ -87,6 +87,7 @@ pub async fn sign_in(
         .redis
         .set_session_permission(find.email.as_str(), find_permission);
 
+    info!(target:"auth::sign-in::success", "sign in success");
     ApiResponse::ok(
         SignInResponse {
             token,
@@ -100,27 +101,31 @@ pub async fn change_password(
     state: State<AppState>,
     lang: Lang,
     auth_context: AuthContext,
-    body: Json<ChangePasswordRequest>,
+    Json(body): Json<ChangePasswordRequest>,
 ) -> ApiResponse<String> {
+    info!(target:"auth::auth", "{} change password ",auth_context.claims.sub);
     let validate = body.validate();
-    if !validate.is_err() {
+    if validate.is_err() {
         return ApiResponse::error_validation(
             validate.unwrap_err(),
             translate!("validation.error", lang).as_str(),
         );
     }
+
     let find_by_email = Orm::get("account")
         .filter_string("email", Some("$eq"), auth_context.claims.sub.as_str())
         .one::<Account>(&state.db)
         .await;
+
     if find_by_email.is_err() {
         return ApiResponse::failed(
             translate!("change-password.account.not-failed", lang).as_str(),
         );
     }
     let mut find = find_by_email.unwrap();
-    let verify_current_password = bcrypt::verify(body.current_password.as_str(), &find.password);
-    if verify_current_password.is_err() {
+    let verify_current_password =
+        bcrypt::verify(body.current_password.as_str(), &find.password).unwrap_or(false);
+    if !verify_current_password {
         return ApiResponse::failed(translate!("change-password.password-invalid", lang).as_str());
     }
     let create_new_password = bcrypt::hash(body.new_password.as_str(), DEFAULT_COST);
@@ -157,6 +162,6 @@ pub async fn sign_out(
 
     ApiResponse::ok(
         "OK".to_string(),
-        translate!("sign.out.success", lang).as_str(),
+        translate!("sign-out.success", lang).as_str(),
     )
 }

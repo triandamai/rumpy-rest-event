@@ -1,4 +1,4 @@
-use crate::dto::coach::CoachDTO;
+use crate::dto::coach_dto::CoachDTO;
 use bson::oid::ObjectId;
 use bson::DateTime;
 use serde::{Deserialize, Serialize};

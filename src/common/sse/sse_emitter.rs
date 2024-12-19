@@ -58,7 +58,7 @@ impl SseBroadcaster {
         });
     }
 
-    /// Removes all non-responsive clients from broadcast list.
+    /// Removes ALL non-responsive clients from broadcast list.
     async fn remove_stale_client(&self) {
         let clients = self.inner.lock().unwrap().clients.clone();
         let mut ok_client = HashMap::new();

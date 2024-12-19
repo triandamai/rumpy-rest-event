@@ -15,5 +15,7 @@ pub mod i18n;
 pub mod lang;
 pub mod seeder;
 pub mod multipart_file;
+pub mod middleware;
+pub mod permission;
 
 
