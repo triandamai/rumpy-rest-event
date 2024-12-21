@@ -175,7 +175,7 @@ impl Update {
 
         let save = save.unwrap();
 
-        // info!(target: "db::UPDATE::oke","Success UPDATE data");
+        // info!(target: "db::UPDATE::oke","Success update  data");
         Ok(save.modified_count)
     }
 
@@ -226,12 +226,12 @@ impl Update {
 
         let save = save.unwrap();
 
-        // info!(target: "db::UPDATE::oke","Success UPDATE data");
+        // info!(target: "db::UPDATE::oke","Success update  data");
         Ok(save.modified_count)
     }
 
     pub async fn many<T: Serialize>(self, update: T, client: &Client) -> Result<u64, String> {
-        //info!(target: "db::UPDATE","Start UPDATE data");
+        //info!(target: "db::update","Start update  data");
         if self.orm.collection_name.is_empty() {
             info!(target:"db::UPDATE::error", "Specify collection name before UPDATE...");
             return Err("Specify collection name before UPDATE...".to_string());
@@ -273,7 +273,7 @@ impl Update {
 
             return Err(err_message);
         }
-        //info!(target: "db::get::ok","Success UPDATE data");
+        //info!(target: "db::get::ok","Success update  data");
         Ok(save.unwrap().modified_count)
     }
 
@@ -283,7 +283,7 @@ impl Update {
         client: &Client,
         session: &mut ClientSession,
     ) -> Result<u64, String> {
-        //info!(target: "db::UPDATE","Start UPDATE data");
+        //info!(target: "db::update","Start update  data");
         if self.orm.collection_name.is_empty() {
             info!(target:"db::UPDATE::error", "Specify collection name before UPDATE...");
             return Err("Specify collection name before UPDATE...".to_string());
@@ -325,7 +325,7 @@ impl Update {
 
             return Err(err_message);
         }
-        //info!(target: "db::get::ok","Success UPDATE data");
+        //info!(target: "db::get::ok","Success update  data");
         Ok(save.unwrap().modified_count)
     }
 

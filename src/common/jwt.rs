@@ -20,6 +20,7 @@ use serde::{Deserialize, Serialize};
 use super::app_state::AppState;
 use crate::common::api_response::ApiResponse;
 use crate::common::env_config::EnvConfig;
+use crate::common::permission::permission::app;
 use crate::common::utils::{create_object_id_option, create_or_new_object_id};
 use crate::feature::auth::auth_model::{BRANCH_ID_KEY, USER_ID_KEY};
 use crate::translate;
@@ -95,14 +96,14 @@ impl AuthContext {
         branch_id.eq(id)
     }
     pub fn authorize(&self, permission: &str) -> bool {
-        if self.permissions.contains_key("app::admin::ALL") {
+        if self.permissions.contains_key(app::admin::ALL) {
             return true;
         }
         self.permissions.get(&permission.to_string()).is_some()
     }
 
     pub fn authorize_multiple(&self, permissions: Vec<&str>) -> bool {
-        if self.permissions.contains_key("app::admin::ALL") {
+        if self.permissions.contains_key(app::admin::ALL) {
             return true;
         }
         permissions
@@ -112,7 +113,7 @@ impl AuthContext {
     }
 
     pub fn authorize_result(&self, permission: &str) -> Result<bool,ApiResponse<String>> {
-        if self.permissions.contains_key("app::admin::ALL") {
+        if self.permissions.contains_key(app::admin::ALL) {
             return Ok(true);
         }
         let allow = self.permissions.get(&permission.to_string()).is_some();
@@ -130,7 +131,7 @@ impl AuthContext {
         &self,
         permissions: Vec<&str>,
     ) -> Result<bool, ApiResponse<String>> {
-        if self.permissions.contains_key("app::admin::ALL") {
+        if self.permissions.contains_key(app::admin::ALL) {
             return Ok(true);
         }
         let allow = permissions

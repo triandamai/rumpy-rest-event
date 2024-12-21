@@ -95,7 +95,7 @@ pub async fn get_detail_stock(
 
     let product_id = create_object_id_option(product_id.as_str());
     if product_id.is_none() {
-        info!(target:"stock::detail","failed CREATE product id");
+        info!(target:"stock::detail","failed create product id");
         return ApiResponse::failed(translate!("stock.detail.not-found", lang).as_str());
     }
 
@@ -124,26 +124,26 @@ pub async fn update_stock(
     lang: Lang,
     Json(body):Json<UpdateStockRequest>,
 ) -> ApiResponse<ProductDTO> {
-    info!(target: "stock::UPDATE","{} trying to UPDATE stock",auth_context.claims.sub);
+    info!(target: "stock::update","{} trying to update  stock",auth_context.claims.sub);
     if !auth_context.authorize(app::stock::UPDATE) {
-        info!(target: "stock::UPDATE","{} not permitted", auth_context.claims.sub);
+        info!(target: "stock::update","{} not permitted", auth_context.claims.sub);
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
 
     if auth_context.branch_id.is_none() {
-        info!(target:"stock::UPDATE","failed to get branch id");
+        info!(target:"stock::update","failed to get branch id");
         return ApiResponse::failed(translate!("stock.update.failed", lang).as_str());
     }
 
     let product_id = create_object_id_option(body.product_id.clone().as_str());
     if product_id.is_none() {
-        info!(target:"stock::UPDATE","failed to CREATE product id");
+        info!(target:"stock::update","failed to create product id");
         return ApiResponse::not_found(translate!("product.not-found", lang).as_str());
     }
 
     let session = state.db.start_session().await;
     if session.is_err() {
-        info!(target:"stock::UPDATE","failed to CREATE trx session");
+        info!(target:"stock::update","failed to create trx session");
         return ApiResponse::failed(translate!("stock.update.failed", lang).as_str());
     }
     let mut session = session.unwrap();
@@ -154,7 +154,7 @@ pub async fn update_stock(
         branch_id: auth_context.branch_id,
         product_id,
         description: "Update Stock".to_string(),
-        log_type: "stock::UPDATE".to_string(),
+        log_type: "stock::update".to_string(),
         stock: body.stock,
         created_by_id: auth_context.user_id,
         created_at: DateTime::now(),
@@ -169,7 +169,7 @@ pub async fn update_stock(
     if insert_log.is_err() {
         let _abort = session.abort_transaction().await;
         let err = insert_log.unwrap_err().to_string();
-        info!(target:"stock::UPDATE","failed to insert product-log: {}", err);
+        info!(target:"stock::update","failed to insert product-log: {}", err);
         return ApiResponse::failed(translate!("UPDATE.failed", lang).as_str());
     }
 
@@ -183,7 +183,7 @@ pub async fn update_stock(
     if update_product.is_err() {
         let _abort = session.abort_transaction().await;
         let err = insert_log.unwrap_err().to_string();
-        info!(target:"stock::UPDATE","failed to insert product-log: {}", err);
+        info!(target:"stock::update","failed to insert product-log: {}", err);
         return ApiResponse::failed(translate!("UPDATE.failed", lang).as_str());
     }
 
@@ -199,10 +199,10 @@ pub async fn update_stock(
 
     if find_detail_stock.is_err() {
         let err = find_detail_stock.unwrap_err().to_string();
-        info!(target: "stock::UPDATE","{}", err);
+        info!(target: "stock::update","{}", err);
         return ApiResponse::failed(translate!("stock.update.failed", lang).as_str());
     }
-    info!(target: "stock::UPDATE","successfully UPDATE stock");
+    info!(target: "stock::update","successfully update  stock");
     ApiResponse::ok(
         find_detail_stock.unwrap(),
         translate!("stock.update.success", lang).as_str(),

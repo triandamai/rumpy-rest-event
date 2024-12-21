@@ -28,6 +28,7 @@ pub struct ProductDTO {
     pub product_selling_price: f64,
     pub product_profit: f64,
     pub product_stock: i64,
+    pub is_membership:bool,
     #[serde(rename = "product_image")]
     pub product_image: Option<FileAttachmentDTO>,
     #[serde(

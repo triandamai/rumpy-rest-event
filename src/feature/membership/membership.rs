@@ -84,7 +84,7 @@ pub async fn get_detail_membership(
     }
     let membership_id = create_object_id_option(membership_id.as_str());
     if membership_id.is_none() {
-        info!(target: "membership::detail", "failed to CREATE id");
+        info!(target: "membership::detail", "failed to create id");
         return ApiResponse::not_found(translate!("membership.not-found", lang).as_str());
     }
     let membership_id = membership_id.unwrap();
@@ -110,15 +110,15 @@ pub async fn create_membership(
     lang: Lang,
     Json(body): Json<CreateMembershipRequest>,
 ) -> ApiResponse<MembershipDTO> {
-    info!(target: "membership::CREATE", "{} trying to CREATE new membership",auth_context.claims.sub);
+    info!(target: "membership::create", "{} trying to create new membership",auth_context.claims.sub);
     if !auth_context.authorize(app::membership::CREATE) {
-        info!(target: "membership::CREATE", "{} not permitted.",auth_context.claims.sub);
+        info!(target: "membership::create", "{} not permitted.",auth_context.claims.sub);
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
 
     let validate = body.validate();
     if validate.is_err() {
-        info!(target: "membership::CREATE", "validation failed {}.",validate.clone().unwrap_err());
+        info!(target: "membership::create", "validation failed {}.",validate.clone().unwrap_err());
         return ApiResponse::error_validation(
             validate.unwrap_err(),
             translate!("validation.error", lang).as_str(),
@@ -142,12 +142,12 @@ pub async fn create_membership(
     let save = Orm::insert("membership").one(&membership, &state.db).await;
 
     if save.is_err() {
-        info!(target: "membership::CREATE", "failed to save membership {}",save.unwrap_err());
+        info!(target: "membership::create", "failed to save membership {}",save.unwrap_err());
         return ApiResponse::failed(translate!("membership.create.failed", lang).as_str());
     }
     let create_discount_id = save.unwrap();
 
-    info!(target: "membership::CREATE", "created membership {}",create_discount_id);
+    info!(target: "membership::create", "created membership {}",create_discount_id);
     ApiResponse::ok(
         membership.to_dto(),
         translate!("membership.create.success", lang).as_str(),
@@ -162,7 +162,7 @@ pub async fn update_membership(
     Json(body): Json<UpdateMembershipRequest>,
 ) -> ApiResponse<MembershipDTO> {
     if !auth_context.authorize(app::membership::UPDATE) {
-        info!(target: "membership::UPDATE", "Failed to CREATE new membership because user does not permitted.");
+        info!(target: "membership::update", "Failed to create new membership because user does not permitted.");
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
     let validate = body.validate();
@@ -180,7 +180,7 @@ pub async fn update_membership(
         .await;
 
     if find_membership.is_err() {
-        info!(target: "membership::UPDATE", "membership not found");
+        info!(target: "membership::update", "membership not found");
         return ApiResponse::not_found(translate!("membership.not-found", lang).as_str());
     }
     let mut membership = find_membership.unwrap();
@@ -208,10 +208,10 @@ pub async fn update_membership(
         .await;
 
     if save.is_err() {
-        info!(target: "membership::UPDATE", "failed to save membership {}",save.unwrap_err());
+        info!(target: "membership::update", "failed to save membership {}",save.unwrap_err());
         return ApiResponse::failed(translate!("membership.update.failed", lang).as_str());
     }
-    info!(target: "membership::UPDATE","success updating membership");
+    info!(target: "membership::update","success updating membership");
     ApiResponse::ok(
         membership.to_dto(),
         translate!("membership.update.success", lang).as_str(),
@@ -224,15 +224,15 @@ pub async fn delete_membership(
     lang: Lang,
     Path(membership_id): Path<String>,
 ) -> ApiResponse<String> {
-    info!(target: "membership::DELETE", "{} trying DELETE membership",auth_context.claims.sub);
+    info!(target: "membership::delete", "{} trying delete  membership",auth_context.claims.sub);
     if !auth_context.authorize(app::membership::DELETE) {
-        info!(target: "membership::DELETE", "{} not permitted",auth_context.claims.sub);
+        info!(target: "membership::delete", "{} not permitted",auth_context.claims.sub);
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
 
     let create_id = create_object_id_option(membership_id.as_str());
     if create_id.is_none() {
-        info!(target: "membership::DELETE", "failed CREATE ObjectId");
+        info!(target: "membership::delete", "failed create ObjectId");
         return ApiResponse::not_found(translate!("membership.not_found", lang).as_str());
     }
     let update = Orm::update("membership")
@@ -242,10 +242,10 @@ pub async fn delete_membership(
         .await;
 
     if update.is_err() {
-        info!(target: "membership::DELETE","failed updating membership");
+        info!(target: "membership::delete","failed updating membership");
         return ApiResponse::failed(translate!("membership.delete.failed").as_str());
     }
-    info!(target: "membership::DELETE","success deleted membership");
+    info!(target: "membership::delete","success deleted membership");
     ApiResponse::ok(
         "OK".to_string(),
         translate!("membership.delete.success", lang).as_str(),

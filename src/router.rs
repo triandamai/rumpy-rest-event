@@ -29,7 +29,10 @@ pub fn init_routes(state: AppState) -> Router {
         )
         //auth
         .route("/auth/sign-in", post(feature::auth::auth::sign_in))
-        .route("/auth/change-password", post(feature::auth::auth::change_password))
+        .route(
+            "/auth/change-password",
+            post(feature::auth::auth::change_password),
+        )
         .route("/auth/sign-out", post(feature::auth::auth::sign_out))
         //branch
         .route(
@@ -175,6 +178,9 @@ pub fn init_routes(state: AppState) -> Router {
             get(feature::stock::stock::get_detail_stock),
         )
         .route("/stock", post(feature::stock::stock::update_stock))
+        //transaction
+        .route("/transaction/top-up",post(feature::transaction::transaction::create_top_up_transaction))
+        .route("/transaction/membership",post(feature::transaction::transaction::create_product_transaction))
         .layer(axum::middleware::from_fn(method_not_allowed))
         .fallback(handle_404)
         .with_state(state)

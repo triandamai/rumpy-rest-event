@@ -25,7 +25,8 @@ pub struct MemberSubscriptionDTO {
     )]
     pub membership_id: Option<ObjectId>,
     pub membership: Option<MembershipDTO>,
-    pub amount: f64,
+    pub balance: f64,
+    pub outstanding_balance: f64,
     pub quota: i64,
     pub create_at: DateTime,
     pub update_at: DateTime,

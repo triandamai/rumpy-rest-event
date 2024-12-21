@@ -26,7 +26,9 @@ pub struct DetailTransactionDTO{
     pub kind:String,
     pub notes:String,
     pub quantity:i64,
+    pub total_before_discount:f64,
     pub total:f64,
+    pub is_membership:bool,
     #[serde(serialize_with = "serialize_datetime")]
     pub created_at: DateTime,
     #[serde(serialize_with = "serialize_datetime")]

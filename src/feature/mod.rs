@@ -8,3 +8,4 @@ pub mod member;
 pub mod discount;
 pub mod membership;
 pub mod stock;
+pub mod transaction;

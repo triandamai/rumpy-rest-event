@@ -45,7 +45,7 @@ pub async fn sign_in(
     }
     let create_token = JwtUtil::encode(find.email.clone());
     if create_token.is_none() {
-        info!(target:"auth::sign-in::error", "{} trying to login, but failed to CREATE session", body.email.as_str());
+        info!(target:"auth::sign-in::error", "{} trying to login, but failed to create session", body.email.as_str());
         return ApiResponse::failed(translate!("sign-in.failed", lang));
     }
     let get_account = Orm::get("account")
@@ -72,7 +72,7 @@ pub async fn sign_in(
         ],
     );
     if save_session.is_err() {
-        info!(target:"auth::sign-in::error", "{} trying to login, but failed to CREATE session to redis", body.email.as_str());
+        info!(target:"auth::sign-in::error", "{} trying to login, but failed to create session to redis", body.email.as_str());
         return ApiResponse::failed(translate!("sign-in.failed", lang).as_str());
     }
 

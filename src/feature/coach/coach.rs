@@ -96,7 +96,7 @@ pub async fn get_detail_coach(
 
     let id = create_object_id_option(coach_id.as_str());
     if id.is_none() {
-        info!(target: "coach::detail", "Failed CREATE ObjectId");
+        info!(target: "coach::detail", "Failed create ObjectId");
         return ApiResponse::not_found(translate!("coach.not-found", lang).as_str());
     }
 
@@ -127,9 +127,9 @@ pub async fn create_coach(
     auth_context: AuthContext,
     Json(body): Json<CreateCoachRequest>,
 ) -> ApiResponse<CoachDTO> {
-    info!(target: "coach::CREATE", "{} trying CREATE coach", auth_context.claims.sub);
+    info!(target: "coach::create", "{} trying create coach", auth_context.claims.sub);
     if !auth_context.authorize(app::coach::CREATE) {
-        info!(target: "coach::CREATE", "{} not permitted", auth_context.claims.sub);
+        info!(target: "coach::create", "{} not permitted", auth_context.claims.sub);
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
     if auth_context.branch_id.is_none() {
@@ -160,10 +160,10 @@ pub async fn create_coach(
 
     let save = Orm::insert("coach").one(&coach, &state.db).await;
     if save.is_err() {
-        info!(target: "coach::CREATE", "{}",save.unwrap_err());
+        info!(target: "coach::create", "{}",save.unwrap_err());
         return ApiResponse::failed(translate!("coach.create.failed", lang).as_str());
     }
-    info!(target: "coach::CREATE","Successfully created Coach");
+    info!(target: "coach::create","Successfully created Coach");
     ApiResponse::ok(
         coach.to_dto(),
         translate!("coach.create.success", lang).as_str(),
@@ -177,9 +177,9 @@ pub async fn update_coach(
     Path(coach_id): Path<String>,
     Json(body): Json<UpdateCoachRequest>,
 ) -> ApiResponse<CoachDTO> {
-    info!(target: "coach::UPDATE", "{} trying UPDATE coach", auth_context.claims.sub);
+    info!(target: "coach::update", "{} trying update  coach", auth_context.claims.sub);
     if !auth_context.authorize(app::coach::UPDATE) {
-        info!(target: "coach::UPDATE", "{} not permitted", auth_context.claims.sub);
+        info!(target: "coach::update", "{} not permitted", auth_context.claims.sub);
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
 
@@ -193,7 +193,7 @@ pub async fn update_coach(
 
     let coach_id = create_object_id_option(coach_id.as_str());
     if coach_id.is_none() {
-        info!(target: "coach::UPDATE", "Failed CREATE ObjectId");
+        info!(target: "coach::update", "Failed create ObjectId");
         return ApiResponse::not_found(translate!("coach.not-found", lang).as_str());
     }
 
@@ -204,7 +204,7 @@ pub async fn update_coach(
         .one::<CoachDTO>(&state.db)
         .await;
     if find_coach.is_err() {
-        info!(target: "coach::UPDATE", "{}",find_coach.unwrap_err());
+        info!(target: "coach::update", "{}",find_coach.unwrap_err());
         return ApiResponse::not_found(translate!("coach.not-found", lang).as_str());
     }
     let mut coach = find_coach.unwrap();
@@ -239,12 +239,12 @@ pub async fn update_coach(
         .await;
 
     if save_data.is_err() {
-        info!(target: "coach::UPDATE", "{}",save_data.unwrap_err());
+        info!(target: "coach::update", "{}",save_data.unwrap_err());
 
         return ApiResponse::failed(translate!("coach.update.failed", lang).as_str());
     }
 
-    info!(target: "coach::UPDATE", "Successfully updated Coach");
+    info!(target: "coach::update", "Successfully updated Coach");
     ApiResponse::ok(coach, translate!("coach.update.success", lang).as_str())
 }
 
@@ -254,15 +254,15 @@ pub async fn delete_coach(
     lang: Lang,
     Path(coach_id): Path<String>,
 ) -> ApiResponse<String> {
-    info!(target: "coach::DELETE", "{} trying DELETE coach", auth_context.claims.sub);
+    info!(target: "coach::delete", "{} trying delete  coach", auth_context.claims.sub);
     if !auth_context.authorize(app::coach::DELETE) {
-        info!(target: "coach::DELETE", "{} not permitted", auth_context.claims.sub);
+        info!(target: "coach::delete", "{} not permitted", auth_context.claims.sub);
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
 
     let id = create_object_id_option(coach_id.as_str());
     if id.is_none() {
-        info!(target: "coach::DELETE", "Failed CREATE ObjectId");
+        info!(target: "coach::delete", "Failed create ObjectId");
         return ApiResponse::un_authorized(translate!("coach.not-found", lang).as_str());
     }
 
@@ -273,11 +273,11 @@ pub async fn delete_coach(
         .await;
 
     if update.is_err() {
-        info!(target: "coach::DELETE","{}",update.unwrap_err());
+        info!(target: "coach::delete","{}",update.unwrap_err());
         return ApiResponse::failed(translate!("coach.delete.failed", lang).as_str());
     }
 
-    info!(target: "coach::DELETE", "Successfully deleted Coach");
+    info!(target: "coach::delete", "Successfully deleted Coach");
     ApiResponse::ok(
         "OK".to_string(),
         translate!("coach.delete.success", lang).as_str(),
@@ -290,7 +290,7 @@ pub async fn update_profile_picture(
     lang: Lang,
     multipart: SingleFileExtractor,
 ) -> ApiResponse<FileAttachmentDTO> {
-    info!(target: "coach::profile-picture", "{} trying UPDATE prpfile picture coach", auth_context.claims.sub);
+    info!(target: "coach::profile-picture", "{} trying update  prpfile picture coach", auth_context.claims.sub);
     if !auth_context.authorize(app::coach::UPDATE) {
         info!(target: "coach::profile-picture", "{} not permitted", auth_context.claims.sub);
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
@@ -307,7 +307,7 @@ pub async fn update_profile_picture(
 
     let user_id = create_object_id_option(multipart.ref_id.as_str());
     if user_id.is_none() {
-        info!(target: "coach::profile-picture", "Failed CREATE ObjectId");
+        info!(target: "coach::profile-picture", "Failed create ObjectId");
         return ApiResponse::not_found(
             translate!("coach.profile-picture.not-found", lang).as_str(),
         );
@@ -389,7 +389,7 @@ pub async fn update_profile_picture(
     }
 
     let _remove = multipart.remove_file();
-    info!(target: "coach::profile-picture", "Successfully UPDATE picture coach");
+    info!(target: "coach::profile-picture", "Successfully update  picture coach");
     ApiResponse::ok(
         attachment.to_dto(),
         translate!("coach.profile-picture.success", lang).as_str(),

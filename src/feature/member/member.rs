@@ -108,7 +108,7 @@ pub async fn get_detail_member(
 
     let id = create_object_id_option(member_id.as_str());
     if id.is_none() {
-        info!(target: "member::detail", "failed CREATE ObjectId");
+        info!(target: "member::detail", "failed create ObjectId");
         return ApiResponse::un_authorized(translate!("member.not-found", lang).as_str());
     }
 
@@ -167,7 +167,7 @@ pub async fn create_member(
     lang: Lang,
     Json(body): Json<CreateMemberRequest>,
 ) -> ApiResponse<MemberDTO> {
-    info!(target: "member::CREATE", "{} trying CREATE member",auth_context.claims.sub);
+    info!(target: "member::create", "{} trying create member",auth_context.claims.sub);
     if !auth_context.authorize(app::member::CREATE) {
         info!(target: "member::list", "{} not permitted",auth_context.claims.sub);
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
@@ -186,7 +186,7 @@ pub async fn create_member(
         Some(coach_id) => create_object_id_option(coach_id.as_str()),
     };
     if membership_id.is_none() {
-        info!(target: "member::CREATE","membership doesn't exist");
+        info!(target: "member::create","membership doesn't exist");
         return ApiResponse::failed(translate!("coach.not-found", lang).as_str());
     }
     let find_membership = Orm::get("membership")
@@ -194,7 +194,7 @@ pub async fn create_member(
         .one::<MembershipDTO>(&state.db)
         .await;
     if find_membership.is_err() {
-        info!(target: "member::CREATE","membership doesn't exist");
+        info!(target: "member::create","membership doesn't exist");
         return ApiResponse::failed(translate!("coach.not-found", lang).as_str());
     }
 
@@ -204,7 +204,7 @@ pub async fn create_member(
     };
 
     if coach_id.is_none() {
-        info!(target: "member::CREATE","coach doesn't exist");
+        info!(target: "member::create","coach doesn't exist");
         return ApiResponse::failed(translate!("coach.not-found", lang).as_str());
     }
     let find_coach = Orm::get("coach")
@@ -212,7 +212,7 @@ pub async fn create_member(
         .one::<CoachDTO>(&state.db)
         .await;
     if find_coach.is_err() {
-        info!(target: "member::CREATE","coach doesn't exist");
+        info!(target: "member::create","coach doesn't exist");
         return ApiResponse::failed(translate!("coach.not-found", lang).as_str());
     }
 
@@ -243,7 +243,8 @@ pub async fn create_member(
         id: Some(ObjectId::new()),
         member_id: Some(member.id.clone().unwrap()),
         membership_id,
-        amount: membership.price,
+        balance: membership.price,
+        outstanding_balance: 0.0,
         quota: membership.quota.clone(),
         create_at: current_time,
         update_at: current_time,
@@ -253,11 +254,9 @@ pub async fn create_member(
         id: Some(ObjectId::new()),
         branch_id: Some(auth_context.branch_id.unwrap()),
         member_id: Some(member.id.clone().unwrap()),
-        total_price_before_discount: membership.price,
         notes: "Pembelian paket langganan".to_string(),
         total_price: membership.price,
         total_discount: 0.0,
-        is_membership: false,
         created_by_id: None,
         created_at: current_time,
         updated_at: current_time,
@@ -272,6 +271,8 @@ pub async fn create_member(
         notes: format!("Paket langganan {}", membership.name),
         quantity: 1,
         total: membership.price,
+        total_before_discount: membership.price,
+        is_membership: true,
         created_at: current_time,
         updated_at: current_time,
         deleted: false,
@@ -279,7 +280,7 @@ pub async fn create_member(
 
     let session = state.db.start_session().await;
     if session.is_err() {
-        info!(target:"stock::UPDATE","failed to CREATE trx session");
+        info!(target:"stock::update","failed to create trx session");
         return ApiResponse::failed(translate!("stock.update.failed", lang).as_str());
     }
     let mut session = session.unwrap();
@@ -291,7 +292,7 @@ pub async fn create_member(
 
     if save_member.is_err() {
         let _abort = session.abort_transaction().await;
-        info!(target: "member::CREATE", "{}",save_member.unwrap_err());
+        info!(target: "member::create", "{}",save_member.unwrap_err());
         return ApiResponse::failed(translate!("member.create.failed", lang).as_str());
     }
 
@@ -301,7 +302,7 @@ pub async fn create_member(
 
     if save_subscription.is_err() {
         let _abort = session.abort_transaction().await;
-        info!(target: "member::CREATE", "{}",save_subscription.unwrap_err());
+        info!(target: "member::create", "{}",save_subscription.unwrap_err());
         return ApiResponse::failed(translate!("member.create.failed", lang).as_str());
     }
 
@@ -311,7 +312,7 @@ pub async fn create_member(
 
     if save_transaction.is_err() {
         let _abort = session.abort_transaction().await;
-        info!(target: "member::CREATE", "{}",save_transaction.unwrap_err());
+        info!(target: "member::create", "{}",save_transaction.unwrap_err());
         return ApiResponse::failed(translate!("member.create.failed", lang).as_str());
     }
 
@@ -321,7 +322,7 @@ pub async fn create_member(
 
     if save_detail_transaction.is_err() {
         let _abort = session.abort_transaction().await;
-        info!(target: "member::CREATE", "{}",save_detail_transaction.unwrap_err());
+        info!(target: "member::create", "{}",save_detail_transaction.unwrap_err());
         return ApiResponse::failed(translate!("member.create.failed", lang).as_str());
     }
 
@@ -342,10 +343,10 @@ pub async fn update_member(
     Path(member_id): Path<String>,
     Json(body): Json<UpdateMemberRequest>,
 ) -> ApiResponse<MemberDTO> {
-    info!(target: "member::UPDATE", "{} trying get list member",auth_context.claims.sub);
+    info!(target: "member::update", "{} trying get list member",auth_context.claims.sub);
 
     if !auth_context.authorize(app::member::UPDATE) {
-        info!(target: "member::UPDATE", "{} not permitted",auth_context.claims.sub);
+        info!(target: "member::update", "{} not permitted",auth_context.claims.sub);
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
 
@@ -359,7 +360,7 @@ pub async fn update_member(
 
     let member_id = create_object_id_option(member_id.as_str());
     if member_id.is_none() {
-        info!(target: "member::UPDATE", "failed CREATE ObjectId");
+        info!(target: "member::update", "failed create ObjectId");
         return ApiResponse::un_authorized(translate!("member.not-found", lang).as_str());
     }
 
@@ -378,7 +379,7 @@ pub async fn update_member(
         .one::<MemberDTO>(&state.db)
         .await;
     if find_member.is_err() {
-        info!(target: "member::UPDATE", "{}",find_member.unwrap_err());
+        info!(target: "member::update", "{}",find_member.unwrap_err());
         let _abort = session.abort_transaction().await;
         return ApiResponse::not_found(translate!("member.not-found", lang).as_str());
     }
@@ -441,7 +442,8 @@ pub async fn update_member(
         id: Some(ObjectId::new()),
         member_id,
         membership_id: None,
-        amount: 0.0,
+        balance: 0.0,
+        outstanding_balance: 0.0,
         quota: 0,
         create_at: DateTime::now(),
         update_at: DateTime::now(),
@@ -466,7 +468,7 @@ pub async fn update_member(
             .await;
 
         if find_membership.is_err() {
-            info!(target: "member::UPDATE", "{}",find_membership.unwrap_err());
+            info!(target: "member::update", "{}",find_membership.unwrap_err());
             let _abort = session.abort_transaction().await;
             return ApiResponse::failed(translate!("member.update.failed", lang).as_str());
         }
@@ -477,11 +479,9 @@ pub async fn update_member(
             id: Some(ObjectId::new()),
             branch_id: Some(auth_context.branch_id.unwrap()),
             member_id: Some(member.id.clone().unwrap()),
-            total_price_before_discount: membership.price,
             notes: "Pembelian pergantian paket langganan".to_string(),
             total_price: membership.price,
             total_discount: 0.0,
-            is_membership: false,
             created_by_id: None,
             created_at: current_time,
             updated_at: current_time,
@@ -496,6 +496,8 @@ pub async fn update_member(
             notes: format!("Paket langganan {}", membership.name),
             quantity: 1,
             total: membership.price,
+            total_before_discount: membership.price,
+            is_membership: true,
             created_at: current_time,
             updated_at: current_time,
             deleted: false,
@@ -521,7 +523,7 @@ pub async fn update_member(
             return ApiResponse::failed(translate!("member.create.failed", lang).as_str());
         }
 
-        //when already has subscription only UPDATE amount
+        //when already has subscription only update  amount
         //when no subs exist insert new one
         //rollback when failed
         if is_has_subs {
@@ -535,12 +537,12 @@ pub async fn update_member(
 
             if save_subscription.is_err() {
                 let _abort = session.abort_transaction().await;
-                info!(target: "member::CREATE", "{}",save_subscription.unwrap_err());
+                info!(target: "member::create", "{}",save_subscription.unwrap_err());
                 return ApiResponse::failed(translate!("member.create.failed", lang).as_str());
             }
         } else {
-            //make sure UPDATE the struct
-            subscription.amount = membership.price;
+            //make sure update  the struct
+            subscription.balance = membership.price;
             subscription.quota = membership.quota;
             subscription.membership_id = membership.id;
 
@@ -549,7 +551,7 @@ pub async fn update_member(
                 .await;
             if save_subscription.is_err() {
                 let _abort = session.abort_transaction().await;
-                info!(target: "member::CREATE", "{}",save_subscription.unwrap_err());
+                info!(target: "member::create", "{}",save_subscription.unwrap_err());
                 return ApiResponse::failed(translate!("member.create.failed", lang).as_str());
             }
         }
@@ -569,7 +571,7 @@ pub async fn update_member(
         return ApiResponse::failed(translate!("member.update.failed", lang).as_str());
     }
     let _commit = session.commit_transaction().await;
-    info!(target: "member::update", "Successfully UPDATE member");
+    info!(target: "member::update", "Successfully update  member");
     ApiResponse::ok(member, translate!("member.update.success", lang).as_str())
 }
 
@@ -770,13 +772,10 @@ pub async fn upload_progress(
         return ApiResponse::not_found(translate!("", lang).as_str());
     }
 
-    let session = &state.db.start_session().await;
-    if session.is_err() {
-        return ApiResponse::failed(translate!("start-session-failed", lang).as_str());
-    }
     let session = state.db.start_session().await;
     if session.is_err() {
-        return ApiResponse::failed(translate!("member.update.failed", lang).as_str());
+        info!(target:"stock::update","failed to create trx session");
+        return ApiResponse::failed(translate!("stock.update.failed", lang).as_str());
     }
     let mut session = session.unwrap();
     let _start = session.start_transaction().await;

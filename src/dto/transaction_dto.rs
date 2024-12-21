@@ -40,11 +40,9 @@ pub struct TransactionDTO{
         skip_serializing_if = "Option::is_none"
     )]
     pub member:Option<MemberDTO>,
-    pub total_price_before_discount:f64,
     pub notes:String,
     pub total_price:f64,
     pub total_discount:f64,
-    pub is_membership:bool,
     #[serde(
         rename = "details",
         skip_serializing_if = "Option::is_none"
