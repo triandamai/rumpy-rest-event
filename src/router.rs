@@ -110,6 +110,18 @@ pub fn init_routes(state: AppState) -> Router {
             "/member/update-profile-picture",
             post(feature::member::member::update_profile_picture),
         )
+        .route(
+            "/member/transaction",
+            get(feature::member::member::get_member_transaction),
+        )
+        .route(
+            "/member/activity",
+            get(feature::member::member::get_member_activity),
+        )
+        .route(
+            "/member/update-activity",
+            post(feature::member::member::upload_progress),
+        )
         //coach
         .route("/coach/list", get(feature::coach::coach::get_list_coach))
         .route(
@@ -179,8 +191,14 @@ pub fn init_routes(state: AppState) -> Router {
         )
         .route("/stock", post(feature::stock::stock::update_stock))
         //transaction
-        .route("/transaction/top-up",post(feature::transaction::transaction::create_top_up_transaction))
-        .route("/transaction/membership",post(feature::transaction::transaction::create_product_transaction))
+        .route(
+            "/transaction/top-up",
+            post(feature::transaction::transaction::create_top_up_transaction),
+        )
+        .route(
+            "/transaction/product",
+            post(feature::transaction::transaction::create_product_transaction),
+        )
         .layer(axum::middleware::from_fn(method_not_allowed))
         .fallback(handle_404)
         .with_state(state)
