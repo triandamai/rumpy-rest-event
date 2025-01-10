@@ -31,10 +31,7 @@ pub async fn get_list_all_branch(
         return ApiResponse::access_denied(translate!("unauthorized", lang).as_str());
     }
 
-    let default = String::new();
-    let mut get = Orm::get("branch");
-
-    let find_all_branch = get
+    let find_all_branch = Orm::get("branch")
         .join_one("account", "branch_owner", "_id", "owner")
         .filter_bool("deleted", None, false)
         .all::<BranchDTO>(&state.db)
@@ -57,8 +54,16 @@ pub async fn get_list_branch(
         return ApiResponse::access_denied(translate!("unauthorized", lang).as_str());
     }
 
+    if query.page.unwrap_or(0) < 0 {
+        return ApiResponse::failed(translate!("branch.list.error.page", lang).as_str());
+    }
+    if query.size.unwrap_or(0) < 1 {
+        return ApiResponse::failed(translate!("branch.list.error.size", lang).as_str());
+    }
+
     let default = String::new();
-    let filter = query.name.clone().unwrap_or(default.clone());
+    let filter_name = query.name.clone().unwrap_or(default.clone());
+    let filter_date = query.date.clone().unwrap_or(default.clone());
     let mut get = Orm::get("branch");
 
     if query.q.is_some() {
@@ -66,19 +71,19 @@ pub async fn get_list_branch(
         get = get.filter_string("$text", Some("$search"), text.as_str());
     }
 
-    if filter == QUERY_ASC.to_string() {
+    if filter_name == QUERY_ASC.to_string() {
         get = get.group_by_asc("branch_name");
     }
 
-    if filter == QUERY_DESC.to_string() {
+    if filter_name == QUERY_DESC.to_string() {
         get = get.group_by_desc("branch_name");
     }
 
-    if filter == QUERY_LATEST.to_string() {
+    if filter_date == QUERY_LATEST.to_string() {
         get = get.group_by_desc("created_at");
     }
 
-    if filter == QUERY_OLDEST.to_string() {
+    if filter_date == QUERY_OLDEST.to_string() {
         get = get.group_by_asc("created_at");
     }
 
@@ -87,6 +92,9 @@ pub async fn get_list_branch(
         .filter_bool("deleted", None, false)
         .pageable::<BranchDTO>(query.page.unwrap_or(1), query.size.unwrap_or(10), &state.db)
         .await;
+    if find_all_branch.is_err() {
+        return ApiResponse::failed(translate!("", lang).as_str());
+    }
     ApiResponse::ok(
         find_all_branch.unwrap(),
         translate!("branch.list.success", lang).as_str(),

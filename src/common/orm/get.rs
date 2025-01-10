@@ -122,7 +122,14 @@ impl Get {
 
         self.orm.count = Some(create_count_field());
         self.orm.limit = Some(create_limit_field(size));
-        self.orm.skip = Some(create_skip_field((page.clone() - 1) * size.clone()));
+
+        let final_skip = if page < 1 {
+            size
+        } else {
+            (page.clone() - 1) * size.clone()
+        };
+
+        self.orm.skip = Some(create_skip_field(final_skip));
         //prepare query
         let (query, query_count) = self.orm.merge_field_pageable(true);
 
