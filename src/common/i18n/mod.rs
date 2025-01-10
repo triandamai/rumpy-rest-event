@@ -64,7 +64,6 @@ pub fn replace_placeholders(template: &str, values: &HashMap<&str, &str>) -> Str
         let placeholder = format!("${{{}}}", key); // Create a placeholder like ${key}
         result = result.replace(&placeholder, value);
     }
-
     result
 }
 

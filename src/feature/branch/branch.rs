@@ -6,8 +6,8 @@ use crate::common::middleware::Json;
 use crate::common::orm::orm::Orm;
 use crate::common::permission::permission::app;
 use crate::common::utils::{
-    create_object_id_option, create_or_new_object_id, QUERY_ASC, QUERY_DESC, QUERY_LATEST,
-    QUERY_OLDEST,
+    create_object_id_option, create_or_new_object_id, QUERY_ASC, QUERY_DESC, QUERY_HIGHEST,
+    QUERY_LATEST, QUERY_LOWEST, QUERY_OLDEST,
 };
 use crate::dto::branch_dto::BranchDTO;
 use crate::entity::branch::Branch;
@@ -29,7 +29,7 @@ pub async fn get_list_branch(
     info!(target: "branch::list","{} get list branch",auth_context.claims.sub);
     if !auth_context.authorize(app::branch::READ) {
         info!(target: "branch::list","{} not permitted",auth_context.claims.sub);
-        return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
+        return ApiResponse::access_denied(translate!("unauthorized", lang).as_str());
     }
 
     let default = String::new();
@@ -77,7 +77,7 @@ pub async fn get_detail_branch(
     info!(target: "branch::detail","{} trying get detail branch",auth_context.claims.sub);
     if !auth_context.authorize(app::branch::READ) {
         info!(target: "branch::detail","{} not permitted",auth_context.claims.sub);
-        return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
+        return ApiResponse::access_denied(translate!("unauthorized", lang).as_str());
     }
     let branch_id = create_object_id_option(branch_id.as_str());
     if branch_id.is_none() {

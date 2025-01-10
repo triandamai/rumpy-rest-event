@@ -22,8 +22,8 @@ async fn main() -> Result<(), ()> {
     let _init_seeder = init_seeder(
         &app_state.db
     ).await;
-    let app = init_routes(app_state);
 
+    let app = init_routes(app_state);
 
     let tcp_listener = tokio::net::TcpListener::bind("0.0.0.0:8000").await.unwrap();
 

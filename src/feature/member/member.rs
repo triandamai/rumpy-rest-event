@@ -140,7 +140,9 @@ pub async fn get_member_by_nfc(
     lang: Lang,
     Path(nfc_id): Path<String>,
 ) -> ApiResponse<MemberDTO> {
+    info!(target: "member::detail", "{} trying get detail member by nfc",auth_context.claims.sub);
     if auth_context.authorize(app::member::READ) {
+        info!(target: "member::detail", "{} no permitted",auth_context.claims.sub);
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
 
@@ -154,10 +156,13 @@ pub async fn get_member_by_nfc(
         .one::<MemberDTO>(&state.db)
         .await;
     if find_member.is_err() {
+        let err = find_member.unwrap_err();
+        info!(target:"member::detail","Data member not found: {}",err);
         return ApiResponse::not_found(translate!("member.not-found", lang).as_str());
     }
     let find_member = find_member.unwrap();
 
+    info!(target:"member::detail","Data member found");
     ApiResponse::ok(find_member, translate!("member.found", lang).as_str())
 }
 
@@ -175,10 +180,9 @@ pub async fn create_member(
 
     let validate = body.validate();
     if validate.is_err() {
-        return ApiResponse::error_validation(
-            validate.unwrap_err(),
-            translate!("validation.error", lang).as_str(),
-        );
+        let err = validate.unwrap_err();
+        info!(target:"member::create","Body request invalid: {:?}",err);
+        return ApiResponse::error_validation(err, translate!("validation.error", lang).as_str());
     }
 
     let membership_id = match body.coach_id.clone() {
@@ -186,8 +190,8 @@ pub async fn create_member(
         Some(coach_id) => create_object_id_option(coach_id.as_str()),
     };
     if membership_id.is_none() {
-        info!(target: "member::create","membership doesn't exist");
-        return ApiResponse::failed(translate!("coach.not-found", lang).as_str());
+        info!(target: "member::create","membership id doesn't exist");
+        return ApiResponse::failed(translate!("member.create.coach_id.none", lang).as_str());
     }
     let find_membership = Orm::get("membership")
         .filter_object_id("_id", &membership_id.unwrap())
@@ -224,7 +228,7 @@ pub async fn create_member(
         id: Some(ObjectId::new()),
         member_code,
         branch_id: auth_context.branch_id,
-        membership_id,
+        membership_id: coach_id,
         created_by_id: auth_context.user_id,
         coach_id,
         full_name: body.full_name.clone(),
@@ -242,7 +246,7 @@ pub async fn create_member(
     let subscription = MemberSubscription {
         id: Some(ObjectId::new()),
         member_id: Some(member.id.clone().unwrap()),
-        membership_id,
+        membership_id: coach_id,
         balance: membership.price,
         outstanding_balance: 0.0,
         quota: membership.quota.clone(),
@@ -265,7 +269,7 @@ pub async fn create_member(
 
     let detail_transaction = DetailTransaction {
         id: Some(ObjectId::new()),
-        product_id: membership_id,
+        product_id: coach_id,
         transaction_id: transaction.id,
         kind: "MEMBERSHIP".to_string(),
         notes: format!("Paket langganan {}", membership.name),
@@ -293,7 +297,7 @@ pub async fn create_member(
     if save_member.is_err() {
         let _abort = session.abort_transaction().await;
         info!(target: "member::create", "{}",save_member.unwrap_err());
-        return ApiResponse::failed(translate!("member.create.failed", lang).as_str());
+        return ApiResponse::failed(translate!("member.create.cannot-save-member", lang).as_str());
     }
 
     let save_subscription = Orm::insert("member-subscription")
@@ -303,7 +307,9 @@ pub async fn create_member(
     if save_subscription.is_err() {
         let _abort = session.abort_transaction().await;
         info!(target: "member::create", "{}",save_subscription.unwrap_err());
-        return ApiResponse::failed(translate!("member.create.failed", lang).as_str());
+        return ApiResponse::failed(
+            translate!("member.create.cannot-save-subscription", lang).as_str(),
+        );
     }
 
     let save_transaction = Orm::insert("transaction")
@@ -313,7 +319,9 @@ pub async fn create_member(
     if save_transaction.is_err() {
         let _abort = session.abort_transaction().await;
         info!(target: "member::create", "{}",save_transaction.unwrap_err());
-        return ApiResponse::failed(translate!("member.create.failed", lang).as_str());
+        return ApiResponse::failed(
+            translate!("member.create.cannot-save-transaction", lang).as_str(),
+        );
     }
 
     let save_detail_transaction = Orm::insert("detail-transaction")
@@ -323,7 +331,9 @@ pub async fn create_member(
     if save_detail_transaction.is_err() {
         let _abort = session.abort_transaction().await;
         info!(target: "member::create", "{}",save_detail_transaction.unwrap_err());
-        return ApiResponse::failed(translate!("member.create.failed", lang).as_str());
+        return ApiResponse::failed(
+            translate!("member.create.cannot-save-transaction", lang).as_str(),
+        );
     }
 
     let _commit = session.commit_transaction().await;
@@ -344,7 +354,6 @@ pub async fn update_member(
     Json(body): Json<UpdateMemberRequest>,
 ) -> ApiResponse<MemberDTO> {
     info!(target: "member::update", "{} trying get list member",auth_context.claims.sub);
-
     if !auth_context.authorize(app::member::UPDATE) {
         info!(target: "member::update", "{} not permitted",auth_context.claims.sub);
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
@@ -352,21 +361,23 @@ pub async fn update_member(
 
     let validate = body.validate();
     if validate.is_err() {
-        return ApiResponse::error_validation(
-            validate.unwrap_err(),
-            translate!("member.update.failed", lang).as_str(),
-        );
+        let err = validate.unwrap_err();
+        info!(target: "member::update", "failed validation: {}",err);
+        return ApiResponse::error_validation(err, translate!("validation.error", lang).as_str());
     }
 
     let member_id = create_object_id_option(member_id.as_str());
     if member_id.is_none() {
-        info!(target: "member::update", "failed create ObjectId");
-        return ApiResponse::un_authorized(translate!("member.not-found", lang).as_str());
+        info!(target: "member::update", "failed create ObjectId of member_id");
+        return ApiResponse::un_authorized(
+            translate!("member.update.member-not-found", lang).as_str(),
+        );
     }
 
     let session = state.db.start_session().await;
     if session.is_err() {
-        return ApiResponse::failed(translate!("member.update.failed", lang).as_str());
+        info!(target:"member::update","failed to create trx session");
+        return ApiResponse::failed(translate!("member.update.session.failed", lang).as_str());
     }
     let mut session = session.unwrap();
     let _start = session.start_transaction().await;
@@ -381,7 +392,7 @@ pub async fn update_member(
     if find_member.is_err() {
         info!(target: "member::update", "{}",find_member.unwrap_err());
         let _abort = session.abort_transaction().await;
-        return ApiResponse::not_found(translate!("member.not-found", lang).as_str());
+        return ApiResponse::not_found(translate!("member.update.member-not-found", lang).as_str());
     }
     let mut member = find_member.unwrap();
 
@@ -462,6 +473,7 @@ pub async fn update_member(
 
     let current_time = DateTime::now();
     if should_update_membership {
+        info!(target: "member::update", "previous membership found, trying update membership.");
         let find_membership = Orm::get("membership")
             .filter_object_id("_id", &subscription.membership_id.unwrap())
             .one::<MembershipDTO>(&state.db)
@@ -470,7 +482,9 @@ pub async fn update_member(
         if find_membership.is_err() {
             info!(target: "member::update", "{}",find_membership.unwrap_err());
             let _abort = session.abort_transaction().await;
-            return ApiResponse::failed(translate!("member.update.failed", lang).as_str());
+            return ApiResponse::failed(
+                translate!("member.update.membership.not-found.failed", lang).as_str(),
+            );
         }
 
         let membership = find_membership.unwrap();
@@ -510,7 +524,9 @@ pub async fn update_member(
         if save_transaction.is_err() {
             let _abort = session.abort_transaction().await;
             info!(target: "member::create", "{}",save_transaction.unwrap_err());
-            return ApiResponse::failed(translate!("member.create.failed", lang).as_str());
+            return ApiResponse::failed(
+                translate!("member.update.membership.transaction.failed", lang).as_str(),
+            );
         }
 
         let save_detail_transaction = Orm::insert("detail-transaction")
@@ -520,7 +536,9 @@ pub async fn update_member(
         if save_detail_transaction.is_err() {
             let _abort = session.abort_transaction().await;
             info!(target: "member::create", "{}",save_detail_transaction.unwrap_err());
-            return ApiResponse::failed(translate!("member.create.failed", lang).as_str());
+            return ApiResponse::failed(
+                translate!("member.update.membership.transaction.failed", lang).as_str(),
+            );
         }
 
         //when already has subscription only update  amount
@@ -530,6 +548,10 @@ pub async fn update_member(
             let save_subscription = Orm::update("member-subscription")
                 .inc(doc! {
                     "quota": membership.quota,
+                    "balance":membership.price,
+                })
+                .set(doc! {
+                    "membership_id": membership.id,
                 })
                 .filter_object_id("_id", &membership.id.unwrap())
                 .execute_one_with_session(&state.db, &mut session)
@@ -538,7 +560,9 @@ pub async fn update_member(
             if save_subscription.is_err() {
                 let _abort = session.abort_transaction().await;
                 info!(target: "member::create", "{}",save_subscription.unwrap_err());
-                return ApiResponse::failed(translate!("member.create.failed", lang).as_str());
+                return ApiResponse::failed(
+                    translate!("member.update.membership.update.failed", lang).as_str(),
+                );
             }
         } else {
             //make sure update  the struct
@@ -552,7 +576,9 @@ pub async fn update_member(
             if save_subscription.is_err() {
                 let _abort = session.abort_transaction().await;
                 info!(target: "member::create", "{}",save_subscription.unwrap_err());
-                return ApiResponse::failed(translate!("member.create.failed", lang).as_str());
+                return ApiResponse::failed(
+                    translate!("member.update.membership.update.failed", lang).as_str(),
+                );
             }
         }
     }
@@ -566,7 +592,6 @@ pub async fn update_member(
 
     if save_data.is_err() {
         info!(target: "member::update", "{}", save_data.unwrap_err());
-
         let _abort = session.abort_transaction().await;
         return ApiResponse::failed(translate!("member.update.failed", lang).as_str());
     }
@@ -588,6 +613,7 @@ pub async fn delete_member(
 
     let id = create_object_id_option(member_id.as_str());
     if id.is_none() {
+        info!(target: "member::delete", "failed create ObjectId of member_id");
         return ApiResponse::un_authorized(translate!("member.not-found", lang).as_str());
     }
 
@@ -598,6 +624,7 @@ pub async fn delete_member(
         .await;
 
     if update.is_err() {
+        info!(target: "member::delete", "{}",update.unwrap_err());
         return ApiResponse::failed(translate!("member.delete.failed", lang).as_str());
     }
 
@@ -613,6 +640,7 @@ pub async fn update_profile_picture(
     lang: Lang,
     multipart: SingleFileExtractor,
 ) -> ApiResponse<FileAttachmentDTO> {
+    info!(target: "member::profile-pictire", "{} trying update profile picture",auth_context.claims.sub);
     if !auth_context.authorize(app::member::UPDATE) {
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
@@ -791,7 +819,7 @@ pub async fn upload_progress(
 
     let member_log = MemberLog {
         id: Some(ObjectId::new()),
-        member_id: member_id,
+        member_id,
         created_by_id: auth_context.user_id,
         branch_id: auth_context.branch_id,
         name: "Update progres harian".to_string(),
@@ -890,7 +918,7 @@ pub async fn upload_progress(
     let _commit = session.commit_transaction().await;
 
     let mut dto = member_log.to_dto();
-    dto.attachments = Some(image_data_temp.iter().map(|v|v.clone().to_dto()).collect());
+    dto.attachments = Some(image_data_temp.iter().map(|v| v.clone().to_dto()).collect());
 
     ApiResponse::ok(
         dto,
@@ -898,35 +926,31 @@ pub async fn upload_progress(
     )
 }
 
-
 //transaction
 pub async fn get_member_transaction(
-    state:State<AppState>,
+    state: State<AppState>,
     auth_context: AuthContext,
-    lang:Lang,
-    Path(member_id):Path<String>,
-    query:Query<PaginationRequest>
-)->ApiResponse<PagingResponse<TransactionDTO>>{
+    lang: Lang,
+    Path(member_id): Path<String>,
+    query: Query<PaginationRequest>,
+) -> ApiResponse<PagingResponse<TransactionDTO>> {
     if !auth_context.authorize(app::transaction::READ) {
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
 
-    if auth_context.branch_id.is_none(){
+    if auth_context.branch_id.is_none() {
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
     }
 
     let member_id = create_object_id_option(member_id.as_str());
 
     let find = Orm::get("transaction")
-        .filter_object_id("member_id",&member_id.unwrap())
-        .join_one("member","member_id","_id","member")
-        .join_one("account","created_by_id","_id","created_by")
-        .join_many("detail-transaction","transaction_id","","details")
-        .pageable::<TransactionDTO>(
-            query.page.unwrap_or(0),
-            query.size.unwrap_or(0),
-            &state.db
-        ).await;
+        .filter_object_id("member_id", &member_id.unwrap())
+        .join_one("member", "member_id", "_id", "member")
+        .join_one("account", "created_by_id", "_id", "created_by")
+        .join_many("detail-transaction", "transaction_id", "", "details")
+        .pageable::<TransactionDTO>(query.page.unwrap_or(0), query.size.unwrap_or(0), &state.db)
+        .await;
 
     if find.is_err() {
         return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());

@@ -1,6 +1,7 @@
 use crate::common::api_response::PagingResponse;
 use crate::common::orm::orm::{create_count_field, create_limit_field, create_skip_field, Orm};
 use crate::common::orm::DB_NAME;
+use crate::common::utils::create_object_id_option;
 use bson::oid::ObjectId;
 use bson::{doc, Document};
 use log::info;
@@ -181,7 +182,6 @@ impl Get {
         })
     }
 
-
     pub async fn find_one<T: DeserializeOwned>(
         self,
         query: Document,
@@ -205,7 +205,6 @@ impl Get {
             },
         )
     }
-
 
     pub async fn find_many<T: DeserializeOwned>(self, query: Document, client: &Client) -> Vec<T> {
         let db = client.database(DB_NAME);
@@ -319,6 +318,17 @@ impl Get {
 
     pub fn filter_object_id(mut self, column: &str, value: &ObjectId) -> Self {
         let orm = self.orm.filter_object_id_with_equal(column, value);
+        self.orm = orm;
+        self
+    }
+
+    pub fn filter_object_id_as_str(mut self, column: &str, value: &str) -> Self {
+        let object_id = create_object_id_option(value);
+
+        let orm = match object_id {
+            None => self.orm.filter_string(column, Some("$eq"), value),
+            Some(v) => self.orm.filter_object_id_with_equal(column, &v),
+        };
         self.orm = orm;
         self
     }

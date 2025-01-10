@@ -13,3 +13,4 @@ pub mod transaction_dto;
 pub mod discount_dto;
 pub mod file_attachment_dto;
 pub mod member_subscription_dto;
+pub mod member_cart;

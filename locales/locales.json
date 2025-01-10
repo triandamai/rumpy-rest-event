@@ -199,21 +199,65 @@
     "en": "Detail Member.",
     "id-ID": "Detail Data Member."
   },
-  "member.create.failed": {
-    "en": "",
-    "id-ID": ""
+  "member.create.coach_id.none": {
+    "en": "Failed create member, coach is not found",
+    "id-ID": "Gagal membuat member, coach tidak ditemukan"
+  },
+  "member.create.membership_id.none": {
+    "en": "Failed create member, membership is not found",
+    "id-ID": "Gagal membuat member, membership tidak ditemukan"
+  },
+  "member.create.coach.not-found": {
+    "en": "Failed create member, coach is not found",
+    "id-ID": "Gagal membuat member, coach tidak ditemukan"
+  },
+  "member.create.session.failed": {
+    "en": "Failed to create member, failed create session, try again later.",
+    "id-ID": "Gagal membuat member, gagal membuat sesi, coba lagi."
+  },
+  "member.create.cannot-save-member": {
+    "en": "Can't save member, aborting.",
+    "id-ID": "Gagal menyimpan data member, proses dibatalkan."
+  },
+  "member.create.cannot-save-subscription": {
+    "en": "Can't save subscription, aborting.",
+    "id-ID": "Gagal menyimpan data membership, proses dibatalkan."
+  },
+  "member.create.cannot-save-transaction": {
+    "en": "Can't save subscription to transaction, aborting.",
+    "id-ID": "Gagal menyimpan data membership ke transaksi, proses dibatalkan."
   },
   "member.create.success": {
-    "en": "",
-    "id-ID": ""
+    "en": "Successfully add new member.",
+    "id-ID": "Selamat!! Berhasil mendaftarkan member/pelanggan."
+  },
+  "member.update.member-not-found": {
+    "en": "Failed to update, member not found.",
+    "id-ID": "Gagal update member, tidak ditemukan member."
+  },
+  "member.update.session.failed":{
+    "en": "Failed update member, session not create, aborting.",
+    "id-ID": "Gagal update member, sesi gagal, membatalkan."
+  },
+  "member.update.membership.not-found.failed": {
+    "en": "Membership changed, but membership data is not found, aborting.",
+    "id-ID": "Terdeteksi perubahan paket langganan, gagal merubah, proses dibatalkan."
+  },
+  "member.update.membership.transaction.failed": {
+    "en": "Membership changed, but failed to record transaction, aborting.",
+    "id-ID": "Terdeteksi perubahan paket langganan, gagal menyimpan transaksi, proses dibatalkan."
+  },
+  "member.update.membership.update.failed": {
+    "en": "Membership changed, but failed to update membership balance, aborting.",
+    "id-ID": "Terdeteksi perubahan paket langganan, gagal meng update saldo, proses dibatalkan."
   },
   "member.update.failed": {
-    "en": "",
-    "id-ID": ""
+    "en": "Membership changed, but failed to update timestamp, aborting.",
+    "id-ID": "Terdeteksi perubahan paket langganan, gagal meng update timestamp, proses dibatalkan."
   },
   "member.update.success": {
-    "en": "",
-    "id-ID": ""
+    "en": "Successfully updating member data.",
+    "id-ID": "Berhasil meng-update data member."
   },
   "member.delete.failed": {
     "en": "",
