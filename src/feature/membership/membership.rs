@@ -4,6 +4,7 @@ use crate::common::jwt::AuthContext;
 use crate::common::lang::Lang;
 use crate::common::middleware::Json;
 use crate::common::orm::orm::Orm;
+use crate::common::permission::permission::app;
 use crate::common::utils::{
     create_object_id_option, create_or_new_object_id, QUERY_ASC, QUERY_DESC, QUERY_LATEST,
     QUERY_OLDEST,
@@ -19,7 +20,6 @@ use bson::oid::ObjectId;
 use bson::DateTime;
 use log::info;
 use validator::Validate;
-use crate::common::permission::permission::app;
 
 pub async fn get_list_membership(
     state: State<AppState>,
@@ -30,11 +30,11 @@ pub async fn get_list_membership(
     info!(target: "membership::list", "{} trying get list membership",auth_context.claims.sub);
     if !auth_context.authorize(app::membership::READ) {
         info!(target: "membership::list", "{} is not permitted",auth_context.claims.sub);
-        return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
+        return ApiResponse::access_denied(translate!("unauthorized", lang).as_str());
     }
 
     let default = String::new();
-    let filter = query.filter.clone().unwrap_or(default.clone());
+    let filter = query.name.clone().unwrap_or(default.clone());
     let mut get = Orm::get("membership");
 
     if query.q.is_some() {
@@ -80,7 +80,7 @@ pub async fn get_detail_membership(
     info!(target: "membership::detail", "{} trying get detail membership",auth_context.claims.sub);
     if !auth_context.authorize(app::membership::READ) {
         info!(target: "membership::detail", "{} not permitted",auth_context.claims.sub);
-        return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
+        return ApiResponse::access_denied(translate!("unauthorized", lang).as_str());
     }
     let membership_id = create_object_id_option(membership_id.as_str());
     if membership_id.is_none() {
@@ -113,7 +113,7 @@ pub async fn create_membership(
     info!(target: "membership::create", "{} trying to create new membership",auth_context.claims.sub);
     if !auth_context.authorize(app::membership::CREATE) {
         info!(target: "membership::create", "{} not permitted.",auth_context.claims.sub);
-        return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
+        return ApiResponse::access_denied(translate!("unauthorized", lang).as_str());
     }
 
     let validate = body.validate();
@@ -163,7 +163,7 @@ pub async fn update_membership(
 ) -> ApiResponse<MembershipDTO> {
     if !auth_context.authorize(app::membership::UPDATE) {
         info!(target: "membership::update", "Failed to create new membership because user does not permitted.");
-        return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
+        return ApiResponse::access_denied(translate!("unauthorized", lang).as_str());
     }
     let validate = body.validate();
     if validate.is_err() {
@@ -227,7 +227,7 @@ pub async fn delete_membership(
     info!(target: "membership::delete", "{} trying delete  membership",auth_context.claims.sub);
     if !auth_context.authorize(app::membership::DELETE) {
         info!(target: "membership::delete", "{} not permitted",auth_context.claims.sub);
-        return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
+        return ApiResponse::access_denied(translate!("unauthorized", lang).as_str());
     }
 
     let create_id = create_object_id_option(membership_id.as_str());

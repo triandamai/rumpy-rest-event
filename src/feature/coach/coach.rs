@@ -31,15 +31,15 @@ pub async fn get_list_coach(
     info!(target: "coach::list", "{} trying get list coach", auth_context.claims.sub);
     if !auth_context.authorize(app::coach::READ) {
         info!(target: "coach::list", "{} not permitted", auth_context.claims.sub);
-        return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
+        return ApiResponse::access_denied(translate!("unauthorized", lang).as_str());
     }
     if auth_context.branch_id.is_none() {
         info!(target: "coach::list", "Branch id is null");
-        return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
+        return ApiResponse::access_denied(translate!("unauthorized", lang).as_str());
     }
 
     let default = String::new();
-    let filter = query.filter.clone().unwrap_or(default.clone());
+    let filter = query.name.clone().unwrap_or(default.clone());
     let mut get = Orm::get("coach");
 
     if query.q.is_some() {
@@ -87,11 +87,11 @@ pub async fn get_detail_coach(
     info!(target: "coach::detail", "{} trying get detail coach", auth_context.claims.sub);
     if !auth_context.authorize(app::coach::READ) {
         info!(target: "coach::detail", "{} not permitted", auth_context.claims.sub);
-        return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
+        return ApiResponse::access_denied(translate!("unauthorized", lang).as_str());
     }
     if auth_context.branch_id.is_none() {
         info!(target: "coach::detail", "Branch id null");
-        return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
+        return ApiResponse::access_denied(translate!("unauthorized", lang).as_str());
     }
 
     let id = create_object_id_option(coach_id.as_str());
@@ -130,7 +130,7 @@ pub async fn create_coach(
     info!(target: "coach::create", "{} trying create coach", auth_context.claims.sub);
     if !auth_context.authorize(app::coach::CREATE) {
         info!(target: "coach::create", "{} not permitted", auth_context.claims.sub);
-        return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
+        return ApiResponse::access_denied(translate!("unauthorized", lang).as_str());
     }
     if auth_context.branch_id.is_none() {
         info!(target: "coach::detail", "Branch id null");
@@ -180,7 +180,7 @@ pub async fn update_coach(
     info!(target: "coach::update", "{} trying update  coach", auth_context.claims.sub);
     if !auth_context.authorize(app::coach::UPDATE) {
         info!(target: "coach::update", "{} not permitted", auth_context.claims.sub);
-        return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
+        return ApiResponse::access_denied(translate!("unauthorized", lang).as_str());
     }
 
     let validate = body.validate();
@@ -257,13 +257,13 @@ pub async fn delete_coach(
     info!(target: "coach::delete", "{} trying delete  coach", auth_context.claims.sub);
     if !auth_context.authorize(app::coach::DELETE) {
         info!(target: "coach::delete", "{} not permitted", auth_context.claims.sub);
-        return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
+        return ApiResponse::access_denied(translate!("unauthorized", lang).as_str());
     }
 
     let id = create_object_id_option(coach_id.as_str());
     if id.is_none() {
         info!(target: "coach::delete", "Failed create ObjectId");
-        return ApiResponse::un_authorized(translate!("coach.not-found", lang).as_str());
+        return ApiResponse::access_denied(translate!("coach.not-found", lang).as_str());
     }
 
     let update = Orm::update("coach")
@@ -293,9 +293,8 @@ pub async fn update_profile_picture(
     info!(target: "coach::profile-picture", "{} trying update  prpfile picture coach", auth_context.claims.sub);
     if !auth_context.authorize(app::coach::UPDATE) {
         info!(target: "coach::profile-picture", "{} not permitted", auth_context.claims.sub);
-        return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
+        return ApiResponse::access_denied(translate!("unauthorized", lang).as_str());
     }
-
 
     let validate = multipart.validate_body();
     if validate.is_err() {

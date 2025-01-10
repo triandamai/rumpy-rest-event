@@ -32,16 +32,16 @@ pub async fn get_list_product(
     info!(target: "product::list","{} trying to get list product",auth_context.claims.sub);
     if !auth_context.authorize(app::product::READ) {
         info!(target:"product::list","{} not permitted", auth_context.claims.sub);
-        return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
+        return ApiResponse::access_denied(translate!("unauthorized", lang).as_str());
     }
 
     if auth_context.branch_id.is_none() {
         info!(target:"product::list","failed to get branch id");
-        return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
+        return ApiResponse::access_denied(translate!("unauthorized", lang).as_str());
     }
 
     let default = String::new();
-    let filter = query.filter.clone().unwrap_or(default.clone());
+    let filter = query.name.clone().unwrap_or(default.clone());
     let mut get = Orm::get("product");
 
     if query.q.is_some() {
@@ -89,18 +89,18 @@ pub async fn get_detail_product(
     info!(target: "product::detail", "{} trying to get product detail",auth_context.claims.sub);
     if !auth_context.authorize(app::product::READ) {
         info!(target:"product::detail","{} not permitted", auth_context.claims.sub);
-        return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
+        return ApiResponse::access_denied(translate!("unauthorized", lang).as_str());
     }
 
     if auth_context.branch_id.is_none() {
         info!(target:"product::detail","failed to get branch id");
-        return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
+        return ApiResponse::access_denied(translate!("unauthorized", lang).as_str());
     }
 
     let id = create_object_id_option(product_id.as_str());
     if id.is_none() {
         info!(target: "product::detail","Failed create ObjectId");
-        return ApiResponse::un_authorized(translate!("product.not-found", lang).as_str());
+        return ApiResponse::access_denied(translate!("product.not-found", lang).as_str());
     }
 
     let find_product = Orm::get("product")
@@ -133,12 +133,12 @@ pub async fn create_product(
     info!(target: "product::create", "{} trying to create product", auth_context.claims.sub);
     if !auth_context.authorize(app::product::CREATE) {
         info!(target: "product::create", "{} not permitted", auth_context.claims.sub);
-        return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
+        return ApiResponse::access_denied(translate!("unauthorized", lang).as_str());
     }
 
     if auth_context.branch_id.is_none() {
         info!(target: "product::create", "{} not permitted beacause not associated with any branch", auth_context.claims.sub);
-        return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
+        return ApiResponse::access_denied(translate!("unauthorized", lang).as_str());
     }
 
     let validate = body.validate();
@@ -188,7 +188,7 @@ pub async fn update_product(
     info!(target: "product::update", "{} trying to update  product", auth_context.claims.sub);
     if !auth_context.authorize(app::product::UPDATE) {
         info!(target: "product::update", "{} not permitted", auth_context.claims.sub);
-        return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
+        return ApiResponse::access_denied(translate!("unauthorized", lang).as_str());
     }
 
     let validate = body.validate();
@@ -202,7 +202,7 @@ pub async fn update_product(
     let product_id = create_object_id_option(product_id.as_str());
     if product_id.is_none() {
         info!(target: "product::update", "Failed create ObjectId");
-        return ApiResponse::un_authorized(translate!("product.not-found", lang).as_str());
+        return ApiResponse::access_denied(translate!("product.not-found", lang).as_str());
     }
 
     let find_product = Orm::get("product")
@@ -268,12 +268,12 @@ pub async fn delete_product(
     info!(target: "product::delete", "{} trying to delete  product", auth_context.claims.sub);
     if !auth_context.authorize(app::product::DELETE) {
         info!(target: "product::delete", "{} trying to delete  product", auth_context.claims.sub);
-        return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
+        return ApiResponse::access_denied(translate!("unauthorized", lang).as_str());
     }
 
     let id = create_object_id_option(product_id.as_str());
     if id.is_none() {
-        return ApiResponse::un_authorized(translate!("product.not-found", lang).as_str());
+        return ApiResponse::access_denied(translate!("product.not-found", lang).as_str());
     }
 
     let update = Orm::update("product")
@@ -302,7 +302,7 @@ pub async fn update_product_image(
     info!(target: "product::create", "{} trying to update  product image", auth_context.claims.sub);
     if !auth_context.authorize("app::product::write") {
         info!(target: "product::create", "{} not permitted", auth_context.claims.sub);
-        return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
+        return ApiResponse::access_denied(translate!("unauthorized", lang).as_str());
     }
 
     let validate = multipart.validate_body();

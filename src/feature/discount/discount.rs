@@ -28,11 +28,11 @@ pub async fn get_list_discount(
     info!(target: "discount::list", "{} trying get list discount",auth_context.claims.sub);
     if !auth_context.authorize(app::discount::READ) {
         info!(target: "discount::list", "{} is not permitted",auth_context.claims.sub);
-        return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
+        return ApiResponse::access_denied(translate!("unauthorized", lang).as_str());
     }
 
     let default = String::new();
-    let filter = query.filter.clone().unwrap_or(default.clone());
+    let filter = query.name.clone().unwrap_or(default.clone());
     let mut get = Orm::get("discount");
 
     if query.q.is_some() {
@@ -78,7 +78,7 @@ pub async fn get_detail_discount(
     info!(target: "discount::detail", "{} trying get detail discount",auth_context.claims.sub);
     if !auth_context.authorize(app::discount::READ) {
         info!(target: "discount::detail", "{} not permitted",auth_context.claims.sub);
-        return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
+        return ApiResponse::access_denied(translate!("unauthorized", lang).as_str());
     }
     let discount_id = create_object_id_option(discount_id.as_str());
     if discount_id.is_none() {
@@ -111,7 +111,7 @@ pub async fn create_discount(
     info!(target: "discount::create", "{} trying to create new discount",auth_context.claims.sub);
     if !auth_context.authorize(app::discount::CREATE) {
         info!(target: "branch::create", "{} not permitted.",auth_context.claims.sub);
-        return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
+        return ApiResponse::access_denied(translate!("unauthorized", lang).as_str());
     }
 
     let validate = body.validate();
@@ -160,7 +160,7 @@ pub async fn update_discount(
 
     if !auth_context.authorize(app::discount::UPDATE) {
         info!(target: "discount::update", "Failed to create new discount because user does not permitted.");
-        return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
+        return ApiResponse::access_denied(translate!("unauthorized", lang).as_str());
     }
     let validate = body.validate();
     if validate.is_err() {
@@ -219,7 +219,7 @@ pub async fn delete_discount(
     info!(target: "discount::delete", "{} trying delete  discount",auth_context.claims.sub);
     if !auth_context.authorize(app::discount::DELETE) {
         info!(target: "discount::delete", "{} not permitted",auth_context.claims.sub);
-        return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
+        return ApiResponse::access_denied(translate!("unauthorized", lang).as_str());
     }
 
     let create_id = create_object_id_option(discount_id.as_str());

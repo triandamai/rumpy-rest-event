@@ -41,15 +41,15 @@ pub async fn get_list_member(
     info!(target: "member::list", "{} trying get list member",auth_context.claims.sub);
     if !auth_context.authorize(app::member::READ) {
         info!(target: "member::list", "{} not permitted",auth_context.claims.sub);
-        return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
+        return ApiResponse::access_denied(translate!("unauthorized", lang).as_str());
     }
     if auth_context.branch_id.is_none() {
         info!(target: "member::list","not permitted branch");
-        return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
+        return ApiResponse::access_denied(translate!("unauthorized", lang).as_str());
     }
 
     let default = String::new();
-    let filter = query.filter.clone().unwrap_or(default.clone());
+    let filter = query.name.clone().unwrap_or(default.clone());
     let mut get = Orm::get("member");
 
     if query.q.is_some() {
@@ -99,17 +99,17 @@ pub async fn get_detail_member(
     info!(target: "member::detail", "{} trying get detail member",auth_context.claims.sub);
     if !auth_context.authorize(app::member::READ) {
         info!(target: "member::detail", "{} not permitted",auth_context.claims.sub);
-        return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
+        return ApiResponse::access_denied(translate!("unauthorized", lang).as_str());
     }
     if auth_context.branch_id.is_none() {
         info!(target: "member::detail", "not permitted because branch not found");
-        return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
+        return ApiResponse::access_denied(translate!("unauthorized", lang).as_str());
     }
 
     let id = create_object_id_option(member_id.as_str());
     if id.is_none() {
         info!(target: "member::detail", "failed create ObjectId");
-        return ApiResponse::un_authorized(translate!("member.not-found", lang).as_str());
+        return ApiResponse::access_denied(translate!("member.not-found", lang).as_str());
     }
 
     let find_product = Orm::get("member")
@@ -143,7 +143,7 @@ pub async fn get_member_by_nfc(
     info!(target: "member::detail", "{} trying get detail member by nfc",auth_context.claims.sub);
     if auth_context.authorize(app::member::READ) {
         info!(target: "member::detail", "{} no permitted",auth_context.claims.sub);
-        return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
+        return ApiResponse::access_denied(translate!("unauthorized", lang).as_str());
     }
 
     let find_member = Orm::get("member")
@@ -175,7 +175,7 @@ pub async fn create_member(
     info!(target: "member::create", "{} trying create member",auth_context.claims.sub);
     if !auth_context.authorize(app::member::CREATE) {
         info!(target: "member::list", "{} not permitted",auth_context.claims.sub);
-        return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
+        return ApiResponse::access_denied(translate!("unauthorized", lang).as_str());
     }
 
     let validate = body.validate();
@@ -356,7 +356,7 @@ pub async fn update_member(
     info!(target: "member::update", "{} trying get list member",auth_context.claims.sub);
     if !auth_context.authorize(app::member::UPDATE) {
         info!(target: "member::update", "{} not permitted",auth_context.claims.sub);
-        return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
+        return ApiResponse::access_denied(translate!("unauthorized", lang).as_str());
     }
 
     let validate = body.validate();
@@ -369,7 +369,7 @@ pub async fn update_member(
     let member_id = create_object_id_option(member_id.as_str());
     if member_id.is_none() {
         info!(target: "member::update", "failed create ObjectId of member_id");
-        return ApiResponse::un_authorized(
+        return ApiResponse::access_denied(
             translate!("member.update.member-not-found", lang).as_str(),
         );
     }
@@ -608,13 +608,13 @@ pub async fn delete_member(
 ) -> ApiResponse<String> {
     info!(target: "member::delete", "{} trying get list member",auth_context.claims.sub);
     if !auth_context.authorize(app::member::DELETE) {
-        return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
+        return ApiResponse::access_denied(translate!("unauthorized", lang).as_str());
     }
 
     let id = create_object_id_option(member_id.as_str());
     if id.is_none() {
         info!(target: "member::delete", "failed create ObjectId of member_id");
-        return ApiResponse::un_authorized(translate!("member.not-found", lang).as_str());
+        return ApiResponse::access_denied(translate!("member.not-found", lang).as_str());
     }
 
     let update = Orm::update("member")
@@ -642,7 +642,7 @@ pub async fn update_profile_picture(
 ) -> ApiResponse<FileAttachmentDTO> {
     info!(target: "member::profile-pictire", "{} trying update profile picture",auth_context.claims.sub);
     if !auth_context.authorize(app::member::UPDATE) {
-        return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
+        return ApiResponse::access_denied(translate!("unauthorized", lang).as_str());
     }
 
     let validate = multipart.validate_body();
@@ -788,11 +788,11 @@ pub async fn upload_progress(
     multipart: MultiFileExtractor,
 ) -> ApiResponse<MemberLogDTO> {
     if !auth_context.authorize(app::member::UPDATE) {
-        return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
+        return ApiResponse::access_denied(translate!("unauthorized", lang).as_str());
     }
 
     if auth_context.branch_id.is_none() {
-        return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
+        return ApiResponse::access_denied(translate!("unauthorized", lang).as_str());
     }
 
     let validate = multipart.validate();
@@ -811,7 +811,7 @@ pub async fn upload_progress(
     let member_id = create_object_id_option(multipart.ref_id.as_str());
 
     if member_id.is_none() {
-        return ApiResponse::un_authorized(
+        return ApiResponse::access_denied(
             translate!("member.profile-picture.failed", lang).as_str(),
         );
     }
@@ -935,11 +935,11 @@ pub async fn get_member_transaction(
     query: Query<PaginationRequest>,
 ) -> ApiResponse<PagingResponse<TransactionDTO>> {
     if !auth_context.authorize(app::transaction::READ) {
-        return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
+        return ApiResponse::access_denied(translate!("unauthorized", lang).as_str());
     }
 
     if auth_context.branch_id.is_none() {
-        return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
+        return ApiResponse::access_denied(translate!("unauthorized", lang).as_str());
     }
 
     let member_id = create_object_id_option(member_id.as_str());
@@ -953,7 +953,7 @@ pub async fn get_member_transaction(
         .await;
 
     if find.is_err() {
-        return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
+        return ApiResponse::access_denied(translate!("unauthorized", lang).as_str());
     }
     ApiResponse::ok(
         find.unwrap(),

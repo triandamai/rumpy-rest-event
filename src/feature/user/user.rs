@@ -31,11 +31,11 @@ pub async fn get_list_user(
     query: Query<PaginationRequest>,
 ) -> ApiResponse<PagingResponse<AccountDTO>> {
     if !auth_context.authorize(app::user::READ) {
-        return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
+        return ApiResponse::access_denied(translate!("unauthorized", lang).as_str());
     }
 
     let default = String::new();
-    let filter = query.filter.clone().unwrap_or(default.clone());
+    let filter = query.name.clone().unwrap_or(default.clone());
     let mut get = Orm::get("account");
 
     if query.q.is_some() {
@@ -77,7 +77,7 @@ pub async fn get_detail_user(
     Path(user_id): Path<String>,
 ) -> ApiResponse<AccountDetailDTO> {
     if !auth_context.authorize(app::user::READ) {
-        return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
+        return ApiResponse::access_denied(translate!("unauthorized", lang).as_str());
     }
 
     let id = create_object_id_option(user_id.as_str());
@@ -107,7 +107,7 @@ pub async fn create_user(
     Json(body): Json<CreateUserRequest>,
 ) -> ApiResponse<AccountDTO> {
     if !auth_context.authorize(app::user::CREATE) {
-        return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
+        return ApiResponse::access_denied(translate!("unauthorized", lang).as_str());
     }
 
     let validate = body.validate();
@@ -172,7 +172,7 @@ pub async fn update_user(
     Json(body): Json<UpdateUserRequest>,
 ) -> ApiResponse<AccountDTO> {
     if !auth_context.authorize(app::user::UPDATE) {
-        return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
+        return ApiResponse::access_denied(translate!("unauthorized", lang).as_str());
     }
 
     let validate = body.validate();
@@ -185,7 +185,7 @@ pub async fn update_user(
 
     let user_id = create_object_id_option(user_id.as_str());
     if user_id.is_none() {
-        return ApiResponse::un_authorized(translate!("user.not-found", lang).as_str());
+        return ApiResponse::access_denied(translate!("user.not-found", lang).as_str());
     }
 
     let find_user = Orm::get("account")
@@ -238,12 +238,12 @@ pub async fn delete_user(
     Path(user_id): Path<String>,
 ) -> ApiResponse<String> {
     if !auth_context.authorize(app::user::DELETE) {
-        return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
+        return ApiResponse::access_denied(translate!("unauthorized", lang).as_str());
     }
 
     let id = create_object_id_option(user_id.as_str());
     if id.is_none() {
-        return ApiResponse::un_authorized(translate!("user.not-found", lang).as_str());
+        return ApiResponse::access_denied(translate!("user.not-found", lang).as_str());
     }
 
     let update = Orm::update("account")
@@ -269,7 +269,7 @@ pub async fn upload_profile_picture(
     multipart: SingleFileExtractor,
 ) -> ApiResponse<FileAttachmentDTO> {
     if !auth_context.authorize("app::account::write") {
-        return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
+        return ApiResponse::access_denied(translate!("unauthorized", lang).as_str());
     }
 
 

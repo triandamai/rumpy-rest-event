@@ -8,7 +8,6 @@ use crate::common::permission::permission::app;
 use crate::common::utils::create_object_id_option;
 use crate::dto::member_cart::MemberCartDTO;
 use crate::dto::member_dto::MemberDTO;
-use crate::dto::product_dto::ProductDTO;
 use crate::dto::transaction_dto::TransactionDTO;
 use crate::entity::detail_transaction::DetailTransaction;
 use crate::entity::member_cart::MemberCart;
@@ -31,7 +30,7 @@ pub async fn create_top_up_transaction(
     Json(body): Json<CreateTransactionTopUpRequest>,
 ) -> ApiResponse<String> {
     if !auth_context.authorize(app::transaction::CREATE) {
-        return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
+        return ApiResponse::access_denied(translate!("unauthorized", lang).as_str());
     }
 
     if auth_context.branch_id.is_none() {
@@ -99,7 +98,7 @@ pub async fn create_top_up_transaction(
         return ApiResponse::failed(translate!("stock.update.failed", lang).as_str());
     }
 
-    let save_detail_transaction = Orm::insert("transaction")
+    let save_detail_transaction = Orm::insert("detail-transaction")
         .one_with_session(detail_transaction, &state.db, &mut session)
         .await;
 
@@ -134,13 +133,13 @@ pub async fn create_product_transaction(
     Json(body): Json<CreateTransactionMembershipProductRequest>,
 ) -> ApiResponse<TransactionDTO> {
     if !auth_context.authorize(app::transaction::CREATE) {
-        return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
+        return ApiResponse::access_denied(translate!("unauthorized", lang).as_str());
     }
     if auth_context.branch_id.is_none() {
         return ApiResponse::failed(translate!("", lang).as_str());
     }
     if auth_context.user_id.is_none() {
-        return ApiResponse::un_authorized(translate!("", lang).as_str());
+        return ApiResponse::access_denied(translate!("", lang).as_str());
     }
 
     let validate = body.validate();
@@ -302,13 +301,13 @@ pub async fn save_product_to_cart(
 ) -> ApiResponse<Vec<MemberCartDTO>> {
     info!(target:"transaction::save-product-to-cart", "trying to save product to cart");
     if !auth_context.authorize(app::transaction::CREATE) {
-        return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
+        return ApiResponse::access_denied(translate!("unauthorized", lang).as_str());
     }
     if auth_context.branch_id.is_none() {
         return ApiResponse::failed(translate!("", lang).as_str());
     }
     if auth_context.user_id.is_none() {
-        return ApiResponse::un_authorized(translate!("", lang).as_str());
+        return ApiResponse::access_denied(translate!("", lang).as_str());
     }
 
     let validate = body.validate();
@@ -376,7 +375,7 @@ pub async fn save_product_to_cart(
                 "product_stock": diff
             })
         }
-        
+
         if cart.quantity > body.quantity {
             let diff = cart.quantity - body.quantity;
             update_product = update_product.inc(doc! {
@@ -401,7 +400,7 @@ pub async fn save_product_to_cart(
         if find_product.is_err() {
             return ApiResponse::not_found(translate!("", lang).as_str());
         }
-        let product = find_product.unwrap();
+        let _product = find_product.unwrap();
         //insert new
         let product_cart = MemberCart {
             id: Some(ObjectId::new()),

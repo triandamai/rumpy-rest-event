@@ -27,16 +27,16 @@ pub async fn get_list_stock(
     info!(target: "stock::list","{} trying to get list product stock",auth_context.claims.sub);
     if !auth_context.authorize(app::stock::READ) {
         info!(target:"stock::list","{} not permitted", auth_context.claims.sub);
-        return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
+        return ApiResponse::access_denied(translate!("unauthorized", lang).as_str());
     }
 
     if auth_context.branch_id.is_none() {
         info!(target:"stock::list","failed to get stock id");
-        return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
+        return ApiResponse::access_denied(translate!("unauthorized", lang).as_str());
     }
 
     let default = String::new();
-    let filter = query.filter.clone().unwrap_or(default.clone());
+    let filter = query.name.clone().unwrap_or(default.clone());
     let mut get = Orm::get("product");
 
     if query.q.is_some() {
@@ -85,12 +85,12 @@ pub async fn get_detail_stock(
     info!(target: "stock::detail","{} trying to get detail stock",auth_context.claims.sub);
     if !auth_context.authorize(app::stock::READ) {
         info!(target: "stock::detail","{} not permitted",auth_context.claims.sub);
-        return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
+        return ApiResponse::access_denied(translate!("unauthorized", lang).as_str());
     }
 
     if auth_context.branch_id.is_none() {
         info!(target:"stock::detail","failed to get stock id");
-        return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
+        return ApiResponse::access_denied(translate!("unauthorized", lang).as_str());
     }
 
     let product_id = create_object_id_option(product_id.as_str());
@@ -127,7 +127,7 @@ pub async fn update_stock(
     info!(target: "stock::update","{} trying to update  stock",auth_context.claims.sub);
     if !auth_context.authorize(app::stock::UPDATE) {
         info!(target: "stock::update","{} not permitted", auth_context.claims.sub);
-        return ApiResponse::un_authorized(translate!("unauthorized", lang).as_str());
+        return ApiResponse::access_denied(translate!("unauthorized", lang).as_str());
     }
 
     if auth_context.branch_id.is_none() {

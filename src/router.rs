@@ -36,6 +36,10 @@ pub fn init_routes(state: AppState) -> Router {
         .route("/auth/sign-out", post(feature::auth::auth::sign_out))
         //branch
         .route(
+            "/branch/list/all",
+            get(feature::branch::branch::get_list_all_branch),
+        )
+        .route(
             "/branch/list",
             get(feature::branch::branch::get_list_branch),
         )
