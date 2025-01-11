@@ -22,11 +22,11 @@ impl Get {
             orm: Orm {
                 collection_name: from.to_string(),
                 filter: vec![],
-                filters: Default::default(),
+                filters_group: Default::default(),
                 current_filter: None,
                 lookup: vec![],
                 unwind: vec![],
-                sort: None,
+                sort: vec![],
                 count: None,
                 skip: None,
                 limit: None,
@@ -133,7 +133,7 @@ impl Get {
         //prepare query
         let (query, query_count) = self.orm.merge_field_pageable(true);
 
-        // info!(target: "db::get","{:?}",query_count);
+        // info!(target: "db::get","{:?}",query);
         let get_count = collection.aggregate(query_count).await;
 
         let total_items = match get_count {
@@ -296,6 +296,11 @@ impl Get {
     pub fn and(mut self) -> Self {
         let orm = self.orm.and();
         self.orm = orm;
+        self
+    }
+
+    pub fn text(mut self) -> Self {
+        self.orm = self.orm.text();
         self
     }
 

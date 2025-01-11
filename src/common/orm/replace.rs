@@ -18,11 +18,11 @@ impl Replace {
             orm: Orm {
                 collection_name: from.to_string(),
                 filter: vec![],
-                filters: Default::default(),
+                filters_group: Default::default(),
                 current_filter: None,
                 lookup: vec![],
                 unwind: vec![],
-                sort: None,
+                sort: vec![],
                 count: None,
                 skip: None,
                 limit: None,
@@ -35,7 +35,7 @@ impl Replace {
             info!(target: "db::replace::error","Replace collection name is empty");
             return Err("Specify collection name before replace...".to_string());
         }
-        if self.orm.filter.len() < 1 && self.orm.filters.len() < 1 {
+        if self.orm.filter.len() < 1 && self.orm.filters_group.len() < 1 {
             info!(target: "db::replace::error","Replace filter is empty");
             return Err("Specify filter before replace...".to_string());
         }
@@ -71,7 +71,7 @@ impl Replace {
             info!(target: "db::replace::error","Replace collection name is empty");
             return Err("Specify collection name before replace...".to_string());
         }
-        if self.orm.filter.len() < 1 && self.orm.filters.len() < 1 {
+        if self.orm.filter.len() < 1 && self.orm.filters_group.len() < 1 {
             info!(target: "db::replace::error","Replace filter is empty");
             return Err("Specify filter before replace...".to_string());
         }

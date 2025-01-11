@@ -6,7 +6,8 @@ use crate::common::minio::MinIO;
 use crate::common::multipart_file::SingleFileExtractor;
 use crate::common::orm::orm::Orm;
 use crate::common::utils::{
-    create_object_id_option, QUERY_ASC, QUERY_DESC, QUERY_LATEST, QUERY_OLDEST,
+    create_object_id_option, QUERY_ASC, QUERY_DESC, QUERY_HIGHEST, QUERY_LATEST, QUERY_LOWEST,
+    QUERY_OLDEST,
 };
 
 use crate::common::middleware::Json;
@@ -42,11 +43,13 @@ pub async fn get_list_product(
 
     let default = String::new();
     let filter = query.name.clone().unwrap_or(default.clone());
+    let date = query.date.clone().unwrap_or(default.clone());
+    let price = query.price.clone().unwrap_or(default.clone());
     let mut get = Orm::get("product");
 
     if query.q.is_some() {
         let text = query.q.clone().unwrap_or(default);
-        get = get.filter_string("$text", Some("$search"), text.as_str());
+        get = get.text().filter_string("$search", None, text.as_str());
     }
 
     if filter == QUERY_ASC.to_string() {
@@ -57,12 +60,20 @@ pub async fn get_list_product(
         get = get.group_by_desc("product_name");
     }
 
-    if filter == QUERY_LATEST.to_string() {
+    if date == QUERY_LATEST.to_string() {
         get = get.group_by_desc("created_at");
     }
 
-    if filter == QUERY_OLDEST.to_string() {
+    if date == QUERY_OLDEST.to_string() {
         get = get.group_by_asc("created_at");
+    }
+
+    if date == QUERY_HIGHEST.to_string() {
+        get = get.group_by_desc("product_price");
+    }
+
+    if date == QUERY_LOWEST.to_string() {
+        get = get.group_by_asc("product_price");
     }
 
     let find_all_branch = get

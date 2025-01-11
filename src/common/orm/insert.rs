@@ -18,11 +18,11 @@ impl Insert {
             orm: Orm {
                 collection_name: from.to_string(),
                 filter: vec![],
-                filters: Default::default(),
+                filters_group: Default::default(),
                 current_filter: None,
                 lookup: vec![],
                 unwind: vec![],
-                sort: None,
+                sort: vec![],
                 count: None,
                 skip: None,
                 limit: None,

@@ -39,27 +39,28 @@ pub async fn get_list_coach(
     }
 
     let default = String::new();
-    let filter = query.name.clone().unwrap_or(default.clone());
+    let name = query.name.clone().unwrap_or(default.clone());
+    let date = query.date.clone().unwrap_or(default.clone());
     let mut get = Orm::get("coach");
 
     if query.q.is_some() {
         let text = query.q.clone().unwrap_or(default);
-        get = get.filter_string("$text", Some("$search"), text.as_str());
+        get = get.text().filter_string("$search", None, text.as_str());
     }
 
-    if filter == QUERY_ASC.to_string() {
+    if name == QUERY_ASC.to_string() {
         get = get.group_by_asc("full_name");
     }
 
-    if filter == QUERY_DESC.to_string() {
+    if name == QUERY_DESC.to_string() {
         get = get.group_by_desc("full_name");
     }
 
-    if filter == QUERY_LATEST.to_string() {
+    if date == QUERY_LATEST.to_string() {
         get = get.group_by_desc("created_at");
     }
 
-    if filter == QUERY_OLDEST.to_string() {
+    if date == QUERY_OLDEST.to_string() {
         get = get.group_by_asc("created_at");
     }
 

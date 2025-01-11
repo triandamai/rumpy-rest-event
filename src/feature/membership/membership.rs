@@ -6,8 +6,8 @@ use crate::common::middleware::Json;
 use crate::common::orm::orm::Orm;
 use crate::common::permission::permission::app;
 use crate::common::utils::{
-    create_object_id_option, create_or_new_object_id, QUERY_ASC, QUERY_DESC, QUERY_LATEST,
-    QUERY_OLDEST,
+    create_object_id_option, create_or_new_object_id, QUERY_ASC, QUERY_DESC, QUERY_HIGHEST,
+    QUERY_LATEST, QUERY_LOWEST, QUERY_OLDEST,
 };
 use crate::dto::membership_dto::MembershipDTO;
 use crate::entity::membership::Membership;
@@ -35,11 +35,13 @@ pub async fn get_list_membership(
 
     let default = String::new();
     let filter = query.name.clone().unwrap_or(default.clone());
+    let date = query.date.clone().unwrap_or(default.clone());
+    let price = query.price.clone().unwrap_or(default.clone());
     let mut get = Orm::get("membership");
 
     if query.q.is_some() {
         let text = query.q.clone().unwrap_or(default);
-        get = get.filter_string("$text", Some("$search"), text.as_str());
+        get = get.text().filter_string("$search", None, text.as_str());
     }
 
     if filter == QUERY_ASC.to_string() {
@@ -50,17 +52,26 @@ pub async fn get_list_membership(
         get = get.group_by_desc("title");
     }
 
-    if filter == QUERY_LATEST.to_string() {
+    if date == QUERY_LATEST.to_string() {
         get = get.group_by_desc("created_at");
     }
 
-    if filter == QUERY_OLDEST.to_string() {
+    if date == QUERY_OLDEST.to_string() {
         get = get.group_by_asc("created_at");
     }
 
+    if price == QUERY_HIGHEST.to_string() {
+        get = get.group_by_desc("price");
+    }
+
+    if price == QUERY_LOWEST.to_string() {
+        get = get.group_by_asc("price");
+    }
+
     let find = get
-        .join_one("account", "created_by_id", "_id", "created_by")
+        .and()
         .filter_bool("deleted", None, false)
+        .join_one("account", "created_by_id", "_id", "created_by")
         .pageable::<MembershipDTO>(query.page.unwrap_or(1), query.size.unwrap_or(10), &state.db)
         .await;
 

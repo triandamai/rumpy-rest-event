@@ -4,6 +4,7 @@ use crate::common::orm::insert::Insert;
 use crate::common::orm::replace::Replace;
 use crate::common::orm::update::Update;
 use bson::{doc, oid::ObjectId, Document};
+use log::info;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt::Debug;
@@ -44,15 +45,11 @@ pub fn create_skip_field(skip: i64) -> Document {
 }
 
 pub fn create_sort_desc_field(column: &str) -> Document {
-    doc! {
-        "$sort": {column: -1 /*Sort by created_at in descending order*/}
-    }
+    doc! { column: -1 /*Sort by created_at in descending order*/}
 }
 
 pub fn create_sort_asc_field(column: &str) -> Document {
-    doc! {
-        "$sort": {column: 1 /* Sort by created_at in descending order*/}
-    }
+    doc! {column: 1 /* Sort by created_at in descending order*/}
 }
 
 pub fn create_count_field() -> Document {
@@ -75,11 +72,11 @@ impl Filter {
 pub struct Orm {
     pub collection_name: String,
     pub filter: Vec<Document>,
-    pub filters: HashMap<String, Filter>,
+    pub filters_group: HashMap<String, Filter>,
     pub current_filter: Option<String>,
     pub lookup: Vec<Document>,
     pub unwind: Vec<Document>,
-    pub sort: Option<Document>,
+    pub sort: Vec<Document>,
     pub count: Option<Document>,
     pub skip: Option<Document>,
     pub limit: Option<Document>,
@@ -131,27 +128,38 @@ impl Orm {
     }
 
     pub fn group_by_asc(mut self, column: &str) -> Self {
-        self.sort = Some(create_sort_asc_field(column));
+        let mut sort = self.sort;
+        sort.push(create_sort_asc_field(column));
+        self.sort = sort;
         self
     }
 
     pub fn group_by_desc(mut self, column: &str) -> Self {
-        self.sort = Some(create_sort_desc_field(column));
+        let mut sort = self.sort;
+        sort.push(create_sort_desc_field(column));
+        self.sort = sort;
         self
     }
 
     pub fn or(mut self) -> Self {
-        let key = format!("{}", self.filters.len() + 1);
+        let key = format!("{}", self.filters_group.len() + 1);
         self.current_filter = Some(key.clone());
-        self.filters
+        self.filters_group
             .insert(key, Filter::new("$or".to_string(), Vec::new()));
+        self
+    }
+    pub fn text(mut self) -> Self {
+        let key = format!("{}", self.filters_group.len() + 1);
+        self.current_filter = Some(key.clone());
+        self.filters_group
+            .insert(key, Filter::new("$text".to_string(), Vec::new()));
         self
     }
 
     pub fn and(mut self) -> Self {
-        let key = format!("{}", self.filters.len() + 1);
+        let key = format!("{}", self.filters_group.len() + 1);
         self.current_filter = Some(key.clone());
-        self.filters
+        self.filters_group
             .insert(key, Filter::new("$and".to_string(), Vec::new()));
         self
     }
@@ -170,13 +178,13 @@ impl Orm {
             self.filter.push(doc);
         } else {
             let map = self.current_filter.clone().unwrap();
-            let hp = self.filters.get(&map.clone());
+            let hp = self.filters_group.get(&map.clone());
             match hp {
                 None => {}
                 Some(filter) => {
                     let mut f = filter.clone();
                     f.filter.push(doc);
-                    self.filters.insert(map, f);
+                    self.filters_group.insert(map, f);
                 }
             }
         }
@@ -202,13 +210,13 @@ impl Orm {
             self.filter.push(doc);
         } else {
             let map = self.current_filter.clone().unwrap();
-            let hp = self.filters.get(&map.clone());
+            let hp = self.filters_group.get(&map.clone());
             match hp {
                 None => {}
                 Some(filter) => {
                     let mut f = filter.clone();
                     f.filter.push(doc);
-                    self.filters.insert(map, f);
+                    self.filters_group.insert(map, f);
                 }
             }
         }
@@ -229,19 +237,18 @@ impl Orm {
             self.filter.push(doc);
         } else {
             let map = self.current_filter.clone().unwrap();
-            let hp = self.filters.get(&map.clone());
+            let hp = self.filters_group.get(&map.clone());
             match hp {
                 None => {}
                 Some(filter) => {
                     let mut f = filter.clone();
                     f.filter.push(doc);
-                    self.filters.insert(map, f);
+                    self.filters_group.insert(map, f);
                 }
             }
         }
         self
     }
-
     pub fn filter_string(mut self, column: &str, operator: Option<&str>, value: &str) -> Self {
         let mut doc = Document::new();
         if operator.is_none() {
@@ -256,13 +263,45 @@ impl Orm {
             self.filter.push(doc);
         } else {
             let map = self.current_filter.clone().unwrap();
-            let hp = self.filters.get(&map.clone());
+            let hp = self.filters_group.get(&map.clone());
             match hp {
                 None => {}
                 Some(filter) => {
                     let mut f = filter.clone();
                     f.filter.push(doc);
-                    self.filters.insert(map, f);
+                    self.filters_group.insert(map, f);
+                }
+            }
+        }
+        self
+    }
+
+    pub fn filter_search_string(
+        mut self,
+        column: &str,
+        operator: Option<&str>,
+        value: &str,
+    ) -> Self {
+        let mut doc = Document::new();
+        if operator.is_none() {
+            doc.insert(column, value);
+        } else {
+            let mut eq = Document::new();
+            eq.insert(operator.unwrap(), value);
+            doc.insert(column, eq);
+        }
+
+        if self.current_filter.is_none() {
+            self.filter.push(doc);
+        } else {
+            let map = self.current_filter.clone().unwrap();
+            let hp = self.filters_group.get(&map.clone());
+            match hp {
+                None => {}
+                Some(filter) => {
+                    let mut f = filter.clone();
+                    f.filter.push(doc);
+                    self.filters_group.insert(map, f);
                 }
             }
         }
@@ -277,13 +316,13 @@ impl Orm {
             self.filter.push(doc);
         } else {
             let map = self.current_filter.clone().unwrap();
-            let hp = self.filters.get(&map.clone());
+            let hp = self.filters_group.get(&map.clone());
             match hp {
                 None => {}
                 Some(filter) => {
                     let mut f = filter.clone();
                     f.filter.push(doc);
-                    self.filters.insert(map, f);
+                    self.filters_group.insert(map, f);
                 }
             }
         }
@@ -299,13 +338,13 @@ impl Orm {
             self.filter.push(doc);
         } else {
             let map = self.current_filter.clone().unwrap();
-            let hp = self.filters.get(&map.clone());
+            let hp = self.filters_group.get(&map.clone());
             match hp {
                 None => {}
                 Some(filter) => {
                     let mut f = filter.clone();
                     f.filter.push(doc);
-                    self.filters.insert(map, f);
+                    self.filters_group.insert(map, f);
                 }
             }
         }
@@ -315,16 +354,30 @@ impl Orm {
     pub fn merge_field_all(self, is_aggregate: bool) -> Vec<Document> {
         let mut result: Vec<Document> = Vec::new();
 
-        if self.filters.len() > 0 {
+        if self.filters_group.len() > 0 {
             let mut parent: Document = Document::new();
             let mut upper_filter: Document = Document::new();
-            for (_, filter) in self.filters {
-                if filter.filter.len() > 1 {
-                    let mut result_child: Vec<Document> = Vec::new();
-                    for child in filter.filter {
-                        result_child.push(child);
+            for (_, filter) in self.filters_group {
+                //if opr = $text use object instead
+                if filter.operator == "$text" {
+                    if filter.filter.len() > 1 {
+                        let mut result_child = Document::new();
+                        for child in filter.filter {
+                            for child_key in child.keys() {
+                                result_child.insert(child_key, child.get(child_key));
+                            }
+                        }
+                        upper_filter.insert(filter.operator.clone(), result_child);
                     }
-                    upper_filter.insert(filter.operator, result_child);
+                } else {
+                    if filter.filter.len() > 1 {
+                        let mut result_child: Vec<Document> = Vec::new();
+
+                        for child in filter.filter {
+                            result_child.push(child);
+                        }
+                        upper_filter.insert(filter.operator, result_child);
+                    }
                 }
             }
 
@@ -361,8 +414,16 @@ impl Orm {
             }
         }
 
-        if self.sort.is_some() {
-            result.push(self.sort.unwrap());
+        if self.sort.len() > 0 {
+            let mut sort_doc = Document::new();
+            let mut doc = Document::new();
+            for child in self.sort {
+                for key in child.keys() {
+                    doc.insert(key, child.get(key));
+                }
+            }
+            sort_doc.insert("$sort", doc);
+            result.push(sort_doc);
         }
 
         for lookup in self.lookup {
@@ -391,16 +452,30 @@ impl Orm {
         let mut result_count: Vec<Document> = Vec::new();
         let mut result: Vec<Document> = Vec::new();
 
-        if self.filters.len() > 0 {
+        if self.filters_group.len() > 0 {
             let mut parent: Document = Document::new();
             let mut upper_filter: Document = Document::new();
-            for (_, filter) in self.filters {
-                if filter.filter.len() > 1 {
-                    let mut result_child: Vec<Document> = Vec::new();
-                    for child in filter.filter {
-                        result_child.push(child);
+            for (_, filter) in self.filters_group {
+                //if opr = $text use object instead
+                if filter.operator == "$text" {
+                    if filter.filter.len() > 1 {
+                        let mut result_child = Document::new();
+                        for child in filter.filter {
+                            for child_key in child.keys() {
+                                result_child.insert(child_key, child.get(child_key));
+                            }
+                        }
+                        upper_filter.insert(filter.operator.clone(), result_child);
                     }
-                    upper_filter.insert(filter.operator, result_child);
+                } else {
+                    if filter.filter.len() > 1 {
+                        let mut result_child: Vec<Document> = Vec::new();
+
+                        for child in filter.filter {
+                            result_child.push(child);
+                        }
+                        upper_filter.insert(filter.operator, result_child);
+                    }
                 }
             }
 
@@ -439,9 +514,16 @@ impl Orm {
                 }
             }
         }
-        if self.sort.is_some() {
-            result.push(self.sort.clone().unwrap());
-            result_count.push(self.sort.unwrap());
+        if self.sort.len() > 0 {
+            let mut sort_doc = Document::new();
+            let mut doc = Document::new();
+            for child in self.sort {
+                for key in child.keys() {
+                    doc.insert(key, child.get(key));
+                }
+            }
+            sort_doc.insert("$sort", doc);
+            result.push(sort_doc);
         }
 
         for lookup in self.lookup {
@@ -467,9 +549,9 @@ impl Orm {
         (result, result_count)
     }
     pub fn get_filter_as_doc(self) -> Document {
-        if self.filters.len() > 0 {
+        if self.filters_group.len() > 0 {
             let mut upper_filter: Document = Document::new();
-            for (_, filter) in self.filters {
+            for (_, filter) in self.filters_group {
                 let mut result_child: Vec<Document> = Vec::new();
                 for child in filter.filter {
                     result_child.push(child);
@@ -485,10 +567,10 @@ impl Orm {
     pub fn merge_field(self, is_aggregate: bool) -> Vec<Document> {
         let mut result: Vec<Document> = Vec::new();
 
-        if self.filters.len() > 0 {
+        if self.filters_group.len() > 0 {
             let mut parent: Document = Document::new();
             let mut upper_filter: Document = Document::new();
-            for (_, filter) in self.filters {
+            for (_, filter) in self.filters_group {
                 if filter.filter.len() > 1 {
                     let mut result_child: Vec<Document> = Vec::new();
                     for child in filter.filter {
@@ -527,10 +609,17 @@ impl Orm {
             }
         }
 
-        if self.sort.is_some() {
-            result.push(self.sort.unwrap());
+        if self.sort.len() > 0 {
+            let mut sort_doc = Document::new();
+            let mut doc = Document::new();
+            for child in self.sort {
+                for key in child.keys() {
+                    doc.insert(key, child.get(key));
+                }
+            }
+            sort_doc.insert("$sort", doc);
+            result.push(sort_doc);
         }
-
         for lookup in self.lookup {
             result.push(lookup);
         }

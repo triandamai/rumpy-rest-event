@@ -68,7 +68,7 @@ pub async fn get_list_branch(
 
     if query.q.is_some() {
         let text = query.q.clone().unwrap_or(default);
-        get = get.filter_string("$text", Some("$search"), text.as_str());
+        get = get.text().filter_string("$search", None, text.as_str());
     }
 
     if filter_name == QUERY_ASC.to_string() {
@@ -89,6 +89,7 @@ pub async fn get_list_branch(
 
     let find_all_branch = get
         .join_one("account", "branch_owner", "_id", "owner")
+        .and()
         .filter_bool("deleted", None, false)
         .pageable::<BranchDTO>(query.page.unwrap_or(1), query.size.unwrap_or(10), &state.db)
         .await;

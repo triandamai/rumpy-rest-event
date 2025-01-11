@@ -37,11 +37,13 @@ pub async fn get_list_stock(
 
     let default = String::new();
     let filter = query.name.clone().unwrap_or(default.clone());
+    let date = query.date.clone().unwrap_or(default.clone());
+    let price = query.price.clone().unwrap_or(default.clone());
     let mut get = Orm::get("product");
 
     if query.q.is_some() {
         let text = query.q.clone().unwrap_or(default);
-        get = get.filter_string("$text", Some("$search"), text.as_str());
+        get = get.text().filter_string("$search", None, text.as_str());
     }
 
     if filter == QUERY_ASC.to_string() {
@@ -52,12 +54,20 @@ pub async fn get_list_stock(
         get = get.group_by_desc("product_name");
     }
 
-    if filter == QUERY_LATEST.to_string() {
+    if date == QUERY_LATEST.to_string() {
         get = get.group_by_desc("created_at");
     }
 
-    if filter == QUERY_OLDEST.to_string() {
+    if date == QUERY_OLDEST.to_string() {
         get = get.group_by_asc("created_at");
+    }
+
+    if price == QUERY_LATEST.to_string() {
+        get = get.group_by_desc("product_stock");
+    }
+
+    if price == QUERY_OLDEST.to_string() {
+        get = get.group_by_asc("product_stock");
     }
 
     let find_all_branch = get
@@ -122,7 +132,7 @@ pub async fn update_stock(
     state: State<AppState>,
     auth_context: AuthContext,
     lang: Lang,
-    Json(body):Json<UpdateStockRequest>,
+    Json(body): Json<UpdateStockRequest>,
 ) -> ApiResponse<ProductDTO> {
     info!(target: "stock::update","{} trying to update  stock",auth_context.claims.sub);
     if !auth_context.authorize(app::stock::UPDATE) {

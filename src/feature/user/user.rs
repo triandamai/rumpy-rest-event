@@ -36,11 +36,12 @@ pub async fn get_list_user(
 
     let default = String::new();
     let filter = query.name.clone().unwrap_or(default.clone());
+    let date = query.date.clone().unwrap_or(default.clone());
     let mut get = Orm::get("account");
 
     if query.q.is_some() {
         let text = query.q.clone().unwrap_or(default);
-        get = get.filter_string("$text", Some("$search"), text.as_str());
+        get = get.text().filter_string("$search", None, text.as_str());
     }
 
     if filter == QUERY_ASC.to_string() {
@@ -51,15 +52,16 @@ pub async fn get_list_user(
         get = get.group_by_desc("full_name");
     }
 
-    if filter == QUERY_LATEST.to_string() {
+    if date == QUERY_LATEST.to_string() {
         get = get.group_by_desc("created_at");
     }
 
-    if filter == QUERY_OLDEST.to_string() {
+    if date == QUERY_OLDEST.to_string() {
         get = get.group_by_asc("created_at");
     }
 
     let find_all_branch = get
+        .and()
         .filter_bool("deleted", None, false)
         .join_one("file-attachment", "_id", "ref_id", "profile_picture")
         .pageable::<AccountDTO>(query.page.unwrap_or(1), query.size.unwrap_or(10), &state.db)
@@ -272,8 +274,6 @@ pub async fn upload_profile_picture(
         return ApiResponse::access_denied(translate!("unauthorized", lang).as_str());
     }
 
-
-
     let validate = multipart.validate_body();
     if validate.is_err() {
         return ApiResponse::error_validation(
@@ -318,11 +318,7 @@ pub async fn upload_profile_picture(
 
     //upload new
     let minio = minio
-        .upload_file(
-            file.temp_path.clone(),
-            bucket_name,
-            file.filename.clone(),
-        )
+        .upload_file(file.temp_path.clone(), bucket_name, file.filename.clone())
         .await;
 
     if minio.is_err() {

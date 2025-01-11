@@ -16,11 +16,11 @@ impl Delete {
             orm: Orm {
                 collection_name: from.to_string(),
                 filter: vec![],
-                filters: Default::default(),
+                filters_group: Default::default(),
                 current_filter: None,
                 lookup: vec![],
                 unwind: vec![],
-                sort: None,
+                sort: vec![],
                 count: None,
                 skip: None,
                 limit: None,
@@ -32,7 +32,7 @@ impl Delete {
         if self.orm.collection_name.is_empty() {
             return Err("Specify collection name before deleting...".to_string());
         }
-        if self.orm.filter.len() < 1 && self.orm.filters.len() < 1 {
+        if self.orm.filter.len() < 1 && self.orm.filters_group.len() < 1 {
             return Err("Specify filter before deleting...".to_string());
         }
         let collection: Collection<Document> = db.collection(self.orm.collection_name.as_str());
@@ -55,7 +55,7 @@ impl Delete {
         if self.orm.collection_name.is_empty() {
             return Err("Specify collection name before deleting...".to_string());
         }
-        if self.orm.filter.len() < 1 && self.orm.filters.len() < 1 {
+        if self.orm.filter.len() < 1 && self.orm.filters_group.len() < 1 {
             return Err("Specify filter before deleting...".to_string());
         }
         let collection: Collection<Document> = db.collection(self.orm.collection_name.as_str());
@@ -71,7 +71,7 @@ impl Delete {
     }
 
     pub async fn many(self, db: &Database) -> Result<u64, String> {
-        if self.orm.filter.len() < 1 && self.orm.filters.len() < 1 {
+        if self.orm.filter.len() < 1 && self.orm.filters_group.len() < 1 {
             return Err("Specify filter before deleting...".to_string());
         }
 
@@ -92,7 +92,7 @@ impl Delete {
         db: &Database,
         session: &mut ClientSession,
     ) -> Result<u64, String> {
-        if self.orm.filter.len() < 1 && self.orm.filters.len() < 1 {
+        if self.orm.filter.len() < 1 && self.orm.filters_group.len() < 1 {
             return Err("Specify filter before deleting...".to_string());
         }
 

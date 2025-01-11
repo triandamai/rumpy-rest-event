@@ -22,11 +22,11 @@ impl Update {
             orm: Orm {
                 collection_name: from.to_string(),
                 filter: vec![],
-                filters: Default::default(),
+                filters_group: Default::default(),
                 current_filter: None,
                 lookup: vec![],
                 unwind: vec![],
-                sort: None,
+                sort: vec![],
                 count: None,
                 skip: None,
                 limit: None,
@@ -136,7 +136,7 @@ impl Update {
         if self.orm.collection_name.is_empty() {
             return Err("Specify collection name before UPDATE...".to_string());
         }
-        if self.orm.filter.len() < 1 && self.orm.filters.len() < 1 {
+        if self.orm.filter.len() < 1 && self.orm.filters_group.len() < 1 {
             return Err("Specify filter before UPDATE...".to_string());
         }
 
@@ -188,7 +188,7 @@ impl Update {
         if self.orm.collection_name.is_empty() {
             return Err("Specify collection name before UPDATE...".to_string());
         }
-        if self.orm.filter.len() < 1 && self.orm.filters.len() < 1 {
+        if self.orm.filter.len() < 1 && self.orm.filters_group.len() < 1 {
             return Err("Specify filter before UPDATE...".to_string());
         }
         let db = client.database(DB_NAME);
@@ -236,7 +236,7 @@ impl Update {
             info!(target:"db::UPDATE::error", "Specify collection name before UPDATE...");
             return Err("Specify collection name before UPDATE...".to_string());
         }
-        if self.orm.filter.len() < 1 && self.orm.filters.len() < 1 {
+        if self.orm.filter.len() < 1 && self.orm.filters_group.len() < 1 {
             info!(target:"db::UPDATE::error", "Specify filter before UPDATE...");
             return Err("Specify filter before UPDATE...".to_string());
         }
@@ -288,7 +288,7 @@ impl Update {
             info!(target:"db::UPDATE::error", "Specify collection name before UPDATE...");
             return Err("Specify collection name before UPDATE...".to_string());
         }
-        if self.orm.filter.len() < 1 && self.orm.filters.len() < 1 {
+        if self.orm.filter.len() < 1 && self.orm.filters_group.len() < 1 {
             info!(target:"db::UPDATE::error", "Specify filter before UPDATE...");
             return Err("Specify filter before UPDATE...".to_string());
         }
