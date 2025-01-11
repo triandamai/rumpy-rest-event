@@ -4,7 +4,6 @@ use crate::common::orm::insert::Insert;
 use crate::common::orm::replace::Replace;
 use crate::common::orm::update::Update;
 use bson::{doc, oid::ObjectId, Document};
-use log::info;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt::Debug;

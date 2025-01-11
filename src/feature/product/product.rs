@@ -68,11 +68,11 @@ pub async fn get_list_product(
         get = get.group_by_asc("created_at");
     }
 
-    if date == QUERY_HIGHEST.to_string() {
+    if price == QUERY_HIGHEST.to_string() {
         get = get.group_by_desc("product_price");
     }
 
-    if date == QUERY_LOWEST.to_string() {
+    if price == QUERY_LOWEST.to_string() {
         get = get.group_by_asc("product_price");
     }
 
