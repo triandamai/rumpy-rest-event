@@ -10,3 +10,4 @@ pub mod sse;
 pub mod stock;
 pub mod transaction;
 pub mod user;
+pub mod file;

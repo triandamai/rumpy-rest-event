@@ -27,6 +27,7 @@ pub fn init_routes(state: AppState) -> Router {
             "/sse/unsubscribe-topic",
             post(feature::sse::sse::unsubscribe_to_topic),
         )
+        .route("/file/:bucket", get(feature::file::get_file))
         //auth
         .route("/auth/sign-in", post(feature::auth::auth::sign_in))
         .route(
