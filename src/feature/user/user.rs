@@ -29,7 +29,7 @@ pub async fn get_list_user(
     lang: Lang,
     auth_context: AuthContext,
     query: Query<PaginationRequest>,
-) -> ApiResponse<PagingResponse<AccountDTO>> {
+) -> ApiResponse<PagingResponse<AccountDetailDTO>> {
     if !auth_context.authorize(app::user::READ) {
         return ApiResponse::access_denied(translate!("unauthorized", lang).as_str());
     }
@@ -63,8 +63,9 @@ pub async fn get_list_user(
     let find_all_branch = get
         .and()
         .filter_bool("deleted", None, false)
+        .join_one("branch", "branch_id", "_id", "branch")
         .join_one("file-attachment", "_id", "ref_id", "profile_picture")
-        .pageable::<AccountDTO>(query.page.unwrap_or(1), query.size.unwrap_or(10), &state.db)
+        .pageable::<AccountDetailDTO>(query.page.unwrap_or(1), query.size.unwrap_or(10), &state.db)
         .await;
     ApiResponse::ok(
         find_all_branch.unwrap(),
@@ -89,7 +90,6 @@ pub async fn get_detail_user(
 
     let find_user = Orm::get("account")
         .filter_object_id("_id", &id.unwrap())
-        .join_one("account", "reply_to", "_id", "report")
         .join_one("branch", "branch_id", "_id", "branch")
         .join_many("account-permission", "_id", "account_id", "permission")
         .one::<AccountDetailDTO>(&state.db)
@@ -123,6 +123,7 @@ pub async fn create_user(
         email: body.email.clone(),
         password: body.password.clone(),
         gender: body.gender.clone(),
+        identity_number: Some(body.identity_number),
         job_title: body.job_title.clone(),
         report_to_id: auth_context.user_id,
         branch_id: auth_context.branch_id,
@@ -201,6 +202,10 @@ pub async fn update_user(
     let mut user = find_user.unwrap();
 
     let mut save = Orm::update("account");
+    if body.identity_number.is_some() {
+        user.identity_number = Some(body.identity_number.clone().unwrap());
+        save = save.set_str("identity_number", &body.full_name.clone().unwrap());
+    }
     if body.full_name.is_some() {
         user.full_name = body.full_name.clone().unwrap();
         save = save.set_str("full_name", &body.full_name.clone().unwrap());

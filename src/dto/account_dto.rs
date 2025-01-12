@@ -18,6 +18,7 @@ pub struct AccountDTO {
     pub full_name: String,
     pub email: String,
     pub gender: String,
+    pub identity_number: Option<String>,
     pub job_title: String,
     #[serde(
         rename = "report_to_id",
@@ -51,6 +52,7 @@ pub struct AccountDetailDTO {
     pub full_name: String,
     pub email: String,
     pub gender: String,
+    pub identity_number: Option<String>,
     pub job_title: String,
     #[serde(
         rename = "report_to_id",
@@ -66,9 +68,9 @@ pub struct AccountDetailDTO {
         deserialize_with = "deserialize_object_id"
     )]
     pub branch_id: Option<ObjectId>,
-    #[serde(rename = "branch", skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "branch")]
     pub branch: Option<BranchDTO>,
-    #[serde(rename = "profile_picture", skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "profile_picture")]
     pub profile_picture: Option<FileAttachmentDTO>,
     #[serde(rename = "permission", skip_serializing_if = "Option::is_none")]
     pub permission: Option<Vec<AccountPermissionDTO>>,

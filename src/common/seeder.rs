@@ -496,6 +496,7 @@ pub async fn init_seeder(db_client: &Client) {
                         full_name: "Owner Strong Teams".to_string(),
                         email: "owner@gmail.com".to_string(),
                         password: pass,
+                        identity_number: Some("6403131788890001".to_string()),
                         gender: "M".to_string(),
                         job_title: "OWNER".to_string(),
                         report_to_id: None,

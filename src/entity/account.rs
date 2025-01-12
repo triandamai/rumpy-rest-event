@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 pub struct Account {
     #[serde(rename = "_id", skip_serializing_if = "Option::is_none")]
     pub id: Option<ObjectId>,
+    pub identity_number: Option<String>,
     pub full_name: String,
     pub email: String,
     pub password: String,
@@ -26,6 +27,7 @@ impl Account {
             full_name: self.full_name,
             email: self.email,
             gender: self.gender,
+            identity_number: self.identity_number,
             job_title: self.job_title,
             report_to_id: self.report_to_id,
             branch_id: self.branch_id,

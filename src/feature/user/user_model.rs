@@ -4,6 +4,7 @@ use validator::Validate;
 
 #[derive(Debug, Serialize, Deserialize, Validate)]
 pub struct CreateUserRequest {
+    pub identity_number: String,
     pub full_name: String,
     #[validate(email)]
     pub email: String,
@@ -12,11 +13,11 @@ pub struct CreateUserRequest {
     #[validate(length(min = 7))]
     pub password: String,
     pub job_title: String,
-    pub access: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Validate)]
 pub struct UpdateUserRequest {
+    pub identity_number: Option<String>,
     pub full_name: Option<String>,
     pub email: Option<String>,
     #[validate(custom(function = "validate_gender"))]
