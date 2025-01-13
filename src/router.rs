@@ -104,6 +104,10 @@ pub fn init_routes(state: AppState) -> Router {
         )
         .route("/member", post(feature::member::member::create_member))
         .route(
+            "/member/non-member",
+            post(feature::member::member::create_non_member),
+        )
+        .route(
             "/member/:product_id",
             put(feature::member::member::update_member),
         )
@@ -128,6 +132,10 @@ pub fn init_routes(state: AppState) -> Router {
             post(feature::member::member::upload_progress),
         )
         //coach
+        .route(
+            "/coach/list/all",
+            get(feature::coach::coach::get_list_all_coach),
+        )
         .route("/coach/list", get(feature::coach::coach::get_list_coach))
         .route(
             "/coach/:coach_id",
@@ -147,6 +155,10 @@ pub fn init_routes(state: AppState) -> Router {
             post(feature::coach::coach::update_profile_picture),
         )
         //discount
+        .route(
+            "/discount/list/all",
+            get(feature::discount::discount::get_list_all_discount),
+        )
         .route(
             "/discount/list",
             get(feature::discount::discount::get_list_discount),
@@ -168,6 +180,10 @@ pub fn init_routes(state: AppState) -> Router {
             delete(feature::discount::discount::delete_discount),
         )
         //
+        .route(
+            "/membership/list/all",
+            get(feature::membership::membership::get_list_all_membership),
+        )
         .route(
             "/membership/list",
             get(feature::membership::membership::get_list_membership),

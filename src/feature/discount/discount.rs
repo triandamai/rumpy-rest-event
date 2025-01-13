@@ -19,6 +19,30 @@ use bson::DateTime;
 use log::info;
 use validator::Validate;
 
+pub async fn get_list_all_discount(
+    state: State<AppState>,
+    auth_context: AuthContext,
+    lang: Lang,
+) -> ApiResponse<Vec<DiscountDTO>> {
+    info!(target: "discount::list", "{} trying get list discount",auth_context.claims.sub);
+    if !auth_context.authorize(app::discount::READ) {
+        info!(target: "discount::list", "{} is not permitted",auth_context.claims.sub);
+        return ApiResponse::access_denied(translate!("unauthorized", lang).as_str());
+    }
+
+    let find = Orm::get("discount")
+        .join_one("account", "created_by_id", "_id", "created_by")
+        .filter_bool("deleted", None, false)
+        .all::<DiscountDTO>(&state.db)
+        .await;
+
+    info!(target: "discount::list", "success get list");
+    ApiResponse::ok(
+        find.unwrap(),
+        translate!("discount.list.success", lang).as_str(),
+    )
+}
+
 pub async fn get_list_discount(
     state: State<AppState>,
     auth_context: AuthContext,

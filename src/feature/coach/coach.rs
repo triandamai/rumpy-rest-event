@@ -22,6 +22,36 @@ use bson::DateTime;
 use log::info;
 use validator::Validate;
 
+pub async fn get_list_all_coach(
+    state: State<AppState>,
+    lang: Lang,
+    auth_context: AuthContext,
+) -> ApiResponse<Vec<CoachDTO>> {
+    info!(target: "coach::list", "{} trying get list coach", auth_context.claims.sub);
+    if !auth_context.authorize(app::coach::READ) {
+        info!(target: "coach::list", "{} not permitted", auth_context.claims.sub);
+        return ApiResponse::access_denied(translate!("unauthorized", lang).as_str());
+    }
+    if auth_context.branch_id.is_none() {
+        info!(target: "coach::list", "Branch id is null");
+        return ApiResponse::access_denied(translate!("unauthorized", lang).as_str());
+    }
+
+    let find_all_branch = Orm::get("coach")
+        .and()
+        .filter_bool("deleted", None, false)
+        .filter_object_id("branch_id", &auth_context.branch_id.unwrap())
+        .join_one("account", "created_by_id", "_id", "created_by")
+        .join_one("file-attachment", "_id", "ref_id", "profile_picture")
+        .all::<CoachDTO>(&state.db)
+        .await;
+    info!(target: "coach::list", "successfully get list coach");
+    ApiResponse::ok(
+        find_all_branch.unwrap(),
+        translate!("coach.list.success", lang).as_str(),
+    )
+}
+
 pub async fn get_list_coach(
     state: State<AppState>,
     lang: Lang,
@@ -319,11 +349,10 @@ pub async fn update_profile_picture(
 
     let multipart = multipart.file();
     let minio = MinIO::new().await;
-    let mut filename = format!("{}.{}", multipart.filename, multipart.extension);
     let is_file_exists = find_exist_profile_picture.is_ok();
     let bucket_name = "coach-profile-picture".to_string();
 
-    let attachment = match find_exist_profile_picture {
+    let mut attachment = match find_exist_profile_picture {
         Ok(v) => v,
         Err(_) => FileAttachment {
             id: Some(ObjectId::new()),
@@ -338,15 +367,18 @@ pub async fn update_profile_picture(
     };
 
     if is_file_exists {
-        filename = attachment.filename.clone();
         let _delete_existing = minio
-            .delete_file(filename.clone(), bucket_name.clone())
+            .delete_file(multipart.filename.clone(), bucket_name.clone())
             .await;
     }
 
     //upload new
     let minio = minio
-        .upload_file(multipart.temp_path.clone(), bucket_name, filename.clone())
+        .upload_file(
+            multipart.temp_path.clone(),
+            bucket_name,
+            multipart.filename.clone(),
+        )
         .await;
 
     if minio.is_err() {
@@ -361,7 +393,7 @@ pub async fn update_profile_picture(
         true => {
             let update_profile_picture = Orm::update("file-attachment")
                 .filter_object_id("ref_id", &user_id.unwrap())
-                .set_str("filename", &filename.as_str())
+                .set_str("filename", &multipart.filename.as_str())
                 .set_str("mime-type", &multipart.mime_type.as_str())
                 .set_str("extension", &multipart.extension.as_str())
                 .execute_one(&state.db)
@@ -369,6 +401,7 @@ pub async fn update_profile_picture(
             if update_profile_picture.is_err() {
                 error_message = update_profile_picture.clone().unwrap_err();
             }
+            attachment.filename = multipart.filename.clone();
             update_profile_picture.is_ok()
         }
         false => {

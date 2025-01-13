@@ -32,6 +32,8 @@ use log::info;
 use std::str::FromStr;
 use validator::Validate;
 
+use super::member_model::CreateNonMemberRequest;
+
 pub async fn get_list_member(
     state: State<AppState>,
     auth_context: AuthContext,
@@ -186,31 +188,27 @@ pub async fn create_member(
         return ApiResponse::error_validation(err, translate!("validation.error", lang).as_str());
     }
 
-    let membership_id = match body.coach_id.clone() {
-        None => None,
-        Some(coach_id) => create_object_id_option(coach_id.as_str()),
-    };
+    let membership_id = create_object_id_option(body.membership_id.clone().as_str());
     if membership_id.is_none() {
-        info!(target: "member::create","membership id doesn't exist");
-        return ApiResponse::failed(translate!("member.create.coach_id.none", lang).as_str());
+        info!(target: "member::create","membership id {:?} doesn't exist",membership_id);
+        return ApiResponse::failed(translate!("member.create.membership_id.none", lang).as_str());
     }
     let find_membership = Orm::get("membership")
         .filter_object_id("_id", &membership_id.unwrap())
         .one::<MembershipDTO>(&state.db)
         .await;
     if find_membership.is_err() {
-        info!(target: "member::create","membership doesn't exist");
-        return ApiResponse::failed(translate!("coach.not-found", lang).as_str());
+        info!(target: "member::create","membership {:?} doesn't exist",membership_id);
+        return ApiResponse::failed(
+            translate!("member.create.membership.not-found", lang).as_str(),
+        );
     }
 
-    let coach_id = match body.coach_id.clone() {
-        None => None,
-        Some(coach_id) => create_object_id_option(coach_id.as_str()),
-    };
+    let coach_id = create_object_id_option(body.coach_id.clone().as_str());
 
     if coach_id.is_none() {
         info!(target: "member::create","coach doesn't exist");
-        return ApiResponse::failed(translate!("coach.not-found", lang).as_str());
+        return ApiResponse::failed(translate!("member.create.coach.not-found", lang).as_str());
     }
     let find_coach = Orm::get("coach")
         .filter_object_id("_id", &coach_id.unwrap())
@@ -218,7 +216,7 @@ pub async fn create_member(
         .await;
     if find_coach.is_err() {
         info!(target: "member::create","coach doesn't exist");
-        return ApiResponse::failed(translate!("coach.not-found", lang).as_str());
+        return ApiResponse::failed(translate!("member.create,coach.not-found", lang).as_str());
     }
 
     let membership = find_membership.unwrap();
@@ -229,7 +227,7 @@ pub async fn create_member(
         id: Some(ObjectId::new()),
         member_code,
         branch_id: auth_context.branch_id,
-        membership_id: coach_id,
+        membership_id,
         created_by_id: auth_context.user_id,
         coach_id,
         full_name: body.full_name.clone(),
@@ -345,6 +343,59 @@ pub async fn create_member(
     dto.subscription = Some(subs);
     dto.coach = Some(coach);
     ApiResponse::ok(dto, translate!("member.create.success", lang).as_str())
+}
+
+pub async fn create_non_member(
+    state: State<AppState>,
+    auth_context: AuthContext,
+    lang: Lang,
+    Json(body): Json<CreateNonMemberRequest>,
+) -> ApiResponse<MemberDTO> {
+    info!(target: "member::create", "{} trying create member",auth_context.claims.sub);
+    if !auth_context.authorize(app::member::CREATE) {
+        info!(target: "member::list", "{} not permitted",auth_context.claims.sub);
+        return ApiResponse::access_denied(translate!("unauthorized", lang).as_str());
+    }
+
+    let validate = body.validate();
+    if validate.is_err() {
+        let err = validate.unwrap_err();
+        info!(target:"member::create","Body request invalid: {:?}",err);
+        return ApiResponse::error_validation(err, translate!("validation.error", lang).as_str());
+    }
+
+    let current_time = DateTime::now();
+    let member_code = generate_member_code(body.phone_number.as_str());
+    let member = Member {
+        id: Some(ObjectId::new()),
+        member_code,
+        branch_id: auth_context.branch_id,
+        membership_id: None,
+        created_by_id: auth_context.user_id,
+        coach_id: None,
+        full_name: body.phone_number.clone(),
+        gender: None,
+        email: None,
+        identity_number: None,
+        nfc_number: None,
+        phone_number: Some(body.phone_number.clone()),
+        is_member: false,
+        created_at: current_time,
+        updated_at: current_time,
+        deleted: false,
+    };
+
+    let save_member = Orm::insert("member").one(&member, &state.db).await;
+
+    if save_member.is_err() {
+        info!(target: "member::create", "{}",save_member.unwrap_err());
+        return ApiResponse::failed(translate!("member.create.cannot-save-member", lang).as_str());
+    }
+
+    ApiResponse::ok(
+        member.to_dto(),
+        translate!("member.create.success", lang).as_str(),
+    )
 }
 
 pub async fn update_member(

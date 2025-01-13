@@ -21,6 +21,31 @@ use bson::DateTime;
 use log::info;
 use validator::Validate;
 
+pub async fn get_list_all_membership(
+    state: State<AppState>,
+    auth_context: AuthContext,
+    lang: Lang,
+) -> ApiResponse<Vec<MembershipDTO>> {
+    info!(target: "membership::list", "{} trying get list membership",auth_context.claims.sub);
+    if !auth_context.authorize(app::membership::READ) {
+        info!(target: "membership::list", "{} is not permitted",auth_context.claims.sub);
+        return ApiResponse::access_denied(translate!("unauthorized", lang).as_str());
+    }
+
+    let find = Orm::get("membership")
+        .and()
+        .filter_bool("deleted", None, false)
+        .join_one("account", "created_by_id", "_id", "created_by")
+        .all::<MembershipDTO>(&state.db)
+        .await;
+
+    info!(target: "membership::list", "success get list");
+    ApiResponse::ok(
+        find.unwrap(),
+        translate!("membership.list.success", lang).as_str(),
+    )
+}
+
 pub async fn get_list_membership(
     state: State<AppState>,
     auth_context: AuthContext,

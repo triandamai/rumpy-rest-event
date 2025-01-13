@@ -6,6 +6,7 @@ use headers::ContentType;
 use log::info;
 use mime::Mime;
 use serde::{Deserialize, Serialize};
+use slugify::slugify;
 use std::collections::HashMap;
 use std::fs;
 use std::fs::File;
@@ -181,6 +182,7 @@ pub async fn field_to_temp_file(ref_id: &String, field: Field<'_>) -> FileTemp {
     //make sure receive only one file
     // Process the file field (file)
     let original_file_name = field.file_name().unwrap().to_string();
+    let original_file_name = slugify!(original_file_name.as_str());
     let mime_type = field.content_type().map(|mime| mime);
     let mime_type = mime_type.unwrap_or("image/png");
     let mime_type = Mime::from_str(mime_type).unwrap_or(Mime::from(ContentType::png()));
