@@ -38,7 +38,7 @@ impl EnvConfig {
 
         if env_base_url.is_err() {
             panic!(
-                "Cannot load env database {} mode, error={}",
+                "Cannot load env base_url {} mode, error={}",
                 database_env_key,
                 env_base_url.unwrap_err().to_string()
             )
