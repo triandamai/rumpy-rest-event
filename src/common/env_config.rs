@@ -36,6 +36,13 @@ impl EnvConfig {
         let env_minio_secret_key = std::env::var(minio_env_secret_key.clone());
         let env_jwt = std::env::var(jwt_env_key.clone());
 
+        if env_base_url.is_err() {
+            panic!(
+                "Cannot load env database {} mode, error={}",
+                database_env_key,
+                env_base_url.unwrap_err().to_string()
+            )
+        }
         if env_database.is_err() {
             panic!(
                 "Cannot load env database {} mode, error={}",
