@@ -8,7 +8,7 @@ use axum::{
     http::request::Parts,
 };
 use log::info;
-use mongodb::{Client as MongoClient};
+use mongodb::{options::ClientOptions, Client as MongoClient};
 use redis::Client;
 use std::sync::Arc;
 
@@ -25,11 +25,17 @@ impl AppState {
         let env = EnvConfig::init();
 
         let sse = SseBroadcaster::create();
-        let database = MongoClient::with_uri_str(env.database_url.as_str()).await;
+        let opt = ClientOptions::parse(env.database_url.as_str()).await;
 
+        if opt.is_err() {
+            panic!("{}", opt.unwrap_err());
+        }
+        let mut opt = opt.unwrap();
+        opt.retry_writes = Some(false);
+        let database = MongoClient::with_options(opt);
 
         if database.is_err() {
-            panic!("{}",database.unwrap_err());
+            panic!("{}", database.unwrap_err());
         }
         let database = database.unwrap();
 
@@ -48,7 +54,6 @@ impl AppState {
         }
     }
 }
-
 
 #[async_trait]
 impl<S> FromRequestParts<S> for AppState
