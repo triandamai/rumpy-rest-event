@@ -54,13 +54,6 @@ pub async fn get_list_branch(
         return ApiResponse::access_denied(translate!("unauthorized", lang).as_str());
     }
 
-    if query.page.unwrap_or(0) < 0 {
-        return ApiResponse::failed(translate!("branch.list.error.page", lang).as_str());
-    }
-    if query.size.unwrap_or(0) < 1 {
-        return ApiResponse::failed(translate!("branch.list.error.size", lang).as_str());
-    }
-
     let default = String::new();
     let filter_name = query.name.clone().unwrap_or(default.clone());
     let filter_date = query.date.clone().unwrap_or(default.clone());
@@ -91,7 +84,7 @@ pub async fn get_list_branch(
         .join_one("account", "branch_owner", "_id", "owner")
         .and()
         .filter_bool("deleted", None, false)
-        .pageable::<BranchDTO>(query.page.unwrap_or(1), query.size.unwrap_or(10), &state.db)
+        .pageable::<BranchDTO>(query.page.unwrap_or(0), query.size.unwrap_or(10), &state.db)
         .await;
     if find_all_branch.is_err() {
         return ApiResponse::failed(translate!("", lang).as_str());
