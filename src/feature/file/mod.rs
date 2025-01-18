@@ -13,8 +13,7 @@ use crate::{
 pub mod file_model;
 
 pub async fn get_file(
-    state: State<AppState>,
-    _auth_context: AuthContext,
+    _state: State<AppState>,
     lang: Lang,
     Path(bucket): Path<String>,
     query: Query<QueryGetFile>,

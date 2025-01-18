@@ -30,6 +30,7 @@ pub struct PaginationRequest {
     pub date: Option<String>,
     pub from: Option<String>,
     pub to: Option<String>,
+    pub is_membership:Option<bool>
 }
 
 #[derive(Debug, Serialize, Deserialize)]

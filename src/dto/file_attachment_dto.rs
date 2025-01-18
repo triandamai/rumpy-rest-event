@@ -4,14 +4,14 @@ use bson::DateTime;
 use serde::{Deserialize, Serialize};
 use validator::Validate;
 
-#[derive(Deserialize, Serialize,Clone, Debug,Validate)]
+#[derive(Deserialize, Serialize, Clone, Debug, Validate)]
 pub struct FileAttachmentDTO {
     #[serde(
         rename = "_id",
         serialize_with = "serialize_object_id",
         deserialize_with = "deserialize_object_id"
     )]
-    pub id:Option<ObjectId>,
+    pub id: Option<ObjectId>,
     #[serde(
         rename = "ref_id",
         serialize_with = "serialize_object_id",
@@ -21,9 +21,10 @@ pub struct FileAttachmentDTO {
     pub filename: String,
     pub mime_type: String,
     pub extension: String,
+    pub full_path: Option<String>,
     pub kind: String,
     #[serde(serialize_with = "serialize_datetime")]
-    pub create_at:DateTime,
+    pub create_at: DateTime,
     #[serde(serialize_with = "serialize_datetime")]
-    pub updated_at:DateTime,
+    pub updated_at: DateTime,
 }

@@ -76,8 +76,15 @@ pub async fn get_list_product(
         get = get.group_by_asc("product_price");
     }
 
+    if query.is_membership.is_some() {
+        get = get
+            .and()
+            .filter_bool("is_membership", None, query.is_membership.unwrap_or(false))
+    } else {
+        get = get.and()
+    }
+
     let find_all_branch = get
-        .and()
         .filter_bool("deleted", None, false)
         .filter_object_id("branch_id", &auth_context.branch_id.unwrap())
         .join_one("file-attachment", "_id", "ref_id", "product_image")

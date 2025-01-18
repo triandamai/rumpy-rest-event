@@ -1,4 +1,6 @@
-use crate::common::bson::{deserialize_object_id, serialize_datetime, serialize_object_id};
+use crate::common::bson::{
+    deserialize_object_id, serialize_datetime, serialize_file_attachment, serialize_object_id,
+};
 use crate::dto::account_permission_dto::AccountPermissionDTO;
 use crate::dto::branch_dto::BranchDTO;
 use crate::dto::file_attachment_dto::FileAttachmentDTO;
@@ -60,7 +62,7 @@ pub struct AccountDetailDTO {
         deserialize_with = "deserialize_object_id"
     )]
     pub report_to_id: Option<ObjectId>,
-    #[serde(rename = "report_to", skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "report_to")]
     pub report_to: Option<AccountDTO>,
     #[serde(
         rename = "branch_id",
@@ -70,9 +72,12 @@ pub struct AccountDetailDTO {
     pub branch_id: Option<ObjectId>,
     #[serde(rename = "branch")]
     pub branch: Option<BranchDTO>,
-    #[serde(rename = "profile_picture")]
+    #[serde(
+        rename = "profile_picture",
+        serialize_with = "serialize_file_attachment"
+    )]
     pub profile_picture: Option<FileAttachmentDTO>,
-    #[serde(rename = "permission", skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "permission")]
     pub permission: Option<Vec<AccountPermissionDTO>>,
     #[serde(serialize_with = "serialize_datetime")]
     pub created_at: DateTime,

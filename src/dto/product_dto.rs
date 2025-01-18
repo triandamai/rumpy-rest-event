@@ -1,4 +1,6 @@
-use crate::common::bson::{deserialize_object_id, serialize_datetime, serialize_object_id};
+use crate::common::bson::{
+    deserialize_object_id, serialize_datetime, serialize_file_attachment, serialize_object_id,
+};
 use crate::dto::account_dto::AccountDTO;
 use crate::dto::branch_dto::BranchDTO;
 use crate::dto::file_attachment_dto::FileAttachmentDTO;
@@ -6,7 +8,7 @@ use bson::oid::ObjectId;
 use bson::DateTime;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug,Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ProductDTO {
     #[serde(
         rename = "_id",
@@ -28,8 +30,8 @@ pub struct ProductDTO {
     pub product_selling_price: f64,
     pub product_profit: f64,
     pub product_stock: i64,
-    pub is_membership:bool,
-    #[serde(rename = "product_image")]
+    pub is_membership: bool,
+    #[serde(rename = "product_image", serialize_with = "serialize_file_attachment")]
     pub product_image: Option<FileAttachmentDTO>,
     #[serde(
         rename = "created_by_id",
@@ -37,7 +39,7 @@ pub struct ProductDTO {
         deserialize_with = "deserialize_object_id"
     )]
     pub created_by_id: Option<ObjectId>,
-    #[serde(rename = "created_by", skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "created_by")]
     pub created_by: Option<AccountDTO>,
     #[serde(serialize_with = "serialize_datetime")]
     pub created_at: DateTime,

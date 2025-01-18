@@ -132,7 +132,7 @@ impl Get {
         //prepare query
         let (query, query_count) = self.orm.merge_field_pageable(true);
 
-        info!(target: "db::get","{:?}",query);
+        // info!(target: "db::get","{:?}",query);
         let get_count = collection.aggregate(query_count).await;
 
         let total_items = match get_count {
