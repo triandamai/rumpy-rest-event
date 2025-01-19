@@ -9,6 +9,8 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 use validator::ValidationError;
 
+use super::multipart_file::{MultiFileExtractor, SingleFileExtractor};
+
 pub const QUERY_LOWEST: &str = "lowest";
 pub const QUERY_HIGHEST: &str = "highest";
 pub const QUERY_ASC: &str = "asc";
@@ -88,6 +90,19 @@ pub fn validate_date_of_birth_option(date: &&String) -> Result<(), ValidationErr
     }
 }
 
+pub fn validate_single_extractor(file: &SingleFileExtractor) -> Result<(), ValidationError> {
+    if file.is_error {
+        return Err(ValidationError::new("file").with_message(Cow::from("Limit file exceeded")));
+    }
+    Ok(())
+}
+pub fn validate_multi_extractor(file: &MultiFileExtractor) -> Result<(), ValidationError> {
+    if file.is_error {
+        return Err(ValidationError::new("file").with_message(Cow::from("Limit file exceeded")));
+    }
+    Ok(())
+}
+
 pub fn validate_date_of_birth(date: &String) -> Result<(), ValidationError> {
     let parse = NaiveDate::parse_from_str(date, "%Y-%m-%d");
     match parse {
@@ -131,7 +146,12 @@ pub fn generate_member_code(prefix: &str) -> String {
     let counter = COUNTER.fetch_add(1, Ordering::SeqCst) % 1000; // Keep counter to 3 digits
 
     // Format as: PREFIX + short timestamp + counter
-    format!("{}{:X}{:03}", get_first_name(prefix).unwrap_or(""), timestamp % 0xFFFFFF, counter)
+    format!(
+        "{}{:X}{:03}",
+        get_first_name(prefix).unwrap_or(""),
+        timestamp % 0xFFFFFF,
+        counter
+    )
 }
 
 pub fn get_first_name(full_name: &str) -> Option<&str> {

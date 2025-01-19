@@ -3,7 +3,7 @@ use crate::common::lang::Lang;
 use crate::common::multipart_file::{MultiFileExtractor, SingleFileExtractor};
 use axum::extract::multipart::MultipartRejection;
 use axum::extract::rejection::JsonRejection;
-use axum::extract::{FromRequest, Multipart, Request};
+use axum::extract::{self, FromRequest, Multipart, Request};
 use axum::http::StatusCode;
 use axum::middleware::Next;
 use axum::response::IntoResponse;
@@ -113,8 +113,21 @@ where
 
         match Multipart::from_request(req, state).await {
             Ok(value) => {
-                let extract = SingleFileExtractor::extract(value).await;
-                Ok(extract)
+                let file = SingleFileExtractor::extract(value).await;
+                if file.is_error {
+                    let default = String::new();
+                    let msg = file.error_message.unwrap_or(default);
+                    let payload = json!({
+                        "meta": {
+                            "code":422,
+                            "message":translate!("body.invalid",lang,{"message"=>msg})
+                        },
+                        "data":None::<String>,
+                        "error": None::<String>,
+                    });
+                    return Err((StatusCode::BAD_REQUEST, axum::Json(payload)));
+                }
+                Ok(file)
             }
             // convert the error from `axum::Json` into whatever we want
             Err(rejection) => {
@@ -132,7 +145,6 @@ where
         }
     }
 }
-
 
 #[async_trait]
 impl<S> FromRequest<S> for MultiFileExtractor
@@ -155,8 +167,21 @@ where
 
         match Multipart::from_request(req, state).await {
             Ok(value) => {
-                let extract = MultiFileExtractor::extract(value).await;
-                Ok(extract)
+                let file = MultiFileExtractor::extract(value).await;
+                if file.is_error {
+                    let default = String::new();
+                    let msg = file.error_message.unwrap_or(default);
+                    let payload = json!({
+                        "meta": {
+                            "code":422,
+                            "message":translate!("body.invalid",lang,{"message"=>msg})
+                        },
+                        "data":None::<String>,
+                        "error": None::<String>,
+                    });
+                    return Err((StatusCode::BAD_REQUEST, axum::Json(payload)));
+                }
+                Ok(file)
             }
             // convert the error from `axum::Json` into whatever we want
             Err(rejection) => {

@@ -20,8 +20,8 @@
     "id-ID": "Request Body Tidak Valid."
   },
   "body.invalid": {
-    "en": "Body not valid, because ${message}",
-    "id-ID": "Body tidak valid, error ${message}"
+    "en": "Body not valid, because ${message} or file size limit exceeded",
+    "id-ID": "Body tidak valid, error ${message} atau file size melebihi batas"
   },
   "sign-in.account.not-found": {
     "en": "Account not found, try using another account you have.",
@@ -235,7 +235,7 @@
     "en": "Failed to update, member not found.",
     "id-ID": "Gagal update member, tidak ditemukan member."
   },
-  "member.update.session.failed":{
+  "member.update.session.failed": {
     "en": "Failed update member, session not create, aborting.",
     "id-ID": "Gagal update member, sesi gagal, membatalkan."
   },

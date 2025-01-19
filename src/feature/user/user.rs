@@ -60,7 +60,7 @@ pub async fn get_list_user(
         get = get.group_by_asc("created_at");
     }
 
-    let find_all_branch = get
+    let find_all_user = get
         .and()
         .filter_bool("deleted", None, false)
         .join_one("branch", "branch_id", "_id", "branch")
@@ -68,7 +68,7 @@ pub async fn get_list_user(
         .pageable::<AccountDetailDTO>(query.page.unwrap_or(0), query.size.unwrap_or(10), &state.db)
         .await;
     ApiResponse::ok(
-        find_all_branch.unwrap(),
+        find_all_user.unwrap(),
         translate!("user.list.success", lang).as_str(),
     )
 }
