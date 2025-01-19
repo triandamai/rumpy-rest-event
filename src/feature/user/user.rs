@@ -65,7 +65,7 @@ pub async fn get_list_user(
         .filter_bool("deleted", None, false)
         .join_one("branch", "branch_id", "_id", "branch")
         .join_one("file-attachment", "_id", "ref_id", "profile_picture")
-        .pageable::<AccountDetailDTO>(query.page.unwrap_or(1), query.size.unwrap_or(10), &state.db)
+        .pageable::<AccountDetailDTO>(query.page.unwrap_or(0), query.size.unwrap_or(10), &state.db)
         .await;
     ApiResponse::ok(
         find_all_branch.unwrap(),

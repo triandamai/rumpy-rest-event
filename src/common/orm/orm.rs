@@ -538,13 +538,13 @@ impl Orm {
         if self.count.is_some() {
             result_count.push(self.count.unwrap());
         }
-
-        if self.skip.is_some() {
-            result.push(self.skip.unwrap())
-        }
         if self.limit.is_some() {
             result.push(self.limit.unwrap())
         }
+        if self.skip.is_some() {
+            result.push(self.skip.unwrap())
+        }
+
         (result, result_count)
     }
     pub fn get_filter_as_doc(self) -> Document {

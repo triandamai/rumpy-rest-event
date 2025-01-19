@@ -121,18 +121,18 @@ impl Get {
         let collection: Collection<Document> = db.collection(self.orm.collection_name.as_str());
 
         self.orm.count = Some(create_count_field());
-        let final_skip = if page < 1 {
-            size
+        if page > 1 {
+            self.orm.limit = Some(create_limit_field(page.clone() * size.clone()));
+            self.orm.skip = Some(create_skip_field((page.clone() - 1) * size.clone()));
         } else {
-            (page.clone() - 1) * size.clone()
-        };
-        self.orm.limit = Some(create_limit_field(page));
+            self.orm.limit = Some(create_limit_field(size.clone()));
+            self.orm.skip = Some(create_skip_field(0));
+        }
+        info!(target: "db::get","skip {:?} limit {:?}",self.orm.skip,self.orm.limit);
 
-        self.orm.skip = Some(create_skip_field(final_skip));
         //prepare query
         let (query, query_count) = self.orm.merge_field_pageable(true);
 
-        // info!(target: "db::get","{:?}",query);
         let get_count = collection.aggregate(query_count).await;
 
         let total_items = match get_count {
