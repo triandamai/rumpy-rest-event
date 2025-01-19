@@ -69,11 +69,7 @@ impl MultiFileExtractor {
         let mut is_error = false;
         let mut error_message: Option<String> = None;
         // Process each part of the multipart form data
-        while let Ok(field) = multipart.next_field().await {
-            if field.is_none() {
-                continue;
-            }
-            let field = field.unwrap();
+        while let Ok(Some(field)) = multipart.next_field().await {
             let field_name = field.name().map(|name| name.to_string());
             let field_type = field
                 .content_type()
@@ -164,11 +160,7 @@ impl SingleFileExtractor {
         let mut file_find = false;
         // Process each part of the multipart form data
 
-        while let Ok(field) = multipart.next_field().await {
-            if field.is_none() {
-                continue;
-            }
-            let field = field.unwrap();
+        while let Ok(Some(field)) = multipart.next_field().await {
             let field_name = field.name().map(|name| name.to_string());
 
             match field_name.as_deref() {
