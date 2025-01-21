@@ -168,11 +168,13 @@ pub async fn create_membership(
         branch_id: auth_context.branch_id,
         name: body.name.clone(),
         price: body.price,
+        price_per_item: body.price_per_item,
         quota: body.quota,
         created_by_id: auth_context.user_id,
         created_at: current_time.clone(),
         updated_at: current_time,
         deleted: false,
+        description: body.description,
     };
 
     let save = Orm::insert("membership").one(&membership, &state.db).await;
@@ -231,10 +233,19 @@ pub async fn update_membership(
         membership.price = body.price.clone().unwrap();
         update = update.set_float("price", &body.price.clone().unwrap());
     }
+    if body.price.is_some() {
+        membership.price_per_item = body.price_per_item.clone().unwrap();
+        update = update.set_float("price_per_item", &body.price.clone().unwrap());
+    }
 
     if body.quota.is_some() {
         membership.quota = body.quota.clone().unwrap();
         update = update.set_number("quota", &body.quota.clone().unwrap());
+    }
+
+    if body.description.is_some() {
+        membership.description = body.description.clone().unwrap();
+        update = update.set_str("description", body.description.unwrap().as_str())
     }
 
     let save = update

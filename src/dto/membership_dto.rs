@@ -5,7 +5,7 @@ use bson::oid::ObjectId;
 use bson::DateTime;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug,Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct MembershipDTO {
     #[serde(
         rename = "_id",
@@ -23,7 +23,9 @@ pub struct MembershipDTO {
     pub branch: Option<BranchDTO>,
     pub name: String,
     pub price: f64,
+    pub price_per_item: f64,
     pub quota: i64,
+    pub description: String,
     #[serde(
         rename = "created_by_id",
         serialize_with = "serialize_object_id",
