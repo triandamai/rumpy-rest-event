@@ -35,6 +35,8 @@ pub fn init_routes(state: AppState) -> Router {
             post(feature::auth::auth::change_password),
         )
         .route("/auth/sign-out", post(feature::auth::auth::sign_out))
+        //dashboard
+        .route("/dashboard", get(feature::dashboard::get_dashboard_stat))
         //branch
         .route(
             "/branch/list/all",
@@ -120,11 +122,11 @@ pub fn init_routes(state: AppState) -> Router {
             post(feature::member::member::update_profile_picture),
         )
         .route(
-            "/member/transaction",
+            "/member/transaction/:member_id",
             get(feature::member::member::get_member_transaction),
         )
         .route(
-            "/member/activity",
+            "/member/activity/:member_id",
             get(feature::member::member::get_member_activity),
         )
         .route(

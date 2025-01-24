@@ -823,7 +823,7 @@ pub async fn get_member_activity(
         .join_one("account", "created_by_id", "_id", "created_by")
         .join_many("file-attachment", "_id", "ref_id", "attachments")
         .group_by_desc("created_at")
-        .pageable::<MemberLogDTO>(query.page.unwrap_or(0), query.size.unwrap_or(0), &state.db)
+        .pageable::<MemberLogDTO>(query.page.unwrap_or(0), query.size.unwrap_or(10), &state.db)
         .await;
 
     if find.is_err() {
@@ -1000,12 +1000,13 @@ pub async fn get_member_transaction(
         .filter_object_id("member_id", &member_id.unwrap())
         .join_one("member", "member_id", "_id", "member")
         .join_one("account", "created_by_id", "_id", "created_by")
-        .join_many("detail-transaction", "transaction_id", "", "details")
-        .pageable::<TransactionDTO>(query.page.unwrap_or(0), query.size.unwrap_or(0), &state.db)
+        .join_many("detail-transaction", "transaction_id", "_id", "details")
+        .pageable::<TransactionDTO>(query.page.unwrap_or(0), query.size.unwrap_or(10), &state.db)
         .await;
 
     if find.is_err() {
-        return ApiResponse::access_denied(translate!("unauthorized", lang).as_str());
+        info!(target:"get-member-transaction","{:?}",find.unwrap_err());
+        return ApiResponse::not_found(translate!("member-transaction", lang).as_str());
     }
     ApiResponse::ok(
         find.unwrap(),

@@ -3,7 +3,7 @@ use crate::common::orm::orm::{create_count_field, create_limit_field, create_ski
 use crate::common::orm::DB_NAME;
 use crate::common::utils::create_object_id_option;
 use bson::oid::ObjectId;
-use bson::{doc, Document};
+use bson::{doc, DateTime, Document};
 use log::info;
 use mongodb::{Client, Collection};
 use serde::de::DeserializeOwned;
@@ -128,11 +128,12 @@ impl Get {
             self.orm.limit = Some(create_limit_field(size.clone()));
             self.orm.skip = Some(create_skip_field(0));
         }
-        info!(target: "db::get","skip {:?} limit {:?}",self.orm.skip,self.orm.limit);
+        // info!(target: "db::get","skip {:?} limit {:?}",self.orm.skip,self.orm.limit);
 
         //prepare query
         let (query, query_count) = self.orm.merge_field_pageable(true);
 
+        info!(target: "db::get","{:?}",query);
         let get_count = collection.aggregate(query_count).await;
 
         let total_items = match get_count {
@@ -321,6 +322,11 @@ impl Get {
         self
     }
 
+    pub fn filter_between_date(mut self, column: &str, from: DateTime, to: DateTime) -> Self {
+        let orm = self.orm.filter_between_date(column, from, to);
+        self.orm = orm;
+        self
+    }
     pub fn filter_string(mut self, column: &str, operator: Option<&str>, value: &str) -> Self {
         let orm = self.orm.filter_string(column, operator, value);
         self.orm = orm;

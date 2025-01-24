@@ -3,7 +3,9 @@ use crate::common::orm::get::Get;
 use crate::common::orm::insert::Insert;
 use crate::common::orm::replace::Replace;
 use crate::common::orm::update::Update;
+use bson::DateTime;
 use bson::{doc, oid::ObjectId, Document};
+use headers::Date;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt::Debug;
@@ -231,6 +233,30 @@ impl Orm {
             eq.insert(operator.unwrap(), value);
             doc.insert(column, eq);
         }
+
+        if self.current_filter.is_none() {
+            self.filter.push(doc);
+        } else {
+            let map = self.current_filter.clone().unwrap();
+            let hp = self.filters_group.get(&map.clone());
+            match hp {
+                None => {}
+                Some(filter) => {
+                    let mut f = filter.clone();
+                    f.filter.push(doc);
+                    self.filters_group.insert(map, f);
+                }
+            }
+        }
+        self
+    }
+    pub fn filter_between_date(mut self, column: &str, from: DateTime, to: DateTime) -> Self {
+        let doc = doc! {
+                column:{
+                    "$gte":from,
+                    "$lt":to
+                }
+        };
 
         if self.current_filter.is_none() {
             self.filter.push(doc);
