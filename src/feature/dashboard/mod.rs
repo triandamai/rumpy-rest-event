@@ -7,6 +7,7 @@ use crate::{
     common::{
         api_response::ApiResponse, app_state::AppState, jwt::AuthContext, lang::Lang, orm::orm::Orm,
     },
+    dto::{product_dto::ProductDTO, transaction_dto::TransactionDTO},
     entity::{coach::Coach, member::Member, product::Product, transaction::Transaction},
     translate,
 };
@@ -71,17 +72,44 @@ pub async fn get_dashboard_stat(
                 .filter_object_id("branch_id", &branch_id)
                 .and()
                 .filter_between_date("created_at", from_date.unwrap(), to_date.unwrap())
-                .all::<Transaction>(&state.db)
+                .join_many("detail-transaction", "_id", "transaction_id", "details")
+                .all::<TransactionDTO>(&state.db)
                 .await;
-            let mut trend: Vec<ChartTrend> = Vec::new();
+
+            let mut trend_non_member: Vec<ChartTrend> = Vec::new();
+            let mut trend_member: Vec<ChartTrend> = Vec::new();
             if let Ok(transactions) = find_transaction {
                 for transaction in transactions {
-                    trend.push(ChartTrend {
+                    let mut total_non_member: f64 = 0.0;
+                    let mut total_member: f64 = 0.0;
+                    if let Some(details) = transaction.details {
+                        for detail in details {
+                            if detail.is_membership {
+                                total_member += detail.total;
+                            } else {
+                                total_non_member += detail.total;
+                            }
+                        }
+                    }
+                    trend_non_member.push(ChartTrend {
                         date: transaction.created_at,
-                        value: transaction.total_price,
+                        value: total_non_member,
+                    });
+                    trend_member.push(ChartTrend {
+                        date: transaction.created_at,
+                        value: total_member,
                     });
                 }
             }
+        }
+
+        let find_product = Orm::get("product")
+            .join_one("file-attachement", "_id", "ref_id", "product_image")
+            .filter_number("product_stoc", Some("$lte"), 10)
+            .all::<ProductDTO>(&state.db)
+            .await;
+        if let Ok(products) = find_product {
+            stats.stock = products
         }
     }
 

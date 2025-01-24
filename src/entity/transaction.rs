@@ -18,12 +18,12 @@ pub struct Transaction{
     pub created_by_id:Option<ObjectId>,
     pub created_at: DateTime,
     pub updated_at: DateTime,
-    pub deleted:bool,
+    pub deleted: bool,
 }
 
-impl Transaction{
-    pub fn to_dto(self)->TransactionDTO{
-        TransactionDTO{
+impl Transaction {
+    pub fn to_dto(self) -> TransactionDTO {
+        TransactionDTO {
             id: self.id,
             branch_id: self.branch_id,
             branch: None,

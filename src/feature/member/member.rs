@@ -263,7 +263,7 @@ pub async fn create_member(
         created_by_id: None,
         created_at: current_time,
         updated_at: current_time,
-        deleted: false,
+        deleted: false
     };
 
     let detail_transaction = DetailTransaction {
@@ -551,7 +551,7 @@ pub async fn update_member(
             created_by_id: None,
             created_at: current_time,
             updated_at: current_time,
-            deleted: false,
+            deleted: false
         };
 
         let detail_transaction = DetailTransaction {

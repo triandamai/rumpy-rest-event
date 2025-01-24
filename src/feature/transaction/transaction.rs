@@ -63,7 +63,7 @@ pub async fn create_top_up_transaction(
         created_by_id: auth_context.user_id,
         created_at: DateTime::now(),
         updated_at: DateTime::now(),
-        deleted: false,
+        deleted: false
     };
 
     let detail_transaction = DetailTransaction {
