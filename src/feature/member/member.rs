@@ -972,7 +972,7 @@ pub async fn upload_progress(
         created_by_id: auth_context.user_id,
         branch_id: auth_context.branch_id,
         name: "Update progres harian".to_string(),
-        value: "".to_string(),
+        value: multipart.notes,
         created_at: DateTime::now(),
         updated_at: DateTime::now(),
         deleted: false,

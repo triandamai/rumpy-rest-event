@@ -60,6 +60,7 @@ pub struct MultiFileExtractor {
     #[validate(length(min = 1))]
     pub ref_id: String,
     pub temp_file: HashMap<String, FileTemp>,
+    pub notes: String,
     pub is_error: bool,
     pub error_message: Option<String>,
 }
@@ -68,6 +69,7 @@ impl MultiFileExtractor {
     pub async fn extract(mut multipart: Multipart) -> MultiFileExtractor {
         let mut temporary = HashMap::<String, FileTemp>::new();
         let mut ref_id = String::new();
+        let mut notes = String::new();
         let mut is_error = false;
         let mut error_message: Option<String> = None;
         // Process each part of the multipart form data
@@ -82,6 +84,11 @@ impl MultiFileExtractor {
                 Some("ref_id") => {
                     // Process the text field (username)
                     ref_id = field.text().await.unwrap();
+                    info!(target:"extract_multipart", "found field :{} ",ref_id.clone());
+                }
+                Some("notes") => {
+                    // Process the text field (username)
+                    notes = field.text().await.unwrap();
                     info!(target:"extract_multipart", "found field :{} ",ref_id.clone());
                 }
                 name => {
@@ -105,6 +112,7 @@ impl MultiFileExtractor {
             ref_id,
             temp_file: temporary,
             is_error: is_error,
+            notes: notes,
             error_message: error_message,
         }
     }
