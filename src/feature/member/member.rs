@@ -1,5 +1,9 @@
 use crate::common::api_response::{ApiResponse, PaginationRequest, PagingResponse};
 use crate::common::app_state::AppState;
+use crate::common::constant::{
+    BUCKET_MEMBER_PROFILE_PICTURE, BUCKET_MEMBER_PROGRESS, KIND_MEMBER_BODY_IMAGE,
+    KIND_MEMBER_DATA_IMAGE, KIND_MEMBER_PROFILE_PICTURE, TRANSACTION_MEMBERSHIP,
+};
 use crate::common::jwt::AuthContext;
 use crate::common::lang::Lang;
 use crate::common::middleware::Json;
@@ -83,6 +87,14 @@ pub async fn get_list_member(
         .join_one("account", "created_by_id", "_id", "created_by")
         .join_one("coach", "coach_id", "_id", "coach")
         .join_one("file-attachment", "_id", "ref_id", "profile_picture")
+        .join_one("member-subscription", "_id", "member_id", "subscription")
+        .join_nested_one(
+            "membership",
+            "subscription.membership_id",
+            "_id",
+            "membership",
+            "subscription.membership",
+        )
         .pageable::<MemberDTO>(query.page.unwrap_or(1), query.size.unwrap_or(10), &state.db)
         .await;
 
@@ -115,24 +127,35 @@ pub async fn get_detail_member(
         return ApiResponse::access_denied(translate!("member.not-found", lang).as_str());
     }
 
-    let find_product = Orm::get("member")
+    let find_member = Orm::get("member")
         .and()
         .filter_bool("deleted", None, false)
         .filter_object_id("branch_id", &auth_context.branch_id.unwrap())
-        .join_one("account", "create_by_id", "_id", "created_by")
+        .or()
+        .filter_object_id("_id", &id.clone().unwrap())
+        .filter_string("member_code", Some("$eq"), member_id.as_str())
+        .filter_string("nfc_id", Some("$eq"), &member_id.as_str())
+        .join_one("account", "created_by_id", "_id", "created_by")
         .join_one("coach", "coach_id", "_id", "coach")
         .join_one("file-attachment", "_id", "ref_id", "profile_picture")
         .join_one("member-subscription", "_id", "member_id", "subscription")
+        .join_nested_one(
+            "membership",
+            "subscription.membership_id",
+            "_id",
+            "membership",
+            "subscription.membership",
+        )
         .one::<MemberDTO>(&state.db)
         .await;
 
-    if find_product.is_err() {
+    if find_member.is_err() {
         info!(target: "member::detail","Data member not found");
         return ApiResponse::not_found(translate!("member.not-found", lang).as_str());
     }
 
     ApiResponse::ok(
-        find_product.unwrap(),
+        find_member.unwrap(),
         translate!("member.found", lang).as_str(),
     )
 }
@@ -152,10 +175,17 @@ pub async fn get_member_by_nfc(
     let find_member = Orm::get("member")
         .filter_string("nfc_id", Some("$eq"), nfc_id.as_str())
         .filter_object_id("branch_id", &auth_context.branch_id.unwrap())
-        .join_one("account", "create_by_id", "_id", "created_by")
+        .join_one("account", "created_by_id", "_id", "created_by")
         .join_one("coach", "coach_id", "_id", "coach")
         .join_one("file-attachment", "_id", "ref_id", "profile_picture")
         .join_one("member-subscription", "_id", "member_id", "subscription")
+        .join_nested_one(
+            "membership",
+            "subscription.membership_id",
+            "_id",
+            "membership",
+            "subscription.membership",
+        )
         .one::<MemberDTO>(&state.db)
         .await;
     if find_member.is_err() {
@@ -234,7 +264,7 @@ pub async fn create_member(
         gender: body.gender.clone(),
         email: body.email.clone(),
         identity_number: body.identity_number.clone(),
-        nfc_number: Some(body.nfc_id.clone()),
+        nfc_number: body.nfc_id.clone(),
         phone_number: body.phone_number.clone(),
         is_member: true,
         created_at: current_time,
@@ -263,14 +293,17 @@ pub async fn create_member(
         created_by_id: None,
         created_at: current_time,
         updated_at: current_time,
-        deleted: false
+        deleted: false,
+        payment_method: "none".to_string(),
+        payment_method_provider: None,
+        kind: TRANSACTION_MEMBERSHIP.to_string(),
     };
 
     let detail_transaction = DetailTransaction {
         id: Some(ObjectId::new()),
         product_id: coach_id,
         transaction_id: transaction.id,
-        kind: "MEMBERSHIP".to_string(),
+        kind: TRANSACTION_MEMBERSHIP.to_string(),
         notes: format!("Paket langganan {}", membership.name),
         quantity: 1,
         total: membership.price,
@@ -362,6 +395,18 @@ pub async fn create_non_member(
         let err = validate.unwrap_err();
         info!(target:"member::create","Body request invalid: {:?}",err);
         return ApiResponse::error_validation(err, translate!("validation.error", lang).as_str());
+    }
+
+    let find_by_phone_number = Orm::get("member")
+        .filter_string("phone_number", Some("$eq"), body.phone_number.as_str())
+        .one::<MemberDTO>(&state.db)
+        .await;
+    if find_by_phone_number.is_ok() {
+        info!(target:"member::create","non member {:?}", find_by_phone_number);
+        return ApiResponse::ok(
+            find_by_phone_number.unwrap(),
+            translate!("create.member.exist", lang).as_str(),
+        );
     }
 
     let current_time = DateTime::now();
@@ -546,19 +591,22 @@ pub async fn update_member(
             branch_id: Some(auth_context.branch_id.unwrap()),
             member_id: Some(member.id.clone().unwrap()),
             notes: "Pembelian pergantian paket langganan".to_string(),
+            kind: TRANSACTION_MEMBERSHIP.to_string(),
             total_price: membership.price,
             total_discount: 0.0,
             created_by_id: None,
             created_at: current_time,
             updated_at: current_time,
-            deleted: false
+            deleted: false,
+            payment_method: "none".to_string(),
+            payment_method_provider: None,
         };
 
         let detail_transaction = DetailTransaction {
             id: Some(ObjectId::new()),
             product_id: membership.id,
             transaction_id: transaction.id,
-            kind: "MEMBERSHIP".to_string(),
+            kind: TRANSACTION_MEMBERSHIP.to_string(),
             notes: format!("Paket langganan {}", membership.name),
             quantity: 1,
             total: membership.price,
@@ -721,7 +769,6 @@ pub async fn update_profile_picture(
     let extract = extract.file();
     let minio = MinIO::new().await;
     let is_file_exists = find_exist_profile_picture.is_ok();
-    let bucket_name = "member-profile-picture".to_string();
 
     let attachment = match find_exist_profile_picture {
         Ok(v) => v,
@@ -731,7 +778,7 @@ pub async fn update_profile_picture(
             filename: extract.filename.clone(),
             mime_type: extract.mime_type.clone(),
             extension: extract.extension.clone(),
-            kind: "MEMBER".to_string(),
+            kind: KIND_MEMBER_PROFILE_PICTURE.to_string(),
             create_at: DateTime::now(),
             updated_at: DateTime::now(),
         },
@@ -739,7 +786,10 @@ pub async fn update_profile_picture(
 
     if is_file_exists {
         let _delete_existing = minio
-            .delete_file(attachment.filename.clone(), bucket_name.clone())
+            .delete_file(
+                attachment.filename.clone(),
+                BUCKET_MEMBER_PROFILE_PICTURE.to_string(),
+            )
             .await;
     }
 
@@ -747,7 +797,7 @@ pub async fn update_profile_picture(
     let minio = minio
         .upload_file(
             extract.temp_path.clone(),
-            bucket_name,
+            BUCKET_MEMBER_PROFILE_PICTURE.to_string(),
             extract.filename.clone(),
         )
         .await;
@@ -798,6 +848,47 @@ pub async fn update_profile_picture(
     )
 }
 
+pub async fn get_member_first_progress(
+    state: State<AppState>,
+    auth_context: AuthContext,
+    lang: Lang,
+    Path(member_id): Path<String>,
+) -> ApiResponse<MemberLogDTO> {
+    if !auth_context.authorize(app::member::READ) {
+        return ApiResponse::bad_request(translate!("unauthorized", lang).as_str());
+    }
+
+    if auth_context.branch_id.is_none() {
+        return ApiResponse::bad_request(translate!("unauthorized", lang).as_str());
+    }
+    let member_id = create_object_id_option(member_id.as_str());
+    if member_id.is_none() {
+        return ApiResponse::not_found(translate!("member.profile-picture.failed", lang).as_str());
+    }
+    let find = Orm::get("member-log")
+        .or()
+        .filter_object_id("member_id", &member_id.unwrap())
+        .join_one("account", "created_by_id", "_id", "created_by")
+        .join_one("member", "member_id", "_id", "member")
+        .join_nested_one(
+            "file-attachment",
+            "member._id",
+            "ref_id",
+            "profile_picture",
+            "member.profile_picture",
+        )
+        .join_many("file-attachment", "_id", "ref_id", "attachments")
+        .group_by_desc("created_at")
+        .one::<MemberLogDTO>(&state.db)
+        .await;
+
+    if find.is_err() {
+        return ApiResponse::bad_request(translate!("bad-request", lang).as_str());
+    }
+    let mut member_log = find.unwrap();
+
+    ApiResponse::ok(member_log, translate!("", lang).as_str())
+}
 //activity
 pub async fn get_member_activity(
     state: State<AppState>,
@@ -821,6 +912,13 @@ pub async fn get_member_activity(
         .filter_object_id("member_id", &member_id.unwrap())
         .join_one("member", "member_id", "_id", "member")
         .join_one("account", "created_by_id", "_id", "created_by")
+        .join_nested_one(
+            "file-attachment",
+            "member._id",
+            "ref_id",
+            "profile_picture",
+            "member.profile_picture",
+        )
         .join_many("file-attachment", "_id", "ref_id", "attachments")
         .group_by_desc("created_at")
         .pageable::<MemberLogDTO>(query.page.unwrap_or(0), query.size.unwrap_or(10), &state.db)
@@ -852,21 +950,20 @@ pub async fn upload_progress(
         return ApiResponse::not_found(translate!("", lang).as_str());
     }
 
-    let session = state.db.start_session().await;
-    if session.is_err() {
-        info!(target:"stock::update","failed to create trx session");
-        return ApiResponse::failed(translate!("stock.update.failed", lang).as_str());
-    }
-    let mut session = session.unwrap();
-    let _start = session.start_transaction().await;
-
     let member_id = create_object_id_option(multipart.ref_id.as_str());
 
     if member_id.is_none() {
-        return ApiResponse::access_denied(
-            translate!("member.profile-picture.failed", lang).as_str(),
-        );
+        return ApiResponse::not_found(translate!("member.profile-picture.failed", lang).as_str());
     }
+
+    let member = Orm::get("member")
+        .filter_object_id("_id", &member_id.clone().unwrap())
+        .one::<MemberDTO>(&state.db)
+        .await;
+    if member.is_err() {
+        return ApiResponse::not_found(translate!("member.profile-picture.failed", lang).as_str());
+    }
+    let member = member.unwrap();
     let minio = MinIO::new().await;
 
     let member_log = MemberLog {
@@ -886,19 +983,27 @@ pub async fn upload_progress(
         .iter()
         .map(|(key, file)| FileAttachment {
             id: Some(ObjectId::new()),
-            ref_id: member_id,
+            ref_id: member_log.id,
             filename: file.filename.clone(),
             mime_type: file.mime_type.clone(),
             extension: file.extension.clone(),
             kind: if key == "data-image" {
-                "MEMBER-PROGRESS".to_string()
+                KIND_MEMBER_DATA_IMAGE.to_string()
             } else {
-                "MEMBER-BODY-IMAGE".to_string()
+                KIND_MEMBER_BODY_IMAGE.to_string()
             },
             create_at: DateTime::now(),
             updated_at: DateTime::now(),
         })
         .collect::<Vec<FileAttachment>>();
+
+    let session = state.db.start_session().await;
+    if session.is_err() {
+        info!(target:"member::update::progress","failed to create trx session");
+        return ApiResponse::failed(translate!("stock.update.failed", lang).as_str());
+    }
+    let mut session = session.unwrap();
+    let _start = session.start_transaction().await;
 
     let data = image_data_temp.clone();
     let save_data_image = Orm::insert("file-attachment")
@@ -914,6 +1019,7 @@ pub async fn upload_progress(
     let upload = multipart.temp_file.get("data-image");
     if upload.is_none() {
         let _abort = session.abort_transaction().await;
+        info!(target:"member::update::progress","data-image none");
         return ApiResponse::bad_request(
             translate!("upload-profile-picture.failed", lang).as_str(),
         );
@@ -922,13 +1028,15 @@ pub async fn upload_progress(
     let upload_data = minio
         .upload_file(
             upload.temp_path.clone(),
-            "member-log".to_string(),
+            BUCKET_MEMBER_PROGRESS.to_string(),
             upload.filename.clone(),
         )
         .await;
 
     if upload_data.is_err() {
         let _abort = session.abort_transaction().await;
+        info!(target:"member::update::progress","{:?}",upload_data.unwrap_err());
+        let _remove = upload.remove_file();
         return ApiResponse::bad_request(
             translate!("upload-profile-picture.failed", lang).as_str(),
         );
@@ -938,6 +1046,7 @@ pub async fn upload_progress(
     let upload = multipart.temp_file.get("body-image");
     if upload.is_none() {
         let _abort = session.abort_transaction().await;
+        info!(target:"member::update::progress","body-image none");
         return ApiResponse::bad_request(
             translate!("upload-profile-picture.failed", lang).as_str(),
         );
@@ -946,13 +1055,15 @@ pub async fn upload_progress(
     let upload_data = minio
         .upload_file(
             upload.temp_path.clone(),
-            "member-log".to_string(),
+            BUCKET_MEMBER_PROGRESS.to_string(),
             upload.filename.clone(),
         )
         .await;
 
     if upload_data.is_err() {
         let _abort = session.abort_transaction().await;
+        info!(target:"member::update::progress","{:?}",upload_data.unwrap_err());
+        let _remove = upload.remove_file();
         return ApiResponse::bad_request(
             translate!("upload-profile-picture.failed", lang).as_str(),
         );
@@ -964,13 +1075,18 @@ pub async fn upload_progress(
 
     if save.is_err() {
         let _abort = session.abort_transaction().await;
+        info!(target:"member::update::progress","{:?}",save.unwrap_err());
         return ApiResponse::failed(translate!("member.profile-picture.failed", lang).as_str());
     }
 
     let _commit = session.commit_transaction().await;
 
+    for (_, file) in multipart.temp_file {
+        let _remove = file.remove_file();
+    }
     let mut dto = member_log.to_dto();
     dto.attachments = Some(image_data_temp.iter().map(|v| v.clone().to_dto()).collect());
+    dto.member = Some(member);
 
     ApiResponse::ok(
         dto,
@@ -1000,7 +1116,17 @@ pub async fn get_member_transaction(
         .filter_object_id("member_id", &member_id.unwrap())
         .join_one("member", "member_id", "_id", "member")
         .join_one("account", "created_by_id", "_id", "created_by")
-        .join_many("detail-transaction", "transaction_id", "_id", "details")
+        .join_many_with_nested_one(
+            "detail-transaction",
+            "_id",
+            "transaction_id",
+            "details",
+            "product",
+            "details.product_id",
+            "_id",
+            "product",
+            "details.product",
+        )
         .pageable::<TransactionDTO>(query.page.unwrap_or(0), query.size.unwrap_or(10), &state.db)
         .await;
 

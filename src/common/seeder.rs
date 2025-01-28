@@ -568,6 +568,22 @@ pub async fn init_seeder(db_client: &Client) {
             )
             .await;
 
+        let _index_member = &db_client
+            .database(DB_NAME)
+            .collection::<Document>("member")
+            .create_index(
+                IndexModel::builder()
+                    .keys(doc! { "full_name": "text","member_code": "text", "email":1 })
+                    .options(
+                        IndexOptions::builder()
+                            .name("member-index".to_string())
+                            .unique(false)
+                            .build(),
+                    )
+                    .build(),
+            )
+            .await;
+
         let _index_permission = &db_client
             .database(DB_NAME)
             .collection::<Document>("permission")

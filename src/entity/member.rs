@@ -36,7 +36,7 @@ impl Member {
             coach_id: self.coach_id,
             coach: None,
             subscription: None,
-            nfc_id:self.nfc_number,
+            nfc_id: self.nfc_number,
             full_name: self.full_name,
             gender: self.gender,
             email: self.email,
@@ -45,7 +45,7 @@ impl Member {
             profile_picture: None,
             created_at: self.created_at,
             updated_at: self.updated_at,
-            deleted: self.deleted,
+            deleted: self.deleted
         }
     }
 }

@@ -6,6 +6,11 @@ use crate::dto::file_attachment_dto::FileAttachmentDTO;
 
 use crate::common::env_config::EnvConfig;
 
+use super::constant::{
+    KIND_COACH_PROFILE_PICTURE, KIND_MEMBER_BODY_IMAGE, KIND_MEMBER_DATA_IMAGE,
+    KIND_MEMBER_PROFILE_PICTURE, KIND_PRODUCT_IMAGE, KIND_USER_PROFILE_PICTURE,
+};
+
 // Custom serializer to convert ObjectId to string
 pub fn serialize_object_id<S>(
     object_id: &Option<ObjectId>,
@@ -103,6 +108,54 @@ where
         file1.full_path = Some(url.to_string());
 
         serializer.serialize_some(&file1)
+    } else {
+        serializer.serialize_none()
+    }
+}
+
+//file attachment to path
+pub fn serialize_file_attachments<S>(
+    file: &Option<Vec<FileAttachmentDTO>>,
+    serializer: S,
+) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    if file.is_some() {
+        let config = EnvConfig::init();
+
+        if let Some(file1) = file {
+            let transform = file1
+                .iter()
+                .map(|f| {
+                    let mut ff = f.clone();
+                    let bucket = if f.kind == KIND_USER_PROFILE_PICTURE {
+                        "profile-picture"
+                    } else if f.kind == KIND_PRODUCT_IMAGE {
+                        "product-image"
+                    } else if f.kind == KIND_COACH_PROFILE_PICTURE {
+                        "coach-profile-picture"
+                    } else if f.kind == KIND_MEMBER_PROFILE_PICTURE {
+                        "member-profile-picture"
+                    } else if f.kind == KIND_MEMBER_BODY_IMAGE {
+                        "member-log"
+                    } else if f.kind == KIND_MEMBER_DATA_IMAGE {
+                        "member-log"
+                    } else {
+                        "none"
+                    };
+
+                    let url = format!("{}{}?file_name={}", config.base_url, bucket, f.filename);
+                    ff.full_path = Some(url.to_string());
+
+                    return ff;
+                })
+                .collect::<Vec<FileAttachmentDTO>>();
+
+            serializer.serialize_some(&transform)
+        } else {
+            serializer.serialize_none()
+        }
     } else {
         serializer.serialize_none()
     }

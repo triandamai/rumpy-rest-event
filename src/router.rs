@@ -97,11 +97,7 @@ pub fn init_routes(state: AppState) -> Router {
             get(feature::member::member::get_list_member),
         )
         .route(
-            "/member/:product_id",
-            get(feature::member::member::get_detail_member),
-        )
-        .route(
-            "/member/nfc/:product_id",
+            "/member/:member_id",
             get(feature::member::member::get_detail_member),
         )
         .route("/member", post(feature::member::member::create_member))
@@ -110,11 +106,11 @@ pub fn init_routes(state: AppState) -> Router {
             post(feature::member::member::create_non_member),
         )
         .route(
-            "/member/:product_id",
+            "/member/:member_id",
             put(feature::member::member::update_member),
         )
         .route(
-            "/member/:product_id",
+            "/member/:member_id",
             delete(feature::member::member::delete_member),
         )
         .route(
@@ -128,6 +124,10 @@ pub fn init_routes(state: AppState) -> Router {
         .route(
             "/member/activity/:member_id",
             get(feature::member::member::get_member_activity),
+        )
+        .route(
+            "/member/get-first-activity/:member_id",
+            get(feature::member::member::get_member_first_progress),
         )
         .route(
             "/member/update-activity",
@@ -219,8 +219,20 @@ pub fn init_routes(state: AppState) -> Router {
             post(feature::transaction::transaction::create_top_up_transaction),
         )
         .route(
+            "/transaction/add-item-cart",
+            post(feature::transaction::transaction::save_or_add_product_to_cart),
+        )
+        .route(
+            "/transaction/reduce-item-cart",
+            post(feature::transaction::transaction::update_or_remove_product_to_cart),
+        )
+        .route(
             "/transaction/product",
             post(feature::transaction::transaction::create_product_transaction),
+        )
+        .route(
+            "/report/daily",
+            get(feature::report::report::get_daily_report),
         )
         .layer(axum::middleware::from_fn(method_not_allowed))
         .fallback(handle_404)

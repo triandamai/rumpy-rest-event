@@ -21,6 +21,8 @@ pub struct DetailTransactionRequest {
 pub struct CreateTransactionMembershipProductRequest {
     pub member_id: String,
     pub total: f64,
+    pub payment_method: String,
+    pub payment_provide_name: Option<String>,
     pub notes: Option<String>,
 }
 

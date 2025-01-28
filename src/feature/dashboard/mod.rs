@@ -108,6 +108,7 @@ pub async fn get_dashboard_stat(
             .filter_number("product_stoc", Some("$lte"), 10)
             .all::<ProductDTO>(&state.db)
             .await;
+        
         if let Ok(products) = find_product {
             stats.stock = products
         }

@@ -3,10 +3,12 @@ use crate::common::utils::{
 };
 use axum::extract::multipart::Field;
 use axum::extract::Multipart;
+use bson::oid::ObjectId;
 use chrono::Utc;
 use headers::ContentType;
 use log::info;
 use mime::Mime;
+use s3::serde_types::Object;
 use serde::{Deserialize, Serialize};
 use slugify::slugify;
 use std::collections::HashMap;
@@ -207,16 +209,13 @@ impl SingleFileExtractor {
 pub async fn field_to_temp_file(ref_id: &String, field: Field<'_>) -> Result<FileTemp, String> {
     //make sure receive only one file
     // Process the file field (file)
-    let original_file_name = field.file_name().unwrap().to_string();
-    let original_file_name = slugify!(original_file_name.as_str());
     let mime_type = field.content_type().map(|mime| mime);
     let mime_type = mime_type.unwrap_or("image/png");
     let mime_type = Mime::from_str(mime_type).unwrap_or(Mime::from(ContentType::png()));
     let ext = get_extension_from_mime(&mime_type).unwrap_or(".png");
-    let original_file_name = original_file_name.replace(format!(".{}", ext).as_str(), "");
 
-    let current_time = Utc::now().timestamp();
-    let final_filename = format!("{}-{}.{}", original_file_name, current_time, ext);
+    let object_id = ObjectId::new().to_string();
+    let final_filename = format!("{}.{}", object_id, ext);
     let location = format!("uploads/{}", final_filename);
     // Read the file contents
     let data = field.bytes().await;

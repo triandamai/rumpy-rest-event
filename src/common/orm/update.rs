@@ -19,18 +19,7 @@ pub struct Update {
 impl Update {
     pub fn from(from: &str) -> Self {
         Update {
-            orm: Orm {
-                collection_name: from.to_string(),
-                filter: vec![],
-                filters_group: Default::default(),
-                current_filter: None,
-                lookup: vec![],
-                unwind: vec![],
-                sort: vec![],
-                count: None,
-                skip: None,
-                limit: None,
-            },
+            orm: Orm::new_default(from),
             set: None,
             inc: None,
             dec: None,

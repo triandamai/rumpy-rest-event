@@ -1,5 +1,6 @@
 use crate::common::api_response::{ApiResponse, PaginationRequest, PagingResponse};
 use crate::common::app_state::AppState;
+use crate::common::constant::{BUCKET_COACH_PROFILE_PICTURE, KIND_COACH_PROFILE_PICTURE};
 use crate::common::jwt::AuthContext;
 use crate::common::lang::Lang;
 use crate::common::middleware::Json;
@@ -350,7 +351,6 @@ pub async fn update_profile_picture(
     let multipart = multipart.file();
     let minio = MinIO::new().await;
     let is_file_exists = find_exist_profile_picture.is_ok();
-    let bucket_name = "coach-profile-picture".to_string();
 
     let mut attachment = match find_exist_profile_picture {
         Ok(v) => v,
@@ -360,7 +360,7 @@ pub async fn update_profile_picture(
             filename: multipart.filename.clone(),
             mime_type: multipart.mime_type.clone(),
             extension: multipart.extension.clone(),
-            kind: "COACH".to_string(),
+            kind: KIND_COACH_PROFILE_PICTURE.to_string(),
             create_at: DateTime::now(),
             updated_at: DateTime::now(),
         },
@@ -368,7 +368,10 @@ pub async fn update_profile_picture(
 
     if is_file_exists {
         let _delete_existing = minio
-            .delete_file(multipart.filename.clone(), bucket_name.clone())
+            .delete_file(
+                multipart.filename.clone(),
+                BUCKET_COACH_PROFILE_PICTURE.to_string(),
+            )
             .await;
     }
 
@@ -376,7 +379,7 @@ pub async fn update_profile_picture(
     let minio = minio
         .upload_file(
             multipart.temp_path.clone(),
-            bucket_name,
+            BUCKET_COACH_PROFILE_PICTURE.to_string(),
             multipart.filename.clone(),
         )
         .await;

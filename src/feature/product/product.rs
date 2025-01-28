@@ -1,5 +1,6 @@
 use crate::common::api_response::{ApiResponse, PaginationRequest, PagingResponse};
 use crate::common::app_state::AppState;
+use crate::common::constant::{BUCKET_PRODUCT_IMAGE, KIND_PRODUCT_IMAGE};
 use crate::common::jwt::AuthContext;
 use crate::common::lang::Lang;
 use crate::common::minio::MinIO;
@@ -346,7 +347,6 @@ pub async fn update_product_image(
     let multipart = multipart.file();
     let minio = MinIO::new().await;
     let is_file_exists = find_exist_profile_picture.is_ok();
-    let bucket_name = "product-image".to_string();
 
     let mut attachment = match find_exist_profile_picture {
         Ok(v) => v,
@@ -356,7 +356,7 @@ pub async fn update_product_image(
             filename: multipart.filename.clone(),
             mime_type: multipart.mime_type.clone(),
             extension: multipart.extension.clone(),
-            kind: "PRODUCT".to_string(),
+            kind: KIND_PRODUCT_IMAGE.to_string(),
             create_at: DateTime::now(),
             updated_at: DateTime::now(),
         },
@@ -365,7 +365,10 @@ pub async fn update_product_image(
     if is_file_exists {
         info!(target: "product::create", "file exist deleting {}",multipart.filename);
         let _delete_existing = minio
-            .delete_file(attachment.filename.clone(), bucket_name.clone())
+            .delete_file(
+                attachment.filename.clone(),
+                BUCKET_PRODUCT_IMAGE.to_string(),
+            )
             .await;
     }
 
@@ -373,7 +376,7 @@ pub async fn update_product_image(
     let minio = minio
         .upload_file(
             multipart.temp_path.clone(),
-            bucket_name,
+            BUCKET_PRODUCT_IMAGE.to_string(),
             multipart.filename.clone(),
         )
         .await;

@@ -31,20 +31,17 @@ pub struct TransactionDTO {
         serialize_with = "serialize_object_id",
         deserialize_with = "deserialize_object_id"
     )]
-    pub member_id:Option<ObjectId>,
-    #[serde(
-        rename = "member",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub member:Option<MemberDTO>,
-    pub notes:String,
-    pub total_price:f64,
-    pub total_discount:f64,
-    #[serde(
-        rename = "details",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub details:Option<Vec<DetailTransactionDTO>>,
+    pub member_id: Option<ObjectId>,
+    #[serde(rename = "member", skip_serializing_if = "Option::is_none")]
+    pub member: Option<MemberDTO>,
+    pub notes: String,
+    pub kind:String,
+    pub payment_method: String,
+    pub payment_method_provider: Option<String>,
+    pub total_price: f64,
+    pub total_discount: f64,
+    #[serde(rename = "details", skip_serializing_if = "Option::is_none")]
+    pub details: Option<Vec<DetailTransactionDTO>>,
     #[serde(
         rename = "created_by_id",
         skip_serializing_if = "Option::is_none",

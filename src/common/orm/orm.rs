@@ -3,8 +3,8 @@ use crate::common::orm::get::Get;
 use crate::common::orm::insert::Insert;
 use crate::common::orm::replace::Replace;
 use crate::common::orm::update::Update;
-use bson::DateTime;
 use bson::{doc, oid::ObjectId, Document};
+use bson::{rawbson, DateTime};
 use headers::Date;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -77,6 +77,8 @@ pub struct Orm {
     pub current_filter: Option<String>,
     pub lookup: Vec<Document>,
     pub unwind: Vec<Document>,
+    pub add_fields: Vec<Document>,
+    pub projects: Vec<Document>,
     pub sort: Vec<Document>,
     pub count: Option<Document>,
     pub skip: Option<Document>,
@@ -84,6 +86,22 @@ pub struct Orm {
 }
 
 impl Orm {
+    pub fn new_default(from: &str) -> Self {
+        Orm {
+            collection_name: from.to_string(),
+            filter: vec![],
+            filters_group: Default::default(),
+            current_filter: None,
+            lookup: vec![],
+            unwind: vec![],
+            sort: vec![],
+            count: None,
+            skip: None,
+            limit: None,
+            add_fields: vec![],
+            projects: vec![],
+        }
+    }
     pub fn get(from: &str) -> Get {
         Get::from(from)
     }
@@ -116,6 +134,31 @@ impl Orm {
         self.unwind.push(unwind);
         self
     }
+
+    pub fn join_nested_one(
+        mut self,
+        collection: &str,
+        from_field: &str,
+        foreign_field: &str,
+        alias: &str,
+        add_to_fields: &str,
+    ) -> Self {
+        let doc = create_lookup_field(collection, from_field, foreign_field, alias);
+        let unwind = create_unwind_field(format!("${}", alias).as_str());
+        self.lookup.push(doc);
+        self.unwind.push(unwind);
+        self.add_fields.push(doc! {
+            "$addFields":{
+                add_to_fields: format!("${}",alias)
+            }
+        });
+        self.projects.push(doc! {
+            "$project":{
+                alias:0
+            }
+        });
+        self
+    }
     pub fn join_many(
         mut self,
         collection: &str,
@@ -125,6 +168,40 @@ impl Orm {
     ) -> Self {
         let doc = create_lookup_field(collection, from_field, foreign_field, alias);
         self.lookup.push(doc);
+        self
+    }
+
+    pub fn join_many_with_nested_one(
+        mut self,
+        collection: &str,
+        from_field: &str,
+        foreign_field: &str,
+        alias: &str,
+        collection_one: &str,
+        from_field_one: &str,
+        foreign_field_one: &str,
+        alias_one: &str,
+        add_to_fields: &str,
+    ) -> Self {
+        let doc = create_lookup_field(collection, from_field, foreign_field, alias);
+        let doc_one =
+            create_lookup_field(collection_one, from_field_one, foreign_field_one, alias_one);
+        self.lookup.push(doc);
+        self.lookup.push(doc_one);
+
+        self.add_fields.push(doc! {
+            "$addFields":{
+               add_to_fields:{
+                    "$arrayElemAt":[ format!("${}",alias_one),0]
+                }
+
+            }
+        });
+        self.projects.push(doc! {
+            "$project":{
+                alias_one:0
+            }
+        });
         self
     }
 
@@ -198,7 +275,14 @@ impl Orm {
         value: Vec<T>,
     ) -> Self {
         let mut doc = Document::new();
-        let value_as_doc = bson::to_document(&value).unwrap_or(Document::new());
+        let mut value_as_doc: Vec<Document> = Vec::new();
+
+        for v in value {
+            if let Ok(parse) = bson::to_document(&v) {
+                value_as_doc.push(parse);
+            }
+        }
+
         if operator.is_none() {
             doc.insert(column, value_as_doc);
         } else {
@@ -459,6 +543,14 @@ impl Orm {
             result.push(unwind);
         }
 
+        for field in self.add_fields {
+            result.push(field);
+        }
+
+        for project in self.projects {
+            result.push(project);
+        }
+
         if self.count.is_some() {
             result.push(self.count.unwrap());
         }
@@ -560,7 +652,13 @@ impl Orm {
             result.push(unwind.clone());
             result_count.push(unwind);
         }
+        for field in self.add_fields {
+            result.push(field);
+        }
 
+        for project in self.projects {
+            result.push(project);
+        }
         if self.count.is_some() {
             result_count.push(self.count.unwrap());
         }
@@ -626,7 +724,9 @@ impl Orm {
                 if result2.len() > 1 {
                     parent.insert("$match", result2);
                 } else {
-                    parent.insert("$match", result2.get(0).unwrap());
+                    if let Some(m) = result2.get(0) {
+                        parent.insert("$match", m);
+                    }
                 }
                 if !parent.is_empty() {
                     result.push(parent.clone());

@@ -1,5 +1,6 @@
 use crate::common::api_response::{ApiResponse, PaginationRequest, PagingResponse};
 use crate::common::app_state::AppState;
+use crate::common::constant::{BUCKET_USER_PROFILE_PICTURE, KIND_USER_PROFILE_PICTURE};
 use crate::common::jwt::AuthContext;
 use crate::common::lang::Lang;
 use crate::common::middleware::Json;
@@ -299,7 +300,6 @@ pub async fn upload_profile_picture(
     let file = multipart.file();
     let minio = MinIO::new().await;
     let is_file_exists = find_exist_profile_picture.is_ok();
-    let bucket_name = "profile-picture".to_string();
 
     let attachment = match find_exist_profile_picture {
         Ok(v) => v,
@@ -309,7 +309,7 @@ pub async fn upload_profile_picture(
             filename: file.filename.clone(),
             mime_type: file.mime_type.clone(),
             extension: file.extension.clone(),
-            kind: "USER".to_string(),
+            kind: KIND_USER_PROFILE_PICTURE.to_string(),
             create_at: DateTime::now(),
             updated_at: DateTime::now(),
         },
@@ -317,13 +317,20 @@ pub async fn upload_profile_picture(
 
     if is_file_exists {
         let _delete_existing = minio
-            .delete_file(attachment.filename.clone(), bucket_name.clone())
+            .delete_file(
+                attachment.filename.clone(),
+                BUCKET_USER_PROFILE_PICTURE.to_string(),
+            )
             .await;
     }
 
     //upload new
     let minio = minio
-        .upload_file(file.temp_path.clone(), bucket_name, file.filename.clone())
+        .upload_file(
+            file.temp_path.clone(),
+            BUCKET_USER_PROFILE_PICTURE.to_string(),
+            file.filename.clone(),
+        )
         .await;
 
     if minio.is_err() {

@@ -6,8 +6,7 @@ use validator::Validate;
 pub struct CreateMemberRequest {
     #[validate(length(min = "1"))]
     pub membership_id: String,
-    #[validate(length(min = "1"))]
-    pub nfc_id: String,
+    pub nfc_id: Option<String>,
     #[validate(length(min = "1"))]
     pub full_name: String,
     #[validate(custom(function = "validate_gender"))]

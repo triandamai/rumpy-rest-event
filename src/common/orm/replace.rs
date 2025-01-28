@@ -15,18 +15,7 @@ pub struct Replace {
 impl Replace {
     pub fn from(from: &str) -> Self {
         Replace {
-            orm: Orm {
-                collection_name: from.to_string(),
-                filter: vec![],
-                filters_group: Default::default(),
-                current_filter: None,
-                lookup: vec![],
-                unwind: vec![],
-                sort: vec![],
-                count: None,
-                skip: None,
-                limit: None,
-            },
+            orm: Orm::new_default(from),
         }
     }
     pub async fn one<T: Serialize>(self, update: T, client: &Client) -> Result<u64, String> {

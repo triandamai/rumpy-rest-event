@@ -9,6 +9,7 @@ use mongodb::{Client, Collection};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
+use std::vec;
 use tokio_stream::StreamExt;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -19,18 +20,7 @@ pub struct Get {
 impl Get {
     pub fn from(from: &str) -> Self {
         Get {
-            orm: Orm {
-                collection_name: from.to_string(),
-                filter: vec![],
-                filters_group: Default::default(),
-                current_filter: None,
-                lookup: vec![],
-                unwind: vec![],
-                sort: vec![],
-                count: None,
-                skip: None,
-                limit: None,
-            },
+            orm: Orm::new_default(from),
         }
     }
 
@@ -40,8 +30,9 @@ impl Get {
         let collection: Collection<Document> = db.collection(self.orm.collection_name.as_str());
         self.orm.limit = Some(create_limit_field(1));
         let pipeline = self.orm.merge_field(true);
-        let data = collection.aggregate(pipeline).await;
+        let data = collection.aggregate(pipeline.clone()).await;
 
+        // info!(target: "db::get::pipeline","{:?}",pipeline);
         if data.is_err() {
             let err_message = data.unwrap_err();
             info!(target: "db::get::error","{}",err_message.clone().to_string());
@@ -133,7 +124,7 @@ impl Get {
         //prepare query
         let (query, query_count) = self.orm.merge_field_pageable(true);
 
-        info!(target: "db::get","{:?}",query);
+        // info!(target: "db::get","{:?}",query);
         let get_count = collection.aggregate(query_count).await;
 
         let total_items = match get_count {
@@ -169,12 +160,13 @@ impl Get {
 
         for item in extract {
             let tr = bson::from_document::<T>(item.clone());
+            info!(target:"db::get::error","extract from doc {:?}",item.clone());
 
             if tr.is_ok() {
                 result.push(tr.unwrap());
             } else {
-                let err_message = tr.unwrap_err().to_string();
-                info!(target:"db::get::error","extract from doc {:?}",err_message);
+                let err_message = tr.unwrap_err();
+                info!(target:"db::get::error","extract from doc {:?}",err_message.clone());
             }
         }
 
@@ -273,6 +265,20 @@ impl Get {
         self.orm = orm;
         self
     }
+    pub fn join_nested_one(
+        mut self,
+        collection: &str,
+        from_field: &str,
+        foreign_field: &str,
+        alias: &str,
+        add_to_fields: &str,
+    ) -> Self {
+        let orm =
+            self.orm
+                .join_nested_one(collection, from_field, foreign_field, alias, add_to_fields);
+        self.orm = orm;
+        self
+    }
     pub fn join_many(
         mut self,
         collection: &str,
@@ -283,6 +289,33 @@ impl Get {
         let orm = self
             .orm
             .join_many(collection, from_field, foreign_field, alias);
+        self.orm = orm;
+        self
+    }
+
+    pub fn join_many_with_nested_one(
+        mut self,
+        collection: &str,
+        from_field: &str,
+        foreign_field: &str,
+        alias: &str,
+        collection_one: &str,
+        from_field_one: &str,
+        foreign_field_one: &str,
+        alias_one: &str,
+        add_to_fields: &str,
+    ) -> Self {
+        let orm = self.orm.join_many_with_nested_one(
+            collection,
+            from_field,
+            foreign_field,
+            alias,
+            collection_one,
+            from_field_one,
+            foreign_field_one,
+            alias_one,
+            add_to_fields,
+        );
         self.orm = orm;
         self
     }

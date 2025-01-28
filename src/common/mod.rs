@@ -17,5 +17,6 @@ pub mod seeder;
 pub mod multipart_file;
 pub mod middleware;
 pub mod permission;
+pub mod constant;
 
 

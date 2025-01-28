@@ -1,4 +1,6 @@
-use crate::common::bson::{deserialize_object_id, serialize_datetime, serialize_object_id};
+use crate::common::bson::{
+    deserialize_object_id, serialize_datetime, serialize_file_attachments, serialize_object_id,
+};
 use crate::dto::account_dto::AccountDTO;
 use crate::dto::branch_dto::BranchDTO;
 use crate::dto::file_attachment_dto::FileAttachmentDTO;
@@ -41,6 +43,7 @@ pub struct MemberLogDTO {
     pub created_by: Option<AccountDTO>,
     pub name: String,
     pub value: String,
+    #[serde(rename = "attachments", serialize_with = "serialize_file_attachments")]
     pub attachments: Option<Vec<FileAttachmentDTO>>,
     #[serde(serialize_with = "serialize_datetime")]
     pub created_at: DateTime,
