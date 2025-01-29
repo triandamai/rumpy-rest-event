@@ -5,9 +5,7 @@ use axum::{
 use file_model::QueryGetFile;
 
 use crate::{
-    common::{
-        api_response::ApiResponse, app_state::AppState, jwt::AuthContext, lang::Lang, minio::MinIO,
-    },
+    common::{api_response::ApiResponse, app_state::AppState, lang::Lang, minio::MinIO},
     translate,
 };
 pub mod file_model;

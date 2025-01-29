@@ -3,18 +3,18 @@ use bson::oid::ObjectId;
 use bson::DateTime;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug,Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DetailTransaction {
     #[serde(rename = "_id", skip_serializing_if = "Option::is_none")]
     pub id: Option<ObjectId>,
     pub product_id: Option<ObjectId>,
-    pub transaction_id:Option<ObjectId>,
+    pub transaction_id: Option<ObjectId>,
     pub kind: String,
     pub notes: String,
     pub quantity: i64,
     pub total: f64,
-    pub total_before_discount:f64,
-    pub is_membership:bool,
+    pub total_before_discount: f64,
+    pub is_membership: bool,
     pub created_at: DateTime,
     pub updated_at: DateTime,
     pub deleted: bool,
@@ -36,6 +36,7 @@ impl DetailTransaction {
             updated_at: self.updated_at,
             deleted: false,
             product: None,
+            membership: None,
         }
     }
 }

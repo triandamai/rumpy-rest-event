@@ -1,14 +1,17 @@
+use std::collections::HashMap;
+
 use axum::extract::State;
 use bson::DateTime;
 use chrono::{Datelike, Utc};
 use dashboard::{ChartTrend, DashboardStatResponse};
+use log::info;
 
 use crate::{
     common::{
         api_response::ApiResponse, app_state::AppState, jwt::AuthContext, lang::Lang, orm::orm::Orm,
     },
     dto::{product_dto::ProductDTO, transaction_dto::TransactionDTO},
-    entity::{coach::Coach, member::Member, product::Product, transaction::Transaction},
+    entity::{coach::Coach, member::Member, product::Product},
     translate,
 };
 
@@ -68,6 +71,8 @@ pub async fn get_dashboard_stat(
             .build();
 
         if to_date.is_ok() && from_date.is_ok() {
+            stats.from_date = from_date.clone().unwrap();
+            stats.to_date = to_date.clone().unwrap();
             let find_transaction = Orm::get("transaction")
                 .filter_object_id("branch_id", &branch_id)
                 .and()
@@ -76,43 +81,78 @@ pub async fn get_dashboard_stat(
                 .all::<TransactionDTO>(&state.db)
                 .await;
 
-            let mut trend_non_member: Vec<ChartTrend> = Vec::new();
-            let mut trend_member: Vec<ChartTrend> = Vec::new();
+            let mut trend_non_member: HashMap<String, ChartTrend> = HashMap::new();
+            let mut trend_member: HashMap<String, ChartTrend> = HashMap::new();
             if let Ok(transactions) = find_transaction {
                 for transaction in transactions {
-                    let mut total_non_member: f64 = 0.0;
-                    let mut total_member: f64 = 0.0;
-                    if let Some(details) = transaction.details {
-                        for detail in details {
-                            if detail.is_membership {
-                                total_member += detail.total;
-                            } else {
-                                total_non_member += detail.total;
+                    let created_at = transaction.created_at;
+                    let datetime =
+                        chrono::DateTime::from_timestamp_millis(created_at.timestamp_millis());
+                    if datetime.is_some() {
+                        let datetime = datetime.unwrap();
+                        let axis = datetime.format("%Y-%m-%d").to_string();
+                        info!(target:"Sasa","{}",axis);
+                        if let Some(details) = transaction.details {
+                            for detail in details {
+                                if detail.is_membership {
+                                    stats.total_membership_trend += detail.total;
+                                    match trend_member.get(&axis.clone()) {
+                                        Some(axis_trend) => {
+                                            let mut clone_axis = axis_trend.clone();
+                                            clone_axis.value += detail.total;
+                                            trend_member.insert(axis.clone(), clone_axis);
+                                        }
+                                        None => {
+                                            trend_member.insert(
+                                                axis.clone(),
+                                                ChartTrend {
+                                                    datetime: axis.clone(),
+                                                    value: detail.total,
+                                                },
+                                            );
+                                        }
+                                    }
+                                } else {
+                                    stats.total_non_membership_trend += detail.total;
+                                    match trend_non_member.get(&axis.clone()) {
+                                        Some(axis_trend) => {
+                                            let mut clone_axis = axis_trend.clone();
+                                            clone_axis.value += detail.total;
+                                            trend_non_member.insert(axis.clone(), clone_axis);
+                                        }
+                                        None => {
+                                            trend_non_member.insert(
+                                                axis.clone(),
+                                                ChartTrend {
+                                                    datetime: axis.clone(),
+                                                    value: detail.total,
+                                                },
+                                            );
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
-                    trend_non_member.push(ChartTrend {
-                        date: transaction.created_at,
-                        value: total_non_member,
-                    });
-                    trend_member.push(ChartTrend {
-                        date: transaction.created_at,
-                        value: total_member,
-                    });
                 }
             }
-        }
+            for (_axis, value) in trend_member {
+                stats.membership_trend.push(value);
+            }
+            for (_axis, value) in trend_non_member {
+                stats.non_membership_trend.push(value);
+            }
 
-        let find_product = Orm::get("product")
-            .join_one("file-attachement", "_id", "ref_id", "product_image")
-            .filter_number("product_stoc", Some("$lte"), 10)
-            .all::<ProductDTO>(&state.db)
-            .await;
-        
-        if let Ok(products) = find_product {
-            stats.stock = products
+            let find_product = Orm::get("product")
+                .join_one("file-attachement", "_id", "ref_id", "product_image")
+                .filter_number("product_stoc", Some("$lte"), 10)
+                .all::<ProductDTO>(&state.db)
+                .await;
+
+            if let Ok(products) = find_product {
+                stats.stock = products
+            }
         }
     }
-
     return ApiResponse::ok(stats, translate!("dashboard.success", lang).as_str());
 }

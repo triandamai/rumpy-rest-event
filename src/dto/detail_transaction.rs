@@ -3,7 +3,7 @@ use bson::oid::ObjectId;
 use bson::DateTime;
 use serde::{Deserialize, Serialize};
 
-use super::product_dto::ProductDTO;
+use super::{membership_dto::MembershipDTO, product_dto::ProductDTO};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DetailTransactionDTO {
@@ -21,6 +21,8 @@ pub struct DetailTransactionDTO {
     pub product_id: Option<ObjectId>,
     #[serde(rename = "product")]
     pub product: Option<ProductDTO>,
+    #[serde(rename = "membership")]
+    pub membership: Option<MembershipDTO>,
     #[serde(
         rename = "transaction_id",
         serialize_with = "serialize_object_id",
