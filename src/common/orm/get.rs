@@ -143,7 +143,7 @@ impl Get {
 
         if data.is_err() {
             let err_message = data.unwrap_err().to_string();
-            info!(target: "db::get::error","{}",err_message.clone());
+            info!(target: "db::get::error","data {}",err_message.clone());
             return Err(err_message);
         }
         let mut result: Vec<T> = Vec::new();
@@ -152,7 +152,7 @@ impl Get {
 
         if extract.is_err() {
             let err_message = extract.unwrap_err().to_string();
-            info!(target: "db::get::error","{}",err_message.clone());
+            info!(target: "db::get::error","extract {}",err_message.clone());
 
             return Err(err_message);
         }
@@ -160,13 +160,14 @@ impl Get {
 
         for item in extract {
             let tr = bson::from_document::<T>(item.clone());
-            info!(target:"db::get::error","extract from doc {:?}",item.clone());
+            // info!(target:"db::get::error","extract from doc {:?}",item.clone());
 
             if tr.is_ok() {
                 result.push(tr.unwrap());
             } else {
                 let err_message = tr.unwrap_err();
-                info!(target:"db::get::error","extract from doc {:?}",err_message.clone());
+                info!(target:"db::get::error","doc {:?}",item);
+                info!(target:"db::get::error","{:?}",err_message.clone());
             }
         }
 

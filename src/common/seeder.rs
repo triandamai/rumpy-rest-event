@@ -1,3 +1,4 @@
+use crate::common::constant::DEFAULT_ID_NON_MEMBER;
 use crate::common::orm::orm::Orm;
 use crate::common::orm::DB_NAME;
 use crate::common::permission::permission::app;
@@ -5,6 +6,7 @@ use crate::common::utils::{create_object_id_option, create_or_new_object_id};
 use crate::entity::account::Account;
 use crate::entity::account_permission::AccountPermission;
 use crate::entity::branch::Branch;
+use crate::entity::membership::Membership;
 use crate::entity::permission::Permission;
 use bcrypt::DEFAULT_COST;
 use bson::{doc, DateTime, Document};
@@ -423,6 +425,38 @@ pub async fn init_seeder(db_client: &Client) {
                     .one(permission, &db_client)
                     .await;
             }
+        }
+    }
+
+    {
+        info!(target: "seeder","25% seed membership");
+        let id = create_or_new_object_id(DEFAULT_ID_NON_MEMBER);
+        let exist = Orm::get("membership")
+            .filter_object_id("_id", &id.clone().unwrap())
+            .one::<Permission>(&db_client)
+            .await;
+
+        let membership = Membership {
+            id: id.clone(),
+            branch_id: branch_id_1,
+            name: "FOR NON MEMBER".to_string(),
+            price: 0.0,
+            price_per_item: 0.0,
+            quota: 0,
+            description: "FOR NON MEMBER".to_string(),
+            kind: Some("NON-MEMBER".to_string()),
+            created_by_id: account_id_1,
+            created_at: DateTime::now(),
+            updated_at: DateTime::now(),
+            deleted: false,
+        };
+        if exist.is_err() {
+            let _index = Orm::insert("permission").one(membership, &db_client).await;
+        } else {
+            let _index = Orm::update("permission")
+                .filter_object_id("_id", &id.unwrap())
+                .one(membership, &db_client)
+                .await;
         }
     }
 

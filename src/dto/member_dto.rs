@@ -41,7 +41,7 @@ pub struct MemberDTO {
         deserialize_with = "deserialize_object_id"
     )]
     pub coach_id: Option<ObjectId>,
-    #[serde(rename = "subscription")]
+    #[serde(rename = "subscription", skip_serializing_if = "Option::is_none")]
     pub subscription: Option<MemberSubscriptionDTO>,
     #[serde(rename = "coach", skip_serializing_if = "Option::is_none")]
     pub coach: Option<CoachDTO>,

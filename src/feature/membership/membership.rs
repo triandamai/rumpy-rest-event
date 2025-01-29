@@ -175,6 +175,7 @@ pub async fn create_membership(
         updated_at: current_time,
         deleted: false,
         description: body.description,
+        kind: None,
     };
 
     let save = Orm::insert("membership").one(&membership, &state.db).await;

@@ -21,10 +21,27 @@ use super::report_model::ItemReportTransaction;
 
 pub async fn get_daily_report(
     state: State<AppState>,
-    auth_context: AuthContext,
+    // auth_context: AuthContext,
     lang: Lang,
 ) -> Html<String> {
-    let mut html = String::from("<html><body>");
+    let mut html = String::from(
+        r#"
+        <!doctype html>
+        <html>
+        <head>
+            <meta charset="UTF-8" />
+            <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+            <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
+              <style type="text/tailwindcss">
+      @theme {
+        --color-clifford: #da373d;
+      }
+    </style>
+        </head>
+        <body>
+        <h1 class="text-3xl font-bold underline text-clifford">Hello world!</h1>
+        "#,
+    );
     let end_html = "<div>M</div></body></html>";
     //get all product
     let find_product = Orm::get("Product").all::<Product>(&state.db).await;
@@ -57,7 +74,7 @@ pub async fn get_daily_report(
     }
 
     let find_transaction = Orm::get("transaction")
-        .filter_object_id("branch_id", &auth_context.branch_id.unwrap())
+        // .filter_object_id("branch_id", &auth_context.branch_id.unwrap())
         .join_many("detail-transaction", "_id", "transaction_id", "details")
         .join_nested_one(
             "product",
@@ -192,7 +209,6 @@ pub async fn get_daily_report(
 
     //
     let mut build_payment = r#"
-    <
   <div>
     <p>Cash</p>
     <table>
@@ -277,3 +293,5 @@ pub async fn get_daily_report(
 
     Html(html)
 }
+
+

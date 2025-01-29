@@ -13,6 +13,7 @@ pub struct Membership {
     pub price_per_item: f64,
     pub quota: i64,
     pub description: String,
+    pub kind:Option<String>,
     pub created_by_id: Option<ObjectId>,
     pub created_at: DateTime,
     pub updated_at: DateTime,

@@ -1,8 +1,9 @@
 use crate::common::api_response::{ApiResponse, PaginationRequest, PagingResponse};
 use crate::common::app_state::AppState;
 use crate::common::constant::{
-    BUCKET_MEMBER_PROFILE_PICTURE, BUCKET_MEMBER_PROGRESS, KIND_MEMBER_BODY_IMAGE,
-    KIND_MEMBER_DATA_IMAGE, KIND_MEMBER_PROFILE_PICTURE, TRANSACTION_MEMBERSHIP,
+    BUCKET_MEMBER_PROFILE_PICTURE, BUCKET_MEMBER_PROGRESS, DEFAULT_ID_NON_MEMBER,
+    KIND_MEMBER_BODY_IMAGE, KIND_MEMBER_DATA_IMAGE, KIND_MEMBER_PROFILE_PICTURE,
+    TRANSACTION_MEMBERSHIP,
 };
 use crate::common::jwt::AuthContext;
 use crate::common::lang::Lang;
@@ -415,7 +416,7 @@ pub async fn create_non_member(
         id: Some(ObjectId::new()),
         member_code,
         branch_id: auth_context.branch_id,
-        membership_id: None,
+        membership_id: create_object_id_option(DEFAULT_ID_NON_MEMBER),
         created_by_id: auth_context.user_id,
         coach_id: None,
         full_name: body.phone_number.clone(),

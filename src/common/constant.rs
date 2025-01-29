@@ -17,3 +17,6 @@ pub const BUCKET_MEMBER_PROFILE_PICTURE: &str = "member-profile-picture";
 pub const BUCKET_USER_PROFILE_PICTURE: &str = "profile-picture";
 pub const BUCKET_PRODUCT_IMAGE: &str = "product-image";
 pub const BUCKET_MEMBER_PROGRESS: &str = "member-log";
+
+
+pub const DEFAULT_ID_NON_MEMBER:&str = "6742c74a15e68b0e7ee06145";

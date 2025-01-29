@@ -1,5 +1,6 @@
 use bson::oid::ObjectId;
 use bson::DateTime;
+use log::info;
 use serde::{Deserialize, Deserializer, Serializer};
 
 use crate::dto::file_attachment_dto::FileAttachmentDTO;
@@ -89,25 +90,9 @@ where
     S: Serializer,
 {
     if file.is_some() {
-        let config = EnvConfig::init();
+        let file = transform_file_attachment(file.clone().unwrap());
 
-        let mut file1 = file.clone().unwrap();
-        let bucket = if file1.kind == "USER" {
-            "profile-picture"
-        } else if file1.kind == "PRODUCT" {
-            "product-image"
-        } else if file1.kind == "COACH" {
-            "coach-profile-picture"
-        } else if file1.kind == "MEMBER" {
-            "member-profile-picture"
-        } else {
-            "none"
-        };
-
-        let url = format!("{}{}?file_name={}", config.base_url, bucket, file1.filename);
-        file1.full_path = Some(url.to_string());
-
-        serializer.serialize_some(&file1)
+        serializer.serialize_some(&file)
     } else {
         serializer.serialize_none()
     }
@@ -121,42 +106,48 @@ pub fn serialize_file_attachments<S>(
 where
     S: Serializer,
 {
-    if file.is_some() {
-        let config = EnvConfig::init();
+    if let Some(file1) = file {
+        let transform = file1
+            .iter()
+            .map(|f| transform_file_attachment(f.clone()))
+            .collect::<Vec<FileAttachmentDTO>>();
 
-        if let Some(file1) = file {
-            let transform = file1
-                .iter()
-                .map(|f| {
-                    let mut ff = f.clone();
-                    let bucket = if f.kind == KIND_USER_PROFILE_PICTURE {
-                        "profile-picture"
-                    } else if f.kind == KIND_PRODUCT_IMAGE {
-                        "product-image"
-                    } else if f.kind == KIND_COACH_PROFILE_PICTURE {
-                        "coach-profile-picture"
-                    } else if f.kind == KIND_MEMBER_PROFILE_PICTURE {
-                        "member-profile-picture"
-                    } else if f.kind == KIND_MEMBER_BODY_IMAGE {
-                        "member-log"
-                    } else if f.kind == KIND_MEMBER_DATA_IMAGE {
-                        "member-log"
-                    } else {
-                        "none"
-                    };
-
-                    let url = format!("{}{}?file_name={}", config.base_url, bucket, f.filename);
-                    ff.full_path = Some(url.to_string());
-
-                    return ff;
-                })
-                .collect::<Vec<FileAttachmentDTO>>();
-
-            serializer.serialize_some(&transform)
-        } else {
-            serializer.serialize_none()
-        }
+        serializer.serialize_some(&transform)
     } else {
         serializer.serialize_none()
+    }
+}
+
+fn transform_file_attachment(mut file: FileAttachmentDTO) -> FileAttachmentDTO {
+    let env_mode = std::env::var("MODE").unwrap_or("DEV".to_string());
+    let base_url_key = format!("BASE_URL_{}", env_mode);
+    let env_base_url = std::env::var(base_url_key.clone());
+    let default = String::new();
+    if env_base_url.is_err() {
+        info!(target:"error get base url","{}",env_base_url.clone().unwrap_err());
+    }
+    let base_url = env_base_url.unwrap_or(default);
+
+    let bucket = get_bucket_name(file.kind.clone());
+    let url = format!("{}{}?file_name={}", base_url, bucket, file.filename);
+    file.full_path = Some(url.to_string());
+    return file;
+}
+
+fn get_bucket_name(kind: String) -> String {
+    if kind.eq(KIND_USER_PROFILE_PICTURE) {
+        "profile-picture".to_string()
+    } else if kind.eq(KIND_PRODUCT_IMAGE) {
+        "product-image".to_string()
+    } else if kind.eq(KIND_COACH_PROFILE_PICTURE) {
+        "coach-profile-picture".to_string()
+    } else if kind.eq(KIND_MEMBER_PROFILE_PICTURE) {
+        "member-profile-picture".to_string()
+    } else if kind.eq(KIND_MEMBER_BODY_IMAGE) {
+        "member-log".to_string()
+    } else if kind.eq(KIND_MEMBER_DATA_IMAGE) {
+        "member-log".to_string()
+    } else {
+        "none".to_string()
     }
 }
