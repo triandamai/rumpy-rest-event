@@ -10,6 +10,8 @@ use bson::oid::ObjectId;
 use bson::DateTime;
 use serde::{Deserialize, Serialize};
 
+use super::membership_dto::MembershipDTO;
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct MemberDTO {
     #[serde(
@@ -41,6 +43,14 @@ pub struct MemberDTO {
         deserialize_with = "deserialize_object_id"
     )]
     pub coach_id: Option<ObjectId>,
+    #[serde(
+        rename = "membership_id",
+        serialize_with = "serialize_object_id",
+        deserialize_with = "deserialize_object_id"
+    )]
+    pub membership_id: Option<ObjectId>,
+    #[serde(rename = "membership", skip_serializing_if = "Option::is_none")]
+    pub membership: Option<MembershipDTO>,
     #[serde(rename = "subscription", skip_serializing_if = "Option::is_none")]
     pub subscription: Option<MemberSubscriptionDTO>,
     #[serde(rename = "coach", skip_serializing_if = "Option::is_none")]

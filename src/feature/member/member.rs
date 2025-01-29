@@ -89,13 +89,7 @@ pub async fn get_list_member(
         .join_one("coach", "coach_id", "_id", "coach")
         .join_one("file-attachment", "_id", "ref_id", "profile_picture")
         .join_one("member-subscription", "_id", "member_id", "subscription")
-        .join_nested_one(
-            "membership",
-            "subscription.membership_id",
-            "_id",
-            "membership",
-            "subscription.membership",
-        )
+        .join_one("membership", "membership_id", "_id", "membership")
         .pageable::<MemberDTO>(query.page.unwrap_or(1), query.size.unwrap_or(10), &state.db)
         .await;
 

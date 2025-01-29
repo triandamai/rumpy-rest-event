@@ -451,9 +451,9 @@ pub async fn init_seeder(db_client: &Client) {
             deleted: false,
         };
         if exist.is_err() {
-            let _index = Orm::insert("permission").one(membership, &db_client).await;
+            let _index = Orm::insert("membership").one(membership, &db_client).await;
         } else {
-            let _index = Orm::update("permission")
+            let _index = Orm::update("membership")
                 .filter_object_id("_id", &id.unwrap())
                 .one(membership, &db_client)
                 .await;
