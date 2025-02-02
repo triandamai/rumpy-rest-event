@@ -5,7 +5,8 @@ use validator::Validate;
 pub struct CreateTransactionTopUpRequest {
     pub member_id: String,
     pub amount: f64,
-    pub notes: Option<String>,
+    pub payment_method: String,
+    pub payment_provider_name: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Validate)]

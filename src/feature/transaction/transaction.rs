@@ -59,15 +59,15 @@ pub async fn create_top_up_transaction(
         id: Some(ObjectId::new()),
         branch_id: auth_context.branch_id,
         member_id: member.id,
-        notes: body.notes.clone().unwrap_or("".to_string()),
+        notes: "Pembelian top up saldo".to_string(),
         total_price: body.amount,
         total_discount: body.amount,
         created_by_id: auth_context.user_id,
         created_at: DateTime::now(),
         updated_at: DateTime::now(),
         deleted: false,
-        payment_method: "".to_string(),
-        payment_method_provider: None,
+        payment_method: body.payment_method,
+        payment_method_provider: body.payment_provider_name,
         kind: TRANSACTION_TO_UP.to_string(),
     };
 
@@ -76,7 +76,7 @@ pub async fn create_top_up_transaction(
         product_id: None,
         transaction_id: None,
         kind: TRANSACTION_TO_UP.to_string(),
-        notes: body.notes.unwrap_or("".to_string()),
+        notes: "Top up saldo".to_string(),
         quantity: 1,
         total: body.amount,
         total_before_discount: 0.0,
@@ -301,6 +301,17 @@ pub async fn create_product_transaction(
         return ApiResponse::failed(translate!("", lang).as_str());
     }
     //update subs
+
+    let delete_cart = Orm::delete("member-cart")
+        .filter_object_id("member_id", &create_member_id.unwrap())
+        .many_with_session(&state.db, &mut session)
+        .await;
+
+    if delete_cart.is_err() {
+        let _ = session.abort_transaction().await;
+        info!(target:"stock::update::error","sub {:?}",update_subs.unwrap_err());
+        return ApiResponse::failed(translate!("", lang).as_str());
+    }
 
     let _commit = session.commit_transaction().await;
     let mut trx = transaction.to_dto();

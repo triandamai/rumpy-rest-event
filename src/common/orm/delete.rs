@@ -1,7 +1,8 @@
 use crate::common::orm::orm::Orm;
+use crate::common::orm::DB_NAME;
 use bson::oid::ObjectId;
 use bson::{doc, Document};
-use mongodb::{ClientSession, Collection, Database};
+use mongodb::{Client, ClientSession, Collection};
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 
@@ -17,13 +18,14 @@ impl Delete {
         }
     }
 
-    pub async fn one(self, db: &Database) -> Result<u64, String> {
+    pub async fn one(self, client: &Client) -> Result<u64, String> {
         if self.orm.collection_name.is_empty() {
             return Err("Specify collection name before deleting...".to_string());
         }
         if self.orm.filter.len() < 1 && self.orm.filters_group.len() < 1 {
             return Err("Specify filter before deleting...".to_string());
         }
+        let db = client.database(DB_NAME);
         let collection: Collection<Document> = db.collection(self.orm.collection_name.as_str());
         let query = self.orm.get_filter_as_doc();
 
@@ -38,7 +40,7 @@ impl Delete {
 
     pub async fn one_with_session(
         self,
-        db: &Database,
+        client: &Client,
         session: &mut ClientSession,
     ) -> Result<u64, String> {
         if self.orm.collection_name.is_empty() {
@@ -47,6 +49,7 @@ impl Delete {
         if self.orm.filter.len() < 1 && self.orm.filters_group.len() < 1 {
             return Err("Specify filter before deleting...".to_string());
         }
+        let db = client.database(DB_NAME);
         let collection: Collection<Document> = db.collection(self.orm.collection_name.as_str());
         let query = self.orm.get_filter_as_doc();
 
@@ -59,11 +62,12 @@ impl Delete {
         Ok(save.unwrap().deleted_count)
     }
 
-    pub async fn many(self, db: &Database) -> Result<u64, String> {
+    pub async fn many(self, client: &Client) -> Result<u64, String> {
         if self.orm.filter.len() < 1 && self.orm.filters_group.len() < 1 {
             return Err("Specify filter before deleting...".to_string());
         }
 
+        let db = client.database(DB_NAME);
         let collection: Collection<Document> = db.collection(self.orm.collection_name.as_str());
         let query = self.orm.get_filter_as_doc();
 
@@ -78,13 +82,14 @@ impl Delete {
 
     pub async fn many_with_session(
         self,
-        db: &Database,
+        client: &Client,
         session: &mut ClientSession,
     ) -> Result<u64, String> {
         if self.orm.filter.len() < 1 && self.orm.filters_group.len() < 1 {
             return Err("Specify filter before deleting...".to_string());
         }
 
+        let db = client.database(DB_NAME);
         let collection: Collection<Document> = db.collection(self.orm.collection_name.as_str());
         let query = self.orm.get_filter_as_doc();
 
