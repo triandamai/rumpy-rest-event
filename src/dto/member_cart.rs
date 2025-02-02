@@ -30,6 +30,7 @@ pub struct MemberCartDTO {
     pub product: Option<ProductDTO>,
     pub quantity: i64,
     pub discount: f64,
+    pub total: f64,
     #[serde(serialize_with = "serialize_datetime")]
     pub created_at: DateTime,
     #[serde(serialize_with = "serialize_datetime")]

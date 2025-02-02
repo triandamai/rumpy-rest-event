@@ -215,6 +215,10 @@ pub fn init_routes(state: AppState) -> Router {
         .route("/stock", post(feature::stock::stock::update_stock))
         //transaction
         .route(
+            "/transaction/cart/list/:member_id",
+            get(feature::transaction::transaction::get_list_cart),
+        )
+        .route(
             "/transaction/top-up",
             post(feature::transaction::transaction::create_top_up_transaction),
         )
