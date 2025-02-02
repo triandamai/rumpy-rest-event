@@ -430,14 +430,14 @@ pub async fn init_seeder(db_client: &Client) {
 
     {
         info!(target: "seeder","25% seed membership");
-        let id = create_or_new_object_id(DEFAULT_ID_NON_MEMBER);
+        let membership_id = create_or_new_object_id(DEFAULT_ID_NON_MEMBER);
         let exist = Orm::get("membership")
-            .filter_object_id("_id", &id.clone().unwrap())
-            .one::<Permission>(&db_client)
+            .filter_object_id("_id", &membership_id.clone().unwrap())
+            .one::<Membership>(&db_client)
             .await;
 
         let membership = Membership {
-            id: id.clone(),
+            id: membership_id.clone(),
             branch_id: branch_id_1,
             name: "FOR NON MEMBER".to_string(),
             price: 0.0,
@@ -454,7 +454,7 @@ pub async fn init_seeder(db_client: &Client) {
             let _index = Orm::insert("membership").one(membership, &db_client).await;
         } else {
             let _index = Orm::update("membership")
-                .filter_object_id("_id", &id.unwrap())
+                .filter_object_id("_id", &membership_id.unwrap())
                 .one(membership, &db_client)
                 .await;
         }

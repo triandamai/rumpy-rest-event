@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::common::api_response::ApiResponse;
 use crate::common::app_state::AppState;
 use crate::common::constant::{TRANSACTION_PRODUCT, TRANSACTION_TO_UP};
@@ -254,9 +256,10 @@ pub async fn save_or_add_product_to_cart(
             return ApiResponse::failed(translate!("", lang).as_str());
         }
 
+        let stock = product.product_stock - body.quantity;
         let update_product = Orm::update("product")
-            .dec(doc! {
-                "product_stock": body.quantity
+            .set(doc! {
+                "product_stock": stock
             })
             .filter_object_id("_id", &product.id.unwrap())
             .execute_one_with_session(&state.db, &mut session)
@@ -295,10 +298,11 @@ pub async fn save_or_add_product_to_cart(
             return ApiResponse::failed(translate!("", lang).as_str());
         }
 
+        let stock = product.product_stock - body.quantity;
         let update_stock = Orm::update("product")
             .filter_object_id("_id", &product.id.unwrap())
-            .dec(doc! {
-                "product_stock":body.quantity
+            .set(doc! {
+                "product_stock": stock
             })
             .execute_many_with_session(&state.db, &mut session)
             .await;
@@ -679,4 +683,78 @@ pub async fn create_product_transaction(
     trx.details = Some(detail);
 
     ApiResponse::ok(trx, translate!("not yet", lang).as_str())
+}
+
+pub async fn cancel_transaction(
+    state: State<AppState>,
+    auth_context: AuthContext,
+    lang: Lang,
+    Path(member_id): Path<String>,
+) -> ApiResponse<String> {
+    info!(target:"transaction::save-get-list-cart", "trying to get cart");
+    if !auth_context.authorize(app::transaction::CREATE) {
+        return ApiResponse::access_denied(translate!("unauthorized", lang).as_str());
+    }
+    if auth_context.branch_id.is_none() {
+        return ApiResponse::failed(translate!("", lang).as_str());
+    }
+    if auth_context.user_id.is_none() {
+        return ApiResponse::access_denied(translate!("", lang).as_str());
+    }
+    let create_member_id = create_object_id_option(member_id.as_str());
+
+    if create_member_id.is_none() {
+        return ApiResponse::failed(translate!("", lang).as_str());
+    }
+
+    let find_cart: Vec<MemberCartDTO> = Orm::get("member-cart")
+        .and()
+        .filter_object_id_as_str("member_id", member_id.as_str())
+        .join_one("product", "product_id", "_id", "product")
+        .join_one("member", "member_id", "_id", "member")
+        .all::<MemberCartDTO>(&state.db)
+        .await
+        .unwrap_or(vec![])
+        .iter()
+        .map(|v| v.clone())
+        .collect();
+
+    let session = state.db.start_session().await;
+    if session.is_err() {
+        info!(target:"stock::update","failed to create trx session");
+        return ApiResponse::failed(translate!("stock.update.failed", lang).as_str());
+    }
+    let mut session = session.unwrap();
+    let _ = session.start_transaction().await;
+
+    for cart in find_cart {
+        if let Some(product) = cart.product_id {
+            let update = Orm::update("product")
+                .filter_object_id("_id", &product)
+                .inc(doc! {
+                    "product_stock": cart.quantity
+                })
+                .execute_one_with_session(&state.db, &mut session)
+                .await;
+            if update.is_err() {
+                let _abort = session.abort_transaction().await;
+
+                return ApiResponse::failed(translate!("cancel.transaction.failed", lang).as_str());
+            }
+        }
+    }
+
+    let delete_cart = Orm::delete("member-cart")
+        .filter_object_id("member_id", &create_member_id.unwrap())
+        .one_with_session(&state.db, &mut session)
+        .await;
+    if delete_cart.is_err() {
+        let _abort = session.abort_transaction().await;
+        return ApiResponse::failed(translate!("cancel.transaction.failed", lang).as_str());
+    }
+    let _commit = session.commit_transaction().await;
+    return ApiResponse::ok(
+        "OK".to_string(),
+        translate!("cancel.transaction.success", lang).as_str(),
+    );
 }

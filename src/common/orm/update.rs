@@ -80,7 +80,7 @@ impl Update {
         self
     }
     pub fn dec(mut self, doc: Document) -> Self {
-        self.inc = Some(doc);
+        self.dec = Some(doc);
         self
     }
     pub fn set_object_id(mut self, column: &str, value: &ObjectId) -> Self {
@@ -151,7 +151,7 @@ impl Update {
         }
 
         if self.dec.is_some() {
-            doc.insert("$dec", self.dec.unwrap());
+            doc.insert("$inc", self.dec.unwrap());
         }
 
         let save = collection.update_one(query, doc).await;

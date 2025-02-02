@@ -219,6 +219,10 @@ pub fn init_routes(state: AppState) -> Router {
             get(feature::transaction::transaction::get_list_cart),
         )
         .route(
+            "/transaction/cancel/:member_id",
+            post(feature::transaction::transaction::cancel_transaction),
+        )
+        .route(
             "/transaction/top-up",
             post(feature::transaction::transaction::create_top_up_transaction),
         )
