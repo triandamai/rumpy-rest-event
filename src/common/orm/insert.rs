@@ -147,7 +147,9 @@ impl Insert {
                 Ok(doc) => {
                     docs.push(doc);
                 }
-                Err(_) => {}
+                Err(e) => {
+                    info!(target: "db:insert::error","{:?}",e);
+                }
             };
         });
 

@@ -11,6 +11,7 @@ use crate::dto::member_cart::MemberCartDTO;
 use crate::dto::member_dto::MemberDTO;
 use crate::dto::transaction_dto::TransactionDTO;
 use crate::entity::detail_transaction::DetailTransaction;
+use crate::entity::member::Member;
 use crate::entity::member_cart::MemberCart;
 use crate::entity::product::Product;
 use crate::entity::transaction::Transaction;
@@ -170,8 +171,8 @@ pub async fn create_product_transaction(
     let find_cart = Orm::get("member-cart")
         .and()
         .filter_object_id("member_id", &create_member_id.unwrap())
-        .filter_object_id("branch_id", &auth_context.branch_id.unwrap())
         .join_one("product", "product_id", "_id", "product")
+        .join_one("member", "member_id", "_id", "member")
         .all::<MemberCartDTO>(&state.db)
         .await;
     if find_cart.is_err() {
@@ -204,7 +205,7 @@ pub async fn create_product_transaction(
         updated_at: current_time,
         deleted: false,
         payment_method: body.payment_method,
-        payment_method_provider: body.payment_provide_name,
+        payment_method_provider: body.payment_provider_name,
         kind: TRANSACTION_PRODUCT.to_string(),
     };
 
@@ -235,8 +236,13 @@ pub async fn create_product_transaction(
                     updated_at: current_time,
                     deleted: false,
                 };
+                info!(target:"cart.push","to backlog");
                 detail_transaction.push(detail);
+            } else {
+                info!(target:"cart.product","not exist")
             }
+        } else {
+            info!(target:"cart.id","not exist")
         }
     }
 
@@ -266,18 +272,24 @@ pub async fn create_product_transaction(
         .await;
     if save_transaction.is_err() {
         let _ = session.abort_transaction().await;
+        info!(target:"stock::update::error","{:?}",save_transaction.unwrap_err());
         return ApiResponse::failed(translate!("", lang).as_str());
     }
-
+    if detail_transaction.len() < 1 {
+        info!(target:"stock::update","{:?} detail",detail_transaction.clone());
+        return ApiResponse::failed(translate!("stock.update.failed", lang).as_str());
+    }
     let save_detail_transaction = Orm::insert("detail-transaction")
         .many_with_session(detail_transaction.clone(), &state.db, &mut session)
         .await;
     if save_detail_transaction.is_err() {
         let _ = session.abort_transaction().await;
+        info!(target:"stock::update::error","detail {:?}",save_detail_transaction.unwrap_err());
         return ApiResponse::failed(translate!("", lang).as_str());
     }
 
     let update_subs = Orm::update("member-subscription")
+        .filter_object_id("member_id", &create_member_id.unwrap())
         .set_float("balance", &balance)
         .set_float("outstanding_balance", &out_standing_balance)
         .execute_one_with_session(&state.db, &mut session)
@@ -285,6 +297,7 @@ pub async fn create_product_transaction(
 
     if update_subs.is_err() {
         let _ = session.abort_transaction().await;
+        info!(target:"stock::update::error","sub {:?}",update_subs.unwrap_err());
         return ApiResponse::failed(translate!("", lang).as_str());
     }
     //update subs
@@ -334,14 +347,23 @@ pub async fn save_or_add_product_to_cart(
         return ApiResponse::failed(translate!("", lang).as_str());
     }
 
+    let find_member = Orm::get("member")
+        .filter_object_id("_id", &create_member_id.unwrap())
+        .one::<Member>(&state.db)
+        .await;
+
+    if find_member.is_err() {
+        return ApiResponse::not_found(translate!("member.not-found", lang).as_str());
+    }
     let find_product = Orm::get("product")
+        .and()
         .filter_object_id("_id", &create_product_id.unwrap())
         .filter_object_id("branch_id", &auth_context.branch_id.unwrap())
         .one::<Product>(&state.db)
         .await;
 
     if find_product.is_err() {
-        return ApiResponse::not_found(translate!("", lang).as_str());
+        return ApiResponse::not_found(translate!("product.not-found", lang).as_str());
     }
 
     let product = find_product.unwrap();
@@ -355,52 +377,46 @@ pub async fn save_or_add_product_to_cart(
         .filter_object_id("product_id", &create_product_id.unwrap())
         .one::<MemberCartDTO>(&state.db)
         .await;
+    let session = state.db.start_session().await;
+    if session.is_err() {
+        info!(target:"stock::update","failed to create trx session");
+        return ApiResponse::failed(translate!("stock.update.failed", lang).as_str());
+    }
+    let mut session = session.unwrap();
+    let _ = session.start_transaction().await;
+    if product.product_stock < body.quantity {
+        let _ = session.abort_transaction().await;
+        return ApiResponse::failed(translate!("cart.stock.not-eligible", lang).as_str());
+    }
 
-    if find_cart.is_err() {
-        let cart = find_cart.unwrap();
-        let session = state.db.start_session().await;
-        if session.is_err() {
-            info!(target:"stock::update","failed to create trx session");
-            return ApiResponse::failed(translate!("stock.update.failed", lang).as_str());
-        }
-        let mut session = session.unwrap();
-        let _ = session.start_transaction().await;
-
+    if let Ok(cart) = find_cart {
+        info!(target:"update:cart","exist:updating:");
         //update
+        let diff = cart.quantity + body.quantity;
         let update_cart = Orm::update("member-cart")
-            .set(doc! {"quantity": body.quantity, "discount": body.discount,"updated_at":DateTime::now()})
-            .execute_one_with_session(&state.db,&mut session)
+            .filter_object_id("_id", &cart.id.unwrap())
+            .set(doc! {"quantity": diff, "discount": body.discount,"updated_at":DateTime::now()})
+            .execute_one_with_session(&state.db, &mut session)
             .await;
         if update_cart.is_err() {
             let _ = session.abort_transaction().await;
             return ApiResponse::failed(translate!("", lang).as_str());
         }
 
-        let mut update_product = Orm::update("product");
-
-        let diff = body.quantity - cart.quantity;
-        update_product = update_product.dec(doc! {
-            "product_stock": diff
-        });
-
-        let update = update_product
-            .filter_object_id("_id", &cart.id.unwrap())
+        let update_product = Orm::update("product")
+            .dec(doc! {
+                "product_stock": body.quantity
+            })
+            .filter_object_id("_id", &product.id.unwrap())
             .execute_one_with_session(&state.db, &mut session)
             .await;
 
-        if update.is_err() {
+        if update_product.is_err() {
             let _ = session.abort_transaction().await;
             return ApiResponse::failed(translate!("", lang).as_str());
         }
     } else {
-        let find_product = Orm::get("product")
-            .filter_object_id("_id", &create_product_id.unwrap())
-            .one::<Product>(&state.db)
-            .await;
-        if find_product.is_err() {
-            return ApiResponse::not_found(translate!("", lang).as_str());
-        }
-        let _product = find_product.unwrap();
+        info!(target:"update:cart","not-exost:inserting");
         //insert new
         let product_cart = MemberCart {
             id: Some(ObjectId::new()),
@@ -413,13 +429,10 @@ pub async fn save_or_add_product_to_cart(
             notes: body.notes.clone(),
         };
 
-        let session = state.db.start_session().await;
-        if session.is_err() {
-            info!(target:"stock::update","failed to create trx session");
-            return ApiResponse::failed(translate!("stock.update.failed", lang).as_str());
+        if product.product_stock < body.quantity {
+            let _ = session.abort_transaction().await;
+            return ApiResponse::failed(translate!("cart.stock.not-eligible", lang).as_str());
         }
-        let mut session = session.unwrap();
-        let _ = session.start_transaction().await;
 
         let save_cart = Orm::insert("member-cart")
             .one_with_session(&product_cart, &state.db, &mut session)
@@ -431,6 +444,7 @@ pub async fn save_or_add_product_to_cart(
         }
 
         let update_stock = Orm::update("product")
+            .filter_object_id("_id", &product.id.unwrap())
             .dec(doc! {
                 "product_stock":body.quantity
             })
@@ -443,17 +457,21 @@ pub async fn save_or_add_product_to_cart(
         }
     }
 
+    info!(target:"update:success","get all");
+    let _commit = session.commit_transaction().await;
     let find_cart = Orm::get("member-cart")
+        .and()
+        .filter_object_id("member_id", &create_member_id.unwrap())
         .join_one("product", "product_id", "_id", "product")
         .join_one("member", "member_id", "_id", "member")
-        .all::<MemberCart>(&state.db)
+        .all::<MemberCartDTO>(&state.db)
         .await
         .unwrap_or(vec![])
         .iter()
-        .map(|v| v.clone().to_dto())
+        .map(|v| v.clone())
         .collect();
 
-    ApiResponse::ok(find_cart, translate!("not yet", lang).as_str())
+    ApiResponse::ok(find_cart, translate!("data", lang).as_str())
 }
 
 pub async fn update_or_remove_product_to_cart(
@@ -462,7 +480,7 @@ pub async fn update_or_remove_product_to_cart(
     lang: Lang,
     Json(body): Json<InsertCartRequest>,
 ) -> ApiResponse<Vec<MemberCartDTO>> {
-    info!(target:"transaction::save-product-to-cart", "trying to update product to cart");
+    info!(target:"transaction::save-product-to-cart", "trying to save product to cart");
     if !auth_context.authorize(app::transaction::CREATE) {
         return ApiResponse::access_denied(translate!("unauthorized", lang).as_str());
     }
@@ -489,17 +507,29 @@ pub async fn update_or_remove_product_to_cart(
         return ApiResponse::failed(translate!("", lang).as_str());
     }
 
+    let find_member = Orm::get("member")
+        .filter_object_id("_id", &create_member_id.unwrap())
+        .one::<Member>(&state.db)
+        .await;
+
+    if find_member.is_err() {
+        return ApiResponse::not_found(translate!("member.not-found", lang).as_str());
+    }
     let find_product = Orm::get("product")
+        .and()
         .filter_object_id("_id", &create_product_id.unwrap())
         .filter_object_id("branch_id", &auth_context.branch_id.unwrap())
         .one::<Product>(&state.db)
         .await;
 
     if find_product.is_err() {
-        return ApiResponse::not_found(translate!("", lang).as_str());
+        return ApiResponse::not_found(translate!("product.not-found", lang).as_str());
     }
 
     let product = find_product.unwrap();
+    if product.product_stock < 1 {
+        return ApiResponse::failed(translate!("update.cart.stock-not-eligible", lang).as_str());
+    }
 
     let find_cart = Orm::get("member-cart")
         .and()
@@ -507,51 +537,47 @@ pub async fn update_or_remove_product_to_cart(
         .filter_object_id("product_id", &create_product_id.unwrap())
         .one::<MemberCartDTO>(&state.db)
         .await;
+    let session = state.db.start_session().await;
+    if session.is_err() {
+        info!(target:"stock::update","failed to create trx session");
+        return ApiResponse::failed(translate!("stock.update.failed", lang).as_str());
+    }
+    let mut session = session.unwrap();
+    let _ = session.start_transaction().await;
+    if product.product_stock < body.quantity {
+        let _ = session.abort_transaction().await;
+        return ApiResponse::failed(translate!("cart.stock.not-eligible", lang).as_str());
+    }
 
-    if find_cart.is_err() {
-        let cart = find_cart.unwrap();
-        let session = state.db.start_session().await;
-        if session.is_err() {
-            info!(target:"stock::update","failed to create trx session");
-            return ApiResponse::failed(translate!("stock.update.failed", lang).as_str());
-        }
-        let mut session = session.unwrap();
-        let _ = session.start_transaction().await;
-
+    if let Ok(cart) = find_cart {
+        info!(target:"update:cart","exist:updating:");
         //update
+
+        let diff = cart.quantity - body.quantity;
         let update_cart = Orm::update("member-cart")
-            .set(doc! {"quantity": body.quantity, "discount": body.discount,"updated_at":DateTime::now()})
-            .execute_one_with_session(&state.db,&mut session)
+            .filter_object_id("_id", &cart.id.unwrap())
+            .set(doc! {"quantity": diff, "discount": body.discount,"updated_at":DateTime::now()})
+            .execute_one_with_session(&state.db, &mut session)
             .await;
         if update_cart.is_err() {
             let _ = session.abort_transaction().await;
             return ApiResponse::failed(translate!("", lang).as_str());
         }
 
-        let mut update_product = Orm::update("product");
-
-        update_product = update_product.dec(doc! {
-            "product_stock": body.quantity
-        });
-
-        let update = update_product
-            .filter_object_id("_id", &cart.id.unwrap())
+        let update_product = Orm::update("product")
+            .inc(doc! {
+                "product_stock": body.quantity
+            })
+            .filter_object_id("_id", &product.id.unwrap())
             .execute_one_with_session(&state.db, &mut session)
             .await;
 
-        if update.is_err() {
+        if update_product.is_err() {
             let _ = session.abort_transaction().await;
             return ApiResponse::failed(translate!("", lang).as_str());
         }
     } else {
-        let find_product = Orm::get("product")
-            .filter_object_id("_id", &create_product_id.unwrap())
-            .one::<Product>(&state.db)
-            .await;
-        if find_product.is_err() {
-            return ApiResponse::not_found(translate!("", lang).as_str());
-        }
-        let _product = find_product.unwrap();
+        info!(target:"update:cart","not-exost:inserting");
         //insert new
         let product_cart = MemberCart {
             id: Some(ObjectId::new()),
@@ -564,13 +590,10 @@ pub async fn update_or_remove_product_to_cart(
             notes: body.notes.clone(),
         };
 
-        let session = state.db.start_session().await;
-        if session.is_err() {
-            info!(target:"stock::update","failed to create trx session");
-            return ApiResponse::failed(translate!("stock.update.failed", lang).as_str());
+        if product.product_stock < body.quantity {
+            let _ = session.abort_transaction().await;
+            return ApiResponse::failed(translate!("cart.stock.not-eligible", lang).as_str());
         }
-        let mut session = session.unwrap();
-        let _ = session.start_transaction().await;
 
         let save_cart = Orm::insert("member-cart")
             .one_with_session(&product_cart, &state.db, &mut session)
@@ -582,7 +605,8 @@ pub async fn update_or_remove_product_to_cart(
         }
 
         let update_stock = Orm::update("product")
-            .dec(doc! {
+            .filter_object_id("_id", &product.id.unwrap())
+            .inc(doc! {
                 "product_stock":body.quantity
             })
             .execute_many_with_session(&state.db, &mut session)
@@ -594,15 +618,19 @@ pub async fn update_or_remove_product_to_cart(
         }
     }
 
+    info!(target:"update:success","get all");
+    let _commit = session.commit_transaction().await;
     let find_cart = Orm::get("member-cart")
+        .and()
+        .filter_object_id("member_id", &create_member_id.unwrap())
         .join_one("product", "product_id", "_id", "product")
         .join_one("member", "member_id", "_id", "member")
-        .all::<MemberCart>(&state.db)
+        .all::<MemberCartDTO>(&state.db)
         .await
         .unwrap_or(vec![])
         .iter()
-        .map(|v| v.clone().to_dto())
+        .map(|v| v.clone())
         .collect();
 
-    ApiResponse::ok(find_cart, translate!("not yet", lang).as_str())
+    ApiResponse::ok(find_cart, translate!("data", lang).as_str())
 }
