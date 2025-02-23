@@ -12,6 +12,7 @@ pub struct MinIO {
 
 impl MinIO {
     pub async fn new() -> MinIO {
+        info!(target:"app::minio","Init minio");
         let env = EnvConfig::init();
         MinIO {
             access_key: env.minio_access_key.clone(),
@@ -25,7 +26,13 @@ impl MinIO {
         bucket_name: String,
         file_name: String,
     ) -> Result<ResponseData, String> {
-        let credentials = Credentials::new(Some(self.access_key.clone().as_str()), Some(self.secret_key.clone().as_str()), None, None, None);
+        let credentials = Credentials::new(
+            Some(self.access_key.clone().as_str()),
+            Some(self.secret_key.clone().as_str()),
+            None,
+            None,
+            None,
+        );
         if credentials.is_err() {
             return Err(credentials.unwrap_err().to_string());
         }
@@ -59,8 +66,19 @@ impl MinIO {
         Ok(file)
     }
 
-    pub async fn upload_file(&self, file_path: String, bucket_name: String, file_name: String) -> Result<String, String> {
-        let credentials = Credentials::new(Some(self.access_key.clone().as_str()), Some(self.secret_key.clone().as_str()), None, None, None);
+    pub async fn upload_file(
+        &self,
+        file_path: String,
+        bucket_name: String,
+        file_name: String,
+    ) -> Result<String, String> {
+        let credentials = Credentials::new(
+            Some(self.access_key.clone().as_str()),
+            Some(self.secret_key.clone().as_str()),
+            None,
+            None,
+            None,
+        );
         if credentials.is_err() {
             return Err(credentials.unwrap_err().to_string());
         }
@@ -77,26 +95,31 @@ impl MinIO {
             return Err(bucket.unwrap_err().to_string());
         }
         let bucket = bucket.unwrap().with_path_style();
-
 
         let file = tokio::fs::read(file_path).await;
         if file.is_err() {
             return Err(file.unwrap_err().to_string());
         }
         let file = file.unwrap();
-        let upload = bucket
-            .put_object(file_name.as_str(), &file)
-            .await;
+        let upload = bucket.put_object(file_name.as_str(), &file).await;
         match upload {
             Ok(_) => Ok("Successfully uploaded file".to_string()),
-            Err(e) => {
-                Err(format!("Error uploading file: {}", e))
-            }
+            Err(e) => Err(format!("Error uploading file: {}", e)),
         }
     }
 
-    pub async fn delete_file(&self, file_path: String, bucket_name: String) -> Result<String, String> {
-        let credentials = Credentials::new(Some(self.access_key.clone().as_str()), Some(self.secret_key.clone().as_str()), None, None, None);
+    pub async fn delete_file(
+        &self,
+        file_path: String,
+        bucket_name: String,
+    ) -> Result<String, String> {
+        let credentials = Credentials::new(
+            Some(self.access_key.clone().as_str()),
+            Some(self.secret_key.clone().as_str()),
+            None,
+            None,
+            None,
+        );
         if credentials.is_err() {
             return Err(credentials.unwrap_err().to_string());
         }
@@ -114,14 +137,10 @@ impl MinIO {
         }
         let bucket = bucket.unwrap().with_path_style();
 
-        let upload = bucket
-            .delete_object(file_path.as_str())
-            .await;
+        let upload = bucket.delete_object(file_path.as_str()).await;
         match upload {
             Ok(_) => Ok("Successfully delete  file".to_string()),
-            Err(e) => {
-                Err(format!("Error uploading file: {}", e))
-            }
+            Err(e) => Err(format!("Error uploading file: {}", e)),
         }
     }
 }

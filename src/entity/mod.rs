@@ -1,16 +1,1 @@
-pub mod account;
-pub mod permission;
-pub mod member;
-pub mod member_log;
-pub mod account_permission;
-pub mod branch;
-pub mod coach;
-pub mod product;
-pub mod product_log;
-pub mod membership;
-pub mod transaction;
-pub mod detail_transaction;
-pub mod discount;
-pub mod file_attachment;
-pub mod member_subscription;
-pub mod member_cart;
+pub mod user;

@@ -1,14 +1,1 @@
 pub mod auth;
-pub mod branch;
-pub mod coach;
-pub mod discount;
-pub mod member;
-pub mod membership;
-pub mod product;
-pub mod report;
-pub mod sse;
-pub mod stock;
-pub mod transaction;
-pub mod user;
-pub mod file;
-pub mod dashboard;

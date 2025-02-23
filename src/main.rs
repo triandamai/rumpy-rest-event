@@ -1,27 +1,23 @@
+use common::i18n::I18n;
 use tokio::{self, main};
 
 use crate::common::app_state::AppState;
-use crate::common::i18n::I18n;
-use crate::common::seeder::init_seeder;
 use crate::router::init_routes;
 
+pub mod schema;
 
 pub mod common;
 pub mod entity;
 pub mod feature;
+pub mod repositories;
 pub mod router;
 pub mod routes;
-pub mod repositories;
-pub mod dto;
 
 #[main]
 async fn main() -> Result<(), ()> {
-    tracing_subscriber::fmt::init();
+    let _ = tracing_subscriber::fmt().init();
     let app_state = AppState::init().await;
-    let _init_i18n = I18n::load_locales().await;
-    let _init_seeder = init_seeder(
-        &app_state.db
-    ).await;
+    let _i18n = I18n::sync_locales(&["auth"]).await;
 
     let app = init_routes(app_state);
 

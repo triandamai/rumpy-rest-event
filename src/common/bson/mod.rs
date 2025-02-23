@@ -3,8 +3,6 @@ use bson::DateTime;
 use log::info;
 use serde::{Deserialize, Deserializer, Serializer};
 
-use crate::dto::file_attachment_dto::FileAttachmentDTO;
-
 use crate::common::env_config::EnvConfig;
 
 use super::constant::{
@@ -79,59 +77,6 @@ where
     } else {
         Ok(vec)
     }
-}
-
-//file attachment to path
-pub fn serialize_file_attachment<S>(
-    file: &Option<FileAttachmentDTO>,
-    serializer: S,
-) -> Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    if file.is_some() {
-        let file = transform_file_attachment(file.clone().unwrap());
-
-        serializer.serialize_some(&file)
-    } else {
-        serializer.serialize_none()
-    }
-}
-
-//file attachment to path
-pub fn serialize_file_attachments<S>(
-    file: &Option<Vec<FileAttachmentDTO>>,
-    serializer: S,
-) -> Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    if let Some(file1) = file {
-        let transform = file1
-            .iter()
-            .map(|f| transform_file_attachment(f.clone()))
-            .collect::<Vec<FileAttachmentDTO>>();
-
-        serializer.serialize_some(&transform)
-    } else {
-        serializer.serialize_none()
-    }
-}
-
-fn transform_file_attachment(mut file: FileAttachmentDTO) -> FileAttachmentDTO {
-    let env_mode = std::env::var("MODE").unwrap_or("DEV".to_string());
-    let base_url_key = format!("BASE_URL_{}", env_mode);
-    let env_base_url = std::env::var(base_url_key.clone());
-    let default = String::new();
-    if env_base_url.is_err() {
-        info!(target:"error get base url","{}",env_base_url.clone().unwrap_err());
-    }
-    let base_url = env_base_url.unwrap_or(default);
-
-    let bucket = get_bucket_name(file.kind.clone());
-    let url = format!("{}{}?file_name={}", base_url, bucket, file.filename);
-    file.full_path = Some(url.to_string());
-    return file;
 }
 
 fn get_bucket_name(kind: String) -> String {

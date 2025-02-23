@@ -1,25 +1,40 @@
 use crate::common::api_response::ApiResponse;
 use crate::common::app_state::AppState;
-use crate::common::lang::Lang;
+use crate::common::lang::{self, Lang};
 use crate::common::minio::MinIO;
-use crate::translate;
+
+use crate::entity::user::User;
+use crate::schema::tb_user;
+use crate::{i18n, schema, t};
 use axum::extract::State;
-use std::collections::HashMap;
+use diesel::prelude::Insertable;
+use diesel::{RunQueryDsl, SelectableHelper};
 use std::fs::File;
 use std::io::Write;
-use bson::Document;
-use bson::oid::ObjectId;
-use crate::common::orm::orm::Orm;
 
-pub async fn index(_state: State<AppState>) -> ApiResponse<Vec<Document>> {
-    let find_all_branch = Orm::get("product")
-        .and()
-        .filter_bool("deleted", None, false)
-        .filter_object_id("branch_id", &ObjectId::new())
-        .join_one("file-attachment", "_id", "ref_id", "product_image")
-        .join_one("account", "created_by_id", "_id", "created_by").show_merging();
+#[derive(Insertable)]
+#[diesel(table_name=tb_user)]
+pub struct CreateUser<'a> {
+    pub display_name: &'a str,
+    pub email: &'a str,
+    pub password: &'a str,
+}
 
-    ApiResponse::ok(find_all_branch.1, "test merge")
+pub async fn index(state: State<AppState>, lang: Lang) -> ApiResponse<User> {
+    let mut conn = state.postgres.get();
+    if conn.is_err() {
+        return ApiResponse::failed(format!("{:?}", conn.err()).as_str());
+    }
+
+    let result: Result<User, diesel::result::Error> = diesel::insert_into(tb_user::table)
+        .values(&CreateUser {
+            display_name: "sasa",
+            email: "test@gmail.com",
+            password: "sasa",
+        })
+        .returning(User::as_returning())
+        .get_result(&mut conn.unwrap());
+    return ApiResponse::ok(result.unwrap(), "");
 }
 
 pub async fn generate_locales() -> ApiResponse<String> {
@@ -39,16 +54,4 @@ pub async fn generate_locales() -> ApiResponse<String> {
     let mut file = File::create(format!("locales/{}", "app.json")).unwrap();
     file.write_all(&data).unwrap();
     ApiResponse::ok(String::from("OK"), "success generate locales")
-}
-
-pub async fn test_locales(lang: Lang) -> ApiResponse<HashMap<String, String>> {
-    let re1 = translate!("message",lang,{"name"=>"trian","hohoe"=>"Tes"});
-    let re2 = translate!("message",lang,{"name"=>"trian","hohoe"=>"Tes"});
-    let re3 = translate!("message", lang);
-
-    let mut hashmap: HashMap<String, String> = HashMap::new();
-    hashmap.insert("message1".to_string(), re1.to_string());
-    hashmap.insert("message2".to_string(), re2.to_string());
-    hashmap.insert("message3".to_string(), re3.to_string());
-    ApiResponse::ok(hashmap, "")
 }

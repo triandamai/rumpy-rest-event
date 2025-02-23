@@ -1,8 +1,7 @@
-pub mod get;
-pub mod insert;
-pub mod update;
-pub mod replace;
-pub mod orm;
-pub mod delete;
+// #[macro_use]
+// pub mod filter;
 
-pub const DB_NAME:&str = "strong-teams";
+// pub mod r#trait;
+// pub mod orm;
+
+pub const DB_NAME: &str = "strong-teams";

@@ -3,9 +3,6 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use crate::feature::auth::auth_model::{
-    SIGN_IN_TTL,
-};
 use rand::{thread_rng, Rng};
 use redis::{Client, Commands, RedisResult};
 
@@ -43,7 +40,7 @@ impl RedisClient {
     ) -> RedisResult<String> {
         let key = self.create_key_permission_session(session_id);
         let saved: RedisResult<String> = self.client.hset_multiple(key.clone(), &*items);
-        let _: RedisResult<String> = self.client.expire(key, SIGN_IN_TTL);
+        let _: RedisResult<String> = self.client.expire(key, 3600);
         saved
     }
 
@@ -61,6 +58,27 @@ impl RedisClient {
     }
     //END PERMISSION
 
+    //SET SESSION SIGN UP
+    pub fn set_session_sign_up(
+        &mut self,
+        session_id: &str,
+        items: &[(&str, String)],
+    ) -> RedisResult<String> {
+        let key = self.create_key_sign_up_session(session_id);
+        let saved: RedisResult<String> = self.client.hset_multiple(key.clone(), items);
+        let _: RedisResult<String> = self.client.expire(key, 3600);
+        saved
+    }
+
+    //GET SESSION SIGN UP
+    pub fn get_session_sign_up(
+        &mut self,
+        session_id: &str,
+    ) -> RedisResult<HashMap<String, String>> {
+        let key = self.create_key_sign_up_session(session_id);
+        self.client.hgetall(key)
+    }
+
     //SET SESSION
     pub fn set_session_sign_in(
         &mut self,
@@ -69,7 +87,7 @@ impl RedisClient {
     ) -> RedisResult<String> {
         let key = self.create_key_sign_in_session(session_id);
         let saved: RedisResult<String> = self.client.hset_multiple(key.clone(), items);
-        let _: RedisResult<String> = self.client.expire(key, SIGN_IN_TTL);
+        let _: RedisResult<String> = self.client.expire(key, 3600);
         saved
     }
 
@@ -87,7 +105,6 @@ impl RedisClient {
         let key = self.create_key_sign_in_session(session_id);
         self.client.del(key)
     }
-
 
     //OTHER
     pub async fn exist(&mut self, key: &str) -> bool {

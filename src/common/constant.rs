@@ -18,5 +18,8 @@ pub const BUCKET_USER_PROFILE_PICTURE: &str = "profile-picture";
 pub const BUCKET_PRODUCT_IMAGE: &str = "product-image";
 pub const BUCKET_MEMBER_PROGRESS: &str = "member-log";
 
+pub const REDIS_KEY_USER_TOKEN: &str = "token";
+pub const REDIS_KEY_USER_EMAIL: &str = "email";
+pub const REDIS_KEY_USER_ID: &str = "id";
 
-pub const DEFAULT_ID_NON_MEMBER:&str = "6742c74a15e68b0e7ee06145";
+pub const DEFAULT_ID_NON_MEMBER: &str = "6742c74a15e68b0e7ee06145";

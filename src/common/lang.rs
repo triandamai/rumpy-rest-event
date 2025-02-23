@@ -1,9 +1,8 @@
 use crate::common::jwt::AuthError;
 use axum::extract::FromRequestParts;
 use axum::http::request::Parts;
-use axum::{async_trait};
 
-#[derive(Debug,Clone)]
+#[derive(Debug, Clone)]
 pub struct Lang {
     pub locale_code: String,
 }
@@ -14,13 +13,12 @@ impl Lang {
     }
 
     pub fn from(locale_code: &str) -> Self {
-        Lang{
+        Lang {
             locale_code: locale_code.to_string(),
         }
     }
 }
 
-#[async_trait]
 impl<S> FromRequestParts<S> for Lang
 where
     S: Send + Sync,

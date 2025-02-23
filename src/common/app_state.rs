@@ -3,12 +3,14 @@ use crate::common::env_config::EnvConfig;
 use crate::common::redis::RedisClient;
 use crate::common::sse::sse_emitter::SseBroadcaster;
 use axum::{
-    async_trait,
     extract::{FromRef, FromRequestParts},
     http::request::Parts,
 };
+use diesel::{
+    r2d2::{ConnectionManager, Pool},
+    PgConnection,
+};
 use log::info;
-use mongodb::{options::ClientOptions, Client as MongoClient};
 use redis::Client;
 use std::sync::Arc;
 
@@ -16,7 +18,7 @@ use std::sync::Arc;
 pub struct AppState {
     pub sse: Arc<SseBroadcaster>,
     pub redis: RedisClient,
-    pub db: MongoClient,
+    pub postgres: Arc<Pool<ConnectionManager<PgConnection>>>,
 }
 
 impl AppState {
@@ -25,19 +27,18 @@ impl AppState {
         let env = EnvConfig::init();
 
         let sse = SseBroadcaster::create();
-        let opt = ClientOptions::parse(env.database_url.as_str()).await;
 
-        if opt.is_err() {
-            panic!("{}", opt.unwrap_err());
+        let manager = ConnectionManager::<PgConnection>::new(env.database_url.as_str());
+        let pool = Pool::builder().max_size(5).build(manager);
+        if pool.is_err() {
+            panic!(
+                "database {} -> {:?}",
+                env.database_url.clone(),
+                pool.err().unwrap()
+            );
         }
-        let mut opt = opt.unwrap();
-        opt.retry_writes = Some(false);
-        let database = MongoClient::with_options(opt);
-
-        if database.is_err() {
-            panic!("{}", database.unwrap_err());
-        }
-        let database = database.unwrap();
+        let pool = pool.unwrap();
+        let postgres = Arc::new(pool);
 
         let redis = Client::open(env.redis_url.clone());
         if redis.is_err() {
@@ -49,13 +50,12 @@ impl AppState {
         info!(target: "app::state", "Finish Initializing AppState");
         AppState {
             sse,
-            db: database,
             redis: redis_util,
+            postgres: postgres,
         }
     }
 }
 
-#[async_trait]
 impl<S> FromRequestParts<S> for AppState
 where
     Self: FromRef<S>, // <---- added this line
