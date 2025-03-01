@@ -3,7 +3,9 @@ use chrono::NaiveDate;
 use log::info;
 use mime::Mime;
 use std::borrow::Cow;
+use std::collections::HashMap;
 use std::fmt::Debug;
+use std::hash::Hash;
 use std::str::FromStr;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -156,4 +158,15 @@ pub fn generate_member_code(prefix: &str) -> String {
 
 pub fn get_first_name(full_name: &str) -> Option<&str> {
     full_name.split_whitespace().next()
+}
+
+pub fn to_hashmap<Id: Eq + Hash, T: Copy>(data: Vec<T>, id: fn(T) -> Id) -> HashMap<Id, T> {
+    let mut hash = HashMap::new();
+    for thread in data {
+        let id = id(thread);
+        if !hash.contains_key(&id) {
+            hash.insert(id, thread);
+        }
+    }
+    hash
 }

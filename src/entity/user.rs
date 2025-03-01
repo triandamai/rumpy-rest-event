@@ -1,38 +1,24 @@
-use crate::schema::tb_user;
-use chrono::NaiveDateTime;
-use diesel::{prelude::Queryable, Selectable};
+use bson::{oid::ObjectId, DateTime};
 use serde::{Deserialize, Serialize};
 
-use diesel::prelude::Insertable;
+use crate::common::serialize::serialize_to_empty_string;
 
-#[derive(Queryable, Selectable, Serialize, Deserialize)]
-#[diesel(table_name=tb_user)]
-#[diesel(check_for_backend(diesel::pg::Pg))]
+use super::{profile_picture::ProfilePicture, user_metadata::UserMetaData};
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct User {
-    pub id: i32,
+    #[serde(rename = "_id", skip_serializing_if = "Option::is_none")]
+    pub id: Option<ObjectId>,
     pub display_name: String,
     pub email: String,
     pub phone_number: Option<String>,
-    // pub password: Option<String>,
-    pub app_meta_data: Option<serde_json::Value>,
-    pub user_meta_data: Option<serde_json::Value>,
-    pub created_at: Option<NaiveDateTime>,
-    pub updated_at: Option<NaiveDateTime>,
-    pub confirmation_at: Option<NaiveDateTime>,
-    pub confirmation_sent_at: Option<NaiveDateTime>,
-}
-
-#[derive(Insertable)]
-#[diesel(table_name=tb_user)]
-pub struct CreateUser {
-    pub display_name: String,
-    pub email: String,
-    pub phone_number: Option<String>,
+    #[serde(serialize_with = "serialize_to_empty_string")]
     pub password: Option<String>,
     pub app_meta_data: Option<serde_json::Value>,
-    pub user_meta_data: Option<serde_json::Value>,
-    pub created_at: Option<NaiveDateTime>,
-    pub updated_at: Option<NaiveDateTime>,
-    pub confirmation_at: Option<NaiveDateTime>,
-    pub confirmation_sent_at: Option<NaiveDateTime>,
+    pub user_meta_data: Option<UserMetaData>,
+    pub profile_picture: Option<ProfilePicture>,
+    pub created_at: DateTime,
+    pub updated_at: DateTime,
+    pub confirmation_at: Option<DateTime>,
+    pub confirmation_sent_at: Option<DateTime>,
 }

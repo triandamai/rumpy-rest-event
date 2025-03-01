@@ -1,16 +1,13 @@
 use crate::common::utils::{
-    get_extension_from_mime, validate_multi_extractor, validate_single_extractor,
+    get_extension_from_mime,
 };
 use axum::extract::multipart::Field;
 use axum::extract::Multipart;
 use bson::oid::ObjectId;
-use chrono::Utc;
 use headers::ContentType;
 use log::info;
 use mime::Mime;
-use s3::serde_types::Object;
 use serde::{Deserialize, Serialize};
-use slugify::slugify;
 use std::collections::HashMap;
 use std::fs;
 use std::fs::File;

@@ -1,14 +1,6 @@
 use bson::oid::ObjectId;
 use bson::DateTime;
-use log::info;
 use serde::{Deserialize, Deserializer, Serializer};
-
-use crate::common::env_config::EnvConfig;
-
-use super::constant::{
-    KIND_COACH_PROFILE_PICTURE, KIND_MEMBER_BODY_IMAGE, KIND_MEMBER_DATA_IMAGE,
-    KIND_MEMBER_PROFILE_PICTURE, KIND_PRODUCT_IMAGE, KIND_USER_PROFILE_PICTURE,
-};
 
 // Custom serializer to convert ObjectId to string
 pub fn serialize_object_id<S>(
@@ -66,6 +58,41 @@ where
     }
 }
 
+//custom serializer for DateTime
+pub fn serialize_option_datetime<S>(
+    val: &Option<DateTime>,
+    serializer: S,
+) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    if val.clone().is_none() {
+        serializer.serialize_none()
+    } else {
+        let formatted = val.unwrap().try_to_rfc3339_string();
+        if formatted.is_ok() {
+            serializer.serialize_str(formatted.unwrap().as_str()) // Convert ObjectId to a hex string
+        } else {
+            serializer.serialize_none()
+        }
+    }
+}
+
+pub fn deserialize_option_datetime<'de, D>(deserializer: D) -> Result<Option<DateTime>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let s = DateTime::deserialize(deserializer);
+    //String::deserialize(deserializer);
+    // info!(target: "deserialize","{:?}",s);
+    if s.is_err() {
+        Err(s.unwrap_err())
+    } else {
+        let value = s.unwrap();
+        Ok(Some(value))
+    }
+}
+
 pub fn non_empty<'de, D, T>(d: D) -> Result<Vec<T>, D::Error>
 where
     D: Deserializer<'de>,
@@ -76,23 +103,5 @@ where
         Ok(vec![])
     } else {
         Ok(vec)
-    }
-}
-
-fn get_bucket_name(kind: String) -> String {
-    if kind.eq(KIND_USER_PROFILE_PICTURE) {
-        "profile-picture".to_string()
-    } else if kind.eq(KIND_PRODUCT_IMAGE) {
-        "product-image".to_string()
-    } else if kind.eq(KIND_COACH_PROFILE_PICTURE) {
-        "coach-profile-picture".to_string()
-    } else if kind.eq(KIND_MEMBER_PROFILE_PICTURE) {
-        "member-profile-picture".to_string()
-    } else if kind.eq(KIND_MEMBER_BODY_IMAGE) {
-        "member-log".to_string()
-    } else if kind.eq(KIND_MEMBER_DATA_IMAGE) {
-        "member-log".to_string()
-    } else {
-        "none".to_string()
     }
 }

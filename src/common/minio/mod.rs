@@ -11,7 +11,7 @@ pub struct MinIO {
 }
 
 impl MinIO {
-    pub async fn new() -> MinIO {
+    pub fn new() -> MinIO {
         info!(target:"app::minio","Init minio");
         let env = EnvConfig::init();
         MinIO {

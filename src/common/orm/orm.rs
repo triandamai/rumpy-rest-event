@@ -1,723 +1,914 @@
-// use bson::{doc, Bson, Document};
-// use log::info;
-// use serde::{de::DeserializeOwned, Deserialize, Serialize};
-// use serde_helpers::SerializeJson;
-// use sqlx::{FromRow, Postgres};
+use crate::common::orm::delete::Delete;
+use crate::common::orm::get::Get;
+use crate::common::orm::insert::Insert;
+use crate::common::orm::replace::Replace;
+use crate::common::orm::update::Update;
+use bson::DateTime;
+use bson::{doc, oid::ObjectId, Document};
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::fmt::Debug;
 
-// #[derive(Serialize, Deserialize, Debug)]
-// pub struct DB {
-//     pub table_name: String,
-//     pub query: String,
-//     pub args: Vec<Bson>,
-// }
+pub fn create_lookup_field(
+    target: &str,
+    from_field: &str,
+    foreign_field: &str,
+    alias: &str,
+) -> Document {
+    doc! {
+        "$lookup":{
+            "from":target,
+            "localField":from_field,
+            "foreignField":foreign_field,
+            "as":alias
+        }
+    }
+}
+pub fn create_field_text_search(text: String) -> Document {
+    doc! {"$match":{"$text":{"$search":text}}}
+}
 
-// impl DB {
-//     pub fn from(table: &str) -> Self {
-//         DB {
-//             table_name: table.to_string(),
-//             query: "".to_string(),
-//             args: vec![],
-//         }
-//     }
+pub fn create_unwind_field(column: &str) -> Document {
+    doc! {
+        "$unwind":{
+            "path":column,
+            "preserveNullAndEmptyArrays":true
+        }
+    }
+}
 
-//     pub async fn insert<T: DeserializeOwned + Serialize>(
-//         self,
-//         data: T,
-//         pool: &sqlx::Pool<Postgres>,
-//     ) -> Result<T, String>
-//     where
-//         T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin,
-//     {
-//         let extract = bson::to_document(&data);
-//         if extract.is_err() {
-//             return Err(extract.unwrap_err().to_string());
-//         }
-//         let mut values: String = String::new();
-//         let mut params: String = String::new();
-//         let mut args: Vec<Bson> = Vec::new();
-//         let datas = extract.unwrap();
-//         let len = datas.len();
-//         let mut idx = 1;
-//         for (index, payload) in datas.iter().enumerate() {
-//             if payload.1.clone() != Bson::Null {
-//                 values += payload.0.as_str();
-//                 params += format!("${}", idx).as_str();
-//                 if index < len - 1 && len > 0 {
-//                     values += ",";
-//                     params += ",";
-//                 }
-//                 args.push(payload.1.clone());
-//                 idx += 1;
-//             }
-//         }
-//         let sql_insert = format!(
-//             "INSERT INTO {}({}) VALUES({}) RETURNING *;",
-//             self.table_name, values, params
-//         );
-//         info!(target:"db::execute","{}",sql_insert);
-//         let mut db = sqlx::query_as::<_, T>(&sql_insert);
-//         for arg in args {
-//             match arg {
-//                 Bson::Double(value) => {
-//                     info!(target:"db::execute::d","{}",value);
-//                     db = db.bind(value);
-//                 }
-//                 Bson::String(value) => {
-//                     info!(target:"db::execute::s","{}",value);
-//                     db = db.bind(value);
-//                 }
-//                 Bson::Array(bsons) => {
-//                     info!(target:"db::execute::b","{:?}",bsons.clone());
-//                     let data = bsons
-//                         .iter()
-//                         .map(|v| v.to_json_string().unwrap_or(String::new()))
-//                         .collect::<Vec<String>>();
-//                     db = db.bind(data);
-//                 }
-//                 Bson::Boolean(value) => {
-//                     info!(target:"db::execute::bo","{}",value);
-//                     db = db.bind(value);
-//                 }
-//                 Bson::Null => {
-//                     info!(target:"db::execute::null","");
-//                     db = db.bind("null");
-//                 }
-//                 Bson::RegularExpression(regex) => {
-//                     info!(target:"db::execute::reg","{}",regex);
-//                     db = db.bind(regex.pattern);
-//                 }
-//                 Bson::Int32(value) => {
-//                     info!(target:"db::execute::i32","{}",value);
-//                     db = db.bind(value);
-//                 }
-//                 Bson::Int64(value) => {
-//                     info!(target:"db::execute::i64","{}",value);
-//                     db = db.bind(value);
-//                 }
-//                 Bson::Timestamp(timestamp) => {
-//                     info!(target:"db::execute::tim","{}",timestamp);
-//                     db = db.bind(timestamp.time as i64);
-//                 }
-//                 Bson::ObjectId(object_id) => {
-//                     info!(target:"db::execute::obj","{}",object_id);
-//                     db = db.bind(object_id.to_string());
-//                 }
-//                 Bson::DateTime(date_time) => {
-//                     info!(target:"db::execute::dtm","{}",date_time);
-//                     db = db.bind(date_time.timestamp_millis());
-//                 }
-//                 Bson::Decimal128(decimal128) => {
-//                     info!(target:"db::execute::dec","{}",decimal128);
-//                     db = db.bind(decimal128.bytes());
-//                 }
-//                 _ => {}
-//             };
-//         }
-//         let execute = db.fetch_optional(pool).await;
-//         if execute.is_err() {
-//             return Err(format!("{:?}", execute.err()));
-//         }
-//         let execute = execute.unwrap();
-//         if execute.is_none() {
-//             return Err("NOT RETURNING".to_string());
-//         }
-//         Ok(execute.unwrap())
-//     }
+pub fn create_limit_field(limit: i64) -> Document {
+    doc! {"$limit":limit}
+}
+pub fn create_skip_field(skip: i64) -> Document {
+    doc! {"$skip":skip}
+}
 
-//     pub async fn insert_raw<T: DeserializeOwned + Serialize>(
-//         self,
-//         data: Document,
-//         pool: &sqlx::Pool<Postgres>,
-//     ) -> Result<T, String>
-//     where
-//         T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin,
-//     {
-//         let extract = bson::to_document(&data);
-//         if extract.is_err() {
-//             return Err(extract.unwrap_err().to_string());
-//         }
-//         let mut values: String = String::new();
-//         let mut params: String = String::new();
-//         let mut args: Vec<Bson> = Vec::new();
-//         let datas = extract.unwrap();
-//         let len = datas.len();
-//         let mut idx = 1;
-//         for (index, payload) in datas.iter().enumerate() {
-//             if payload.1.clone() != Bson::Null {
-//                 values += payload.0.as_str();
-//                 params += format!("${}", idx).as_str();
-//                 if index < len - 1 && len > 0 {
-//                     values += ",";
-//                     params += ",";
-//                 }
-//                 args.push(payload.1.clone());
-//                 idx += 1;
-//             }
-//         }
-//         let sql_insert = format!(
-//             "INSERT INTO {}({}) VALUES({}) RETURNING *;",
-//             self.table_name, values, params
-//         );
-//         info!(target:"db::execute","{}",sql_insert);
-//         let mut db = sqlx::query_as::<_, T>(&sql_insert);
-//         for arg in args {
-//             match arg {
-//                 Bson::Double(value) => {
-//                     info!(target:"db::execute::d","{}",value);
-//                     db = db.bind(value);
-//                 }
-//                 Bson::String(value) => {
-//                     info!(target:"db::execute::s","{}",value);
-//                     db = db.bind(value);
-//                 }
-//                 Bson::Array(bsons) => {
-//                     info!(target:"db::execute::b","{:?}",bsons.clone());
-//                     let data = bsons
-//                         .iter()
-//                         .map(|v| v.to_json_string().unwrap_or(String::new()))
-//                         .collect::<Vec<String>>();
-//                     db = db.bind(data);
-//                 }
-//                 Bson::Boolean(value) => {
-//                     info!(target:"db::execute::bo","{}",value);
-//                     db = db.bind(value);
-//                 }
-//                 Bson::Null => {
-//                     info!(target:"db::execute::null","");
-//                     db = db.bind("null");
-//                 }
-//                 Bson::RegularExpression(regex) => {
-//                     info!(target:"db::execute::reg","{}",regex);
-//                     db = db.bind(regex.pattern);
-//                 }
-//                 Bson::Int32(value) => {
-//                     info!(target:"db::execute::i32","{}",value);
-//                     db = db.bind(value);
-//                 }
-//                 Bson::Int64(value) => {
-//                     info!(target:"db::execute::i64","{}",value);
-//                     db = db.bind(value);
-//                 }
-//                 Bson::Timestamp(timestamp) => {
-//                     info!(target:"db::execute::tim","{}",timestamp);
-//                     db = db.bind(timestamp.time as i64);
-//                 }
-//                 Bson::ObjectId(object_id) => {
-//                     info!(target:"db::execute::obj","{}",object_id);
-//                     db = db.bind(object_id.to_string());
-//                 }
-//                 Bson::DateTime(date_time) => {
-//                     info!(target:"db::execute::dtm","{}",date_time);
-//                     db = db.bind(date_time.timestamp_millis());
-//                 }
-//                 Bson::Decimal128(decimal128) => {
-//                     info!(target:"db::execute::dec","{}",decimal128);
-//                     db = db.bind(decimal128.bytes());
-//                 }
-//                 _ => {}
-//             };
-//         }
-//         let execute = db.fetch_optional(pool).await;
-//         if execute.is_err() {
-//             return Err(format!("{:?}", execute.err()));
-//         }
-//         let execute = execute.unwrap();
-//         if execute.is_none() {
-//             return Err("NOT RETURNING".to_string());
-//         }
-//         Ok(execute.unwrap())
-//     }
+pub fn create_sort_desc_field(column: &str) -> Document {
+    doc! { column: -1 /*Sort by created_at in descending order*/}
+}
 
-//     pub async fn update<T: DeserializeOwned + Serialize>(
-//         self,
-//         data: T,
-//         pool: &sqlx::Pool<Postgres>,
-//     ) -> Result<T, String>
-//     where
-//         T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin,
-//     {
-//         let extract = bson::to_document(&data);
-//         if extract.is_err() {
-//             return Err(extract.unwrap_err().to_string());
-//         }
-//         let mut params: String = String::new();
-//         let mut args: Vec<Bson> = Vec::new();
-//         let datas = extract.unwrap();
-//         let len = datas.len();
-//         let mut idx = 1;
-//         for (index, payload) in datas.iter().enumerate() {
-//             if payload.1.clone() != Bson::Null {
-//                 params += format!("{}=${}", payload.0.as_str(), idx).as_str();
-//                 if index < len - 1 && len > 0 {
-//                     params += ",";
-//                 }
-//                 args.push(payload.1.clone());
-//                 idx += 1;
-//             }
-//         }
-//         let sql_update = format!(
-//             "UPDATE {} SET {} {} RETURNING *;",
-//             self.table_name, params, self.query
-//         );
-//         info!(target:"db::execute","{}",sql_update);
-//         let mut db = sqlx::query_as::<_, T>(&sql_update);
-//         for arg in args {
-//             match arg {
-//                 Bson::Double(value) => {
-//                     info!(target:"db::execute::d","{}",value);
-//                     db = db.bind(value);
-//                 }
-//                 Bson::String(value) => {
-//                     info!(target:"db::execute::s","{}",value);
-//                     db = db.bind(value);
-//                 }
-//                 Bson::Array(bsons) => {
-//                     info!(target:"db::execute::b","{:?}",bsons.clone());
-//                     let data = bsons
-//                         .iter()
-//                         .map(|v| v.to_json_string().unwrap_or(String::new()))
-//                         .collect::<Vec<String>>();
-//                     db = db.bind(data);
-//                 }
-//                 Bson::Boolean(value) => {
-//                     info!(target:"db::execute::bo","{}",value);
-//                     db = db.bind(value);
-//                 }
-//                 Bson::Null => {
-//                     info!(target:"db::execute::null","");
-//                     db = db.bind("null");
-//                 }
-//                 Bson::RegularExpression(regex) => {
-//                     info!(target:"db::execute::reg","{}",regex);
-//                     db = db.bind(regex.pattern);
-//                 }
-//                 Bson::Int32(value) => {
-//                     info!(target:"db::execute::i32","{}",value);
-//                     db = db.bind(value);
-//                 }
-//                 Bson::Int64(value) => {
-//                     info!(target:"db::execute::i64","{}",value);
-//                     db = db.bind(value);
-//                 }
-//                 Bson::Timestamp(timestamp) => {
-//                     info!(target:"db::execute::tim","{}",timestamp);
-//                     db = db.bind(timestamp.time as i64);
-//                 }
-//                 Bson::ObjectId(object_id) => {
-//                     info!(target:"db::execute::obj","{}",object_id);
-//                     db = db.bind(object_id.to_string());
-//                 }
-//                 Bson::DateTime(date_time) => {
-//                     info!(target:"db::execute::dtm","{}",date_time);
-//                     db = db.bind(date_time.timestamp_millis());
-//                 }
-//                 Bson::Symbol(_) => {}
-//                 Bson::Decimal128(decimal128) => {
-//                     info!(target:"db::execute::dec","{}",decimal128);
-//                     db = db.bind(decimal128.bytes());
-//                 }
-//                 _ => {}
-//             };
-//         }
-//         let execute = db.fetch_optional(pool).await;
-//         if execute.is_err() {
-//             return Err(format!("{:?}", execute.err()));
-//         }
-//         let execute = execute.unwrap();
-//         if execute.is_none() {
-//             return Err("NOT RETURNING".to_string());
-//         }
-//         Ok(execute.unwrap())
-//     }
+pub fn create_sort_asc_field(column: &str) -> Document {
+    doc! {column: 1 /* Sort by created_at in ascending order*/}
+}
 
-//     pub async fn update_raw<T: DeserializeOwned + Serialize>(
-//         self,
-//         data: Document,
-//         pool: &sqlx::Pool<Postgres>,
-//     ) -> Result<T, String>
-//     where
-//         T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin,
-//     {
-//         let mut params: String = String::new();
-//         let mut args: Vec<Bson> = Vec::new();
-//         let len = data.len();
-//         let mut idx = 1;
-//         for (index, payload) in data.iter().enumerate() {
-//             if payload.1.clone() != Bson::Null {
-//                 params += format!("{}=${}", payload.0.as_str(), idx).as_str();
-//                 if index < len - 1 && len > 0 {
-//                     params += ",";
-//                 }
-//                 args.push(payload.1.clone());
-//                 idx += 1;
-//             }
-//         }
-//         let sql_update = format!(
-//             "UPDATE {} SET {} {} RETURNING *;",
-//             self.table_name, params, self.query
-//         );
-//         info!(target:"db::execute","{}",sql_update);
-//         let mut db = sqlx::query_as::<_, T>(&sql_update);
-//         for arg in args {
-//             match arg {
-//                 Bson::Double(value) => {
-//                     info!(target:"db::execute::d","{}",value);
-//                     db = db.bind(value);
-//                 }
-//                 Bson::String(value) => {
-//                     info!(target:"db::execute::s","{}",value);
-//                     db = db.bind(value);
-//                 }
-//                 Bson::Array(bsons) => {
-//                     info!(target:"db::execute::b","{:?}",bsons.clone());
-//                     let data = bsons
-//                         .iter()
-//                         .map(|v| v.to_json_string().unwrap_or(String::new()))
-//                         .collect::<Vec<String>>();
-//                     db = db.bind(data);
-//                 }
-//                 Bson::Boolean(value) => {
-//                     info!(target:"db::execute::bo","{}",value);
-//                     db = db.bind(value);
-//                 }
-//                 Bson::Null => {
-//                     info!(target:"db::execute::null","");
-//                     db = db.bind("null");
-//                 }
-//                 Bson::RegularExpression(regex) => {
-//                     info!(target:"db::execute::reg","{}",regex);
-//                     db = db.bind(regex.pattern);
-//                 }
-//                 Bson::Int32(value) => {
-//                     info!(target:"db::execute::i32","{}",value);
-//                     db = db.bind(value);
-//                 }
-//                 Bson::Int64(value) => {
-//                     info!(target:"db::execute::i64","{}",value);
-//                     db = db.bind(value);
-//                 }
-//                 Bson::Timestamp(timestamp) => {
-//                     info!(target:"db::execute::tim","{}",timestamp);
-//                     db = db.bind(timestamp.time as i64);
-//                 }
+pub fn create_count_field() -> Document {
+    doc! {"$count": "total_items"}
+}
 
-//                 Bson::ObjectId(object_id) => {
-//                     info!(target:"db::execute::obj","{}",object_id);
-//                     db = db.bind(object_id.to_string());
-//                 }
-//                 Bson::DateTime(date_time) => {
-//                     info!(target:"db::execute::dtm","{}",date_time);
-//                     db = db.bind(date_time.timestamp_millis());
-//                 }
-//                 Bson::Symbol(_) => {}
-//                 Bson::Decimal128(decimal128) => {
-//                     info!(target:"db::execute::dec","{}",decimal128);
-//                     db = db.bind(decimal128.bytes());
-//                 }
-//                 _ => {}
-//             };
-//         }
-//         let execute = db.fetch_optional(pool).await;
-//         if execute.is_err() {
-//             return Err(format!("{:?}", execute.err()));
-//         }
-//         let execute = execute.unwrap();
-//         if execute.is_none() {
-//             return Err("NOT RETURNING".to_string());
-//         }
-//         Ok(execute.unwrap())
-//     }
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct Filter {
+    operator: String,
+    filter: Vec<Document>,
+}
 
-//     pub fn select(mut self, select: &str) -> Self {
-//         self.query += "SELECT ";
-//         self.query += select;
-//         self.query += " FROM ";
-//         self.query += self.table_name.as_str();
-//         self
-//     }
+impl Filter {
+    pub fn new(operator: String, filter: Vec<Document>) -> Self {
+        Filter { operator, filter }
+    }
+}
 
-//     pub fn join(mut self, table: &str, on: &str, alias: &str) -> Self {
-//         self.query += " JOIN ";
-//         self.query += table;
-//         if !alias.is_empty() {
-//             self.query += " ";
-//             self.query += alias;
-//         }
-//         self.query += " ON ";
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct Orm {
+    pub collection_name: String,
+    pub filter: Vec<Document>,
+    pub filters_group: HashMap<String, Filter>,
+    pub current_filter: Option<String>,
+    pub lookup: Vec<Document>,
+    pub unwind: Vec<Document>,
+    pub add_fields: Vec<Document>,
+    pub projects: Vec<Document>,
+    pub sort: Vec<Document>,
+    pub count: Option<Document>,
+    pub skip: Option<Document>,
+    pub limit: Option<Document>,
+}
 
-//         self.query += on;
-//         self
-//     }
+impl Orm {
+    pub fn new_default(from: &str) -> Self {
+        Orm {
+            collection_name: from.to_string(),
+            filter: vec![],
+            filters_group: Default::default(),
+            current_filter: None,
+            lookup: vec![],
+            unwind: vec![],
+            sort: vec![],
+            count: None,
+            skip: None,
+            limit: None,
+            add_fields: vec![],
+            projects: vec![],
+        }
+    }
+    pub fn get(from: &str) -> Get {
+        Get::from(from)
+    }
 
-//     pub fn inner_join(mut self, table: &str, on: &str, alias: &str) -> Self {
-//         self.query += " INNER JOIN ";
-//         self.query += table;
-//         if !alias.is_empty() {
-//             self.query += " ";
-//             self.query += alias;
-//         }
-//         self.query += " ON ";
+    pub fn update(from: &str) -> Update {
+        Update::from(from)
+    }
 
-//         self.query += on;
-//         self
-//     }
+    pub fn insert(from: &str) -> Insert {
+        Insert::from(from)
+    }
 
-//     pub fn outer_join(mut self, table: &str, on: &str, alias: &str) -> Self {
-//         self.query += "OUTER JOIN ";
-//         self.query += table;
-//         if !alias.is_empty() {
-//             self.query += " ";
-//             self.query += alias;
-//         }
-//         self.query += " ON ";
+    pub fn replace(from: &str) -> Replace {
+        Replace::from(from)
+    }
+    pub fn delete(from: &str) -> Delete {
+        Delete::from(from)
+    }
 
-//         self.query += on;
-//         self
-//     }
+    pub fn join_one(
+        mut self,
+        collection: &str,
+        from_field: &str,
+        foreign_field: &str,
+        alias: &str,
+    ) -> Self {
+        let doc = create_lookup_field(collection, from_field, foreign_field, alias);
+        self.lookup.push(doc);
+        let unwind = create_unwind_field(format!("${}", alias).as_str());
+        self.unwind.push(unwind);
+        self
+    }
 
-//     pub fn left_join(mut self, table: &str, on: &str, alias: &str) -> Self {
-//         self.query += " LEFT JOIN ";
-//         self.query += table;
-//         if !alias.is_empty() {
-//             self.query += " ";
-//             self.query += alias;
-//         }
-//         self.query += " ON ";
+    pub fn join_one_nested(
+        mut self,
+        collection: &str,
+        from_field: &str,
+        foreign_field: &str,
+        alias: &str,
+        parent: &str,
+    ) -> Self {
+        let parentxalias = format!("{}{}", parent, alias);
+        let doc = create_lookup_field(collection, from_field, foreign_field, &parentxalias);
+        self.lookup.push(doc);
+        let falias = format!("${}", parentxalias);
+        let fparent = format!("${}", parent);
+        self.unwind.push(doc! {
+            "$set": {
+                parent: {
+                    "$cond": {
+                        "if": {
+                            "$ifNull": [
+                                fparent.clone(),
+                                false
+                            ]
+                        },
+                        "then": {
+                            "$mergeObjects": [
+                                fparent,
+                                {
+                                    alias: {
+                                        "$cond": {
+                                            "if": {
+                                                "$gt": [
+                                                    {
+                                                        "$size": [falias.clone()]
+                                                    },
+                                                    0
+                                                ]
+                                            },
+                                            "then": {
+                                                "$arrayElemAt": [
+                                                    falias.clone(),
+                                                    0
+                                                ]
+                                            },
+                                            "else": "$$REMOVE"
+                                        }
+                                    }
+                                }
+                            ]
+                        },
+                        "else": "$$REMOVE"
+                    }
+                }
+            }
+        });
+        self
+    }
 
-//         self.query += on;
-//         self
-//     }
+    pub fn join_nested_one(
+        mut self,
+        collection: &str,
+        from_field: &str,
+        foreign_field: &str,
+        alias: &str,
+        add_to_fields: &str,
+    ) -> Self {
+        let doc = create_lookup_field(collection, from_field, foreign_field, alias);
+        let unwind = create_unwind_field(format!("${}", alias).as_str());
+        self.lookup.push(doc);
+        self.unwind.push(unwind);
+        self.add_fields.push(doc! {
+            "$addFields":{
+               add_to_fields:{
+                    "$arrayElemAt":[ format!("${}",alias),0]
+                }
 
-//     pub fn right_join(mut self, table: &str, on: &str, alias: &str) -> Self {
-//         self.query += " RIGHT JOIN ";
-//         self.query += table;
-//         if !alias.is_empty() {
-//             self.query += " ";
-//             self.query += alias;
-//         }
-//         self.query += " ON ";
+            }
+        });
+        // self.add_fields.push(doc! {
+        //     "$addFields":{
+        //         add_to_fields: format!("${}",alias)
+        //     }
+        // });
+        self.projects.push(doc! {
+            "$project":{
+                alias:0
+            }
+        });
+        self
+    }
+    pub fn join_many(
+        mut self,
+        collection: &str,
+        from_field: &str,
+        foreign_field: &str,
+        alias: &str,
+    ) -> Self {
+        let doc = create_lookup_field(collection, from_field, foreign_field, alias);
+        self.lookup.push(doc);
+        self
+    }
 
-//         self.query += on;
-//         self
-//     }
+    pub fn join_many_with_nested_one(
+        mut self,
+        collection: &str,
+        from_field: &str,
+        foreign_field: &str,
+        alias: &str,
+        collection_one: &str,
+        from_field_one: &str,
+        foreign_field_one: &str,
+        alias_one: &str,
+        add_to_fields: &str,
+    ) -> Self {
+        let doc = create_lookup_field(collection, from_field, foreign_field, alias);
+        let doc_one =
+            create_lookup_field(collection_one, from_field_one, foreign_field_one, alias_one);
+        self.lookup.push(doc);
+        self.lookup.push(doc_one);
 
-//     pub fn full_join(mut self, table: &str, on: &str, alias: &str) -> Self {
-//         self.query += " FULL JOIN ";
-//         self.query += table;
-//         if !alias.is_empty() {
-//             self.query += " ";
-//             self.query += alias;
-//         }
-//         self.query += " ON ";
+        self.add_fields.push(doc! {
+            "$addFields":{
+               add_to_fields:{
+                    "$arrayElemAt":[ format!("${}",alias_one),0]
+                }
 
-//         self.query += on;
-//         self
-//     }
+            }
+        });
+        self.projects.push(doc! {
+            "$project":{
+                alias_one:0
+            }
+        });
+        self
+    }
 
-//     pub fn when(mut self, data: &[FilterGroup]) -> Self {
-//         self.query += " WHERE ";
-//         for (_, clause) in data.iter().enumerate() {
-//             if self.args.len() > 0 {
-//                 self.query += " AND ";
-//             }
-//             match clause {
-//                 FilterGroup::BASIC(column) => {
-//                     let mut q = column.0.clone();
-//                     for (index, arg) in column.1.clone().iter().enumerate() {
-//                         let to_replace = format!("${}", index);
-//                         q = q.replace(&to_replace, format!("${}", self.args.len() + 1).as_str());
-//                         self.args.push(arg.clone());
-//                     }
-//                     self.query += q.as_str();
-//                 }
-//                 FilterGroup::OR(items) => {
-//                     self.query += "(";
-//                     for (index, column) in items.iter().enumerate() {
-//                         if index > 0 {
-//                             self.query += " OR ";
-//                         }
-//                         let mut q = column.0.clone();
-//                         for (index, arg) in column.1.clone().iter().enumerate() {
-//                             let to_replace = format!("${}", index);
-//                             q = q
-//                                 .replace(&to_replace, format!("${}", self.args.len() + 1).as_str());
-//                             self.args.push(arg.clone());
-//                         }
-//                         self.query += q.as_str();
-//                     }
-//                     self.query += ")";
-//                 }
-//                 FilterGroup::AND(items) => {
-//                     self.query += "(";
-//                     for (index, column) in items.iter().enumerate() {
-//                         if index > 0 {
-//                             self.query += " AND ";
-//                         }
-//                         let mut q = column.0.clone();
-//                         for (index, arg) in column.1.clone().iter().enumerate() {
-//                             let to_replace = format!("${}", index);
-//                             q = q
-//                                 .replace(&to_replace, format!("${}", self.args.len() + 1).as_str());
-//                             self.args.push(arg.clone());
-//                         }
-//                         self.query += q.as_str();
-//                     }
-//                     self.query += ")";
-//                 }
-//             }
-//         }
-//         self.query += ";";
-//         self
-//     }
+    pub fn group_by_asc(mut self, column: &str) -> Self {
+        let mut sort = self.sort;
+        sort.push(create_sort_asc_field(column));
+        self.sort = sort;
+        self
+    }
 
-//     pub async fn fetch_all<T>(self, pool: &sqlx::Pool<Postgres>) -> Result<Vec<T>, String>
-//     where
-//         T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin,
-//     {
-//         info!(target:"db:query","{}",self.query.clone());
-//         let mut db = sqlx::query_as::<_, T>(&self.query);
-//         for bind in self.args {
-//             match bind {
-//                 Bson::Double(value) => {
-//                     db = db.bind(value);
-//                 }
-//                 Bson::String(value) => {
-//                     db = db.bind(value);
-//                 }
-//                 Bson::Array(bsons) => {
-//                     let data = bsons
-//                         .iter()
-//                         .map(|v| v.to_json_string().unwrap_or(String::new()))
-//                         .collect::<Vec<String>>();
-//                     db = db.bind(data);
-//                 }
-//                 Bson::Document(_) => {}
-//                 Bson::Boolean(value) => {
-//                     db = db.bind(value);
-//                 }
-//                 Bson::Null => {
-//                     db = db.bind("NULL");
-//                 }
-//                 Bson::RegularExpression(regex) => {
-//                     db = db.bind(regex.pattern);
-//                 }
+    pub fn group_by_desc(mut self, column: &str) -> Self {
+        let mut sort = self.sort;
+        sort.push(create_sort_desc_field(column));
+        self.sort = sort;
+        self
+    }
 
-//                 Bson::Int32(value) => {
-//                     db = db.bind(value);
-//                 }
-//                 Bson::Int64(value) => {
-//                     db = db.bind(value);
-//                 }
-//                 Bson::Timestamp(timestamp) => {
-//                     db = db.bind(timestamp.time as i64);
-//                 }
-//                 Bson::Binary(_) => {}
-//                 Bson::ObjectId(object_id) => {
-//                     db = db.bind(object_id.to_string());
-//                 }
-//                 Bson::DateTime(date_time) => {
-//                     db = db.bind(date_time.timestamp_millis());
-//                 }
-//                 Bson::Symbol(_) => {}
-//                 Bson::Decimal128(decimal128) => {
-//                     db = db.bind(decimal128.bytes());
-//                 }
-//                 _ => {}
-//             };
-//         }
-//         let data = db.fetch_all(pool).await;
-//         if data.is_err() {
-//             let message = format!("{:?}", data.err());
-//             info!(target:"fetch::all::error","{}", message.clone());
-//             return Err(message);
-//         }
-//         Ok(data.unwrap())
-//     }
+    pub fn or(mut self) -> Self {
+        let key = format!("{}", self.filters_group.len() + 1);
+        self.current_filter = Some(key.clone());
+        self.filters_group
+            .insert(key, Filter::new("$or".to_string(), Vec::new()));
+        self
+    }
+    pub fn text(mut self) -> Self {
+        let key = format!("{}", self.filters_group.len() + 1);
+        self.current_filter = Some(key.clone());
+        self.filters_group
+            .insert(key, Filter::new("$text".to_string(), Vec::new()));
+        self
+    }
 
-//     pub fn build_query(self) -> String {
-//         self.query
-//     }
-// }
+    pub fn and(mut self) -> Self {
+        let key = format!("{}", self.filters_group.len() + 1);
+        self.current_filter = Some(key.clone());
+        self.filters_group
+            .insert(key, Filter::new("$and".to_string(), Vec::new()));
+        self
+    }
 
-// pub enum FilterGroup {
-//     BASIC((String, Vec<Bson>)),
-//     OR(Vec<(String, Vec<Bson>)>),
-//     AND(Vec<(String, Vec<Bson>)>),
-// }
+    pub fn filter_bool(mut self, column: &str, operator: Option<&str>, value: bool) -> Self {
+        let mut doc = Document::new();
+        if operator.is_none() {
+            doc.insert(column, value);
+        } else {
+            let mut eq = Document::new();
+            eq.insert(operator.unwrap(), value);
+            doc.insert(column, eq);
+        }
 
-// pub fn and(value: &[FilterGroup]) -> FilterGroup {
-//     let mut v = Vec::new();
-//     for group in value {
-//         match group {
-//             FilterGroup::BASIC(b) => {
-//                 v.push((b.0.clone(), b.1.clone()));
-//             }
-//             _ => {}
-//         }
-//     }
+        if self.current_filter.is_none() {
+            self.filter.push(doc);
+        } else {
+            let map = self.current_filter.clone().unwrap();
+            let hp = self.filters_group.get(&map.clone());
+            match hp {
+                None => {}
+                Some(filter) => {
+                    let mut f = filter.clone();
+                    f.filter.push(doc);
+                    self.filters_group.insert(map, f);
+                }
+            }
+        }
+        self
+    }
+    pub fn filter_array<T: Serialize>(
+        mut self,
+        column: &str,
+        operator: Option<&str>,
+        value: Vec<T>,
+    ) -> Self {
+        let mut doc = Document::new();
+        let mut value_as_doc: Vec<Document> = Vec::new();
 
-//     FilterGroup::AND(v)
-// }
-// pub fn or(value: &[FilterGroup]) -> FilterGroup {
-//     let mut v = Vec::new();
-//     for group in value {
-//         match group {
-//             FilterGroup::BASIC(b) => {
-//                 v.push((b.0.clone(), b.1.clone()));
-//             }
-//             _ => {}
-//         }
-//     }
+        for v in value {
+            if let Ok(parse) = bson::to_document(&v) {
+                value_as_doc.push(parse);
+            }
+        }
 
-//     FilterGroup::OR(v)
-// }
+        if operator.is_none() {
+            doc.insert(column, value_as_doc);
+        } else {
+            let mut eq = Document::new();
+            eq.insert(operator.unwrap(), value_as_doc);
+            doc.insert(column, eq);
+        }
 
-// pub fn equal<T: Into<Bson>>(column: &str, value: T) -> FilterGroup {
-//     let q = format!("{}=$0", column);
-//     let bsons: Vec<Bson> = vec![value.into()];
-//     FilterGroup::BASIC((q, bsons))
-// }
+        if self.current_filter.is_none() {
+            self.filter.push(doc);
+        } else {
+            let map = self.current_filter.clone().unwrap();
+            let hp = self.filters_group.get(&map.clone());
+            match hp {
+                None => {}
+                Some(filter) => {
+                    let mut f = filter.clone();
+                    f.filter.push(doc);
+                    self.filters_group.insert(map, f);
+                }
+            }
+        }
+        self
+    }
 
-// pub fn like<T: Into<Bson>>(column: &str, value: T) -> FilterGroup {
-//     let q = format!("{} LIKE $0", column);
-//     let bsons: Vec<Bson> = vec![value.into()];
-//     FilterGroup::BASIC((q, bsons))
-// }
+    pub fn filter_number(mut self, column: &str, operator: Option<&str>, value: i64) -> Self {
+        let mut doc = Document::new();
+        if operator.is_none() {
+            doc.insert(column, value);
+        } else {
+            let mut eq = Document::new();
+            eq.insert(operator.unwrap(), value);
+            doc.insert(column, eq);
+        }
 
-// pub fn ilike<T: Into<Bson>>(column: &str, value: T) -> FilterGroup {
-//     let q = format!("{} ILIKE $0", column);
-//     let bsons: Vec<Bson> = vec![value.into()];
-//     FilterGroup::BASIC((q, bsons))
-// }
+        if self.current_filter.is_none() {
+            self.filter.push(doc);
+        } else {
+            let map = self.current_filter.clone().unwrap();
+            let hp = self.filters_group.get(&map.clone());
+            match hp {
+                None => {}
+                Some(filter) => {
+                    let mut f = filter.clone();
+                    f.filter.push(doc);
+                    self.filters_group.insert(map, f);
+                }
+            }
+        }
+        self
+    }
+    pub fn filter_between_date(mut self, column: &str, from: DateTime, to: DateTime) -> Self {
+        let doc = doc! {
+                column:{
+                    "$gte":from,
+                    "$lte":to
+                }
+        };
 
-// pub fn gt<T: Into<Bson>>(column: &str, value: T) -> FilterGroup {
-//     let q = format!("{} > $0", column);
-//     let bsons: Vec<Bson> = vec![value.into()];
-//     FilterGroup::BASIC((q, bsons))
-// }
+        if self.current_filter.is_none() {
+            self.filter.push(doc);
+        } else {
+            let map = self.current_filter.clone().unwrap();
+            let hp = self.filters_group.get(&map.clone());
+            match hp {
+                None => {}
+                Some(filter) => {
+                    let mut f = filter.clone();
+                    f.filter.push(doc);
+                    self.filters_group.insert(map, f);
+                }
+            }
+        }
+        self
+    }
+    pub fn filter_null(mut self, column: &str, operator: Option<&str>) -> Self {
+        let mut doc = Document::new();
+        if operator.is_none() {
+            doc.insert(column, None::<i32>);
+        } else {
+            let mut eq = Document::new();
+            eq.insert(operator.unwrap(), None::<i32>);
+            doc.insert(column, eq);
+        }
 
-// pub fn gte<T: Into<Bson>>(column: &str, value: T) -> FilterGroup {
-//     let q = format!("{} >= $0", column);
-//     let bsons: Vec<Bson> = vec![value.into()];
-//     FilterGroup::BASIC((q, bsons))
-// }
+        if self.current_filter.is_none() {
+            self.filter.push(doc);
+        } else {
+            let map = self.current_filter.clone().unwrap();
+            let hp = self.filters_group.get(&map.clone());
+            match hp {
+                None => {}
+                Some(filter) => {
+                    let mut f = filter.clone();
+                    f.filter.push(doc);
+                    self.filters_group.insert(map, f);
+                }
+            }
+        }
+        self
+    }
+    pub fn filter_string(mut self, column: &str, operator: Option<&str>, value: &str) -> Self {
+        let mut doc = Document::new();
+        if operator.is_none() {
+            doc.insert(column, value);
+        } else {
+            let mut eq = Document::new();
+            eq.insert(operator.unwrap(), value);
+            doc.insert(column, eq);
+        }
 
-// pub fn lt<T: Into<Bson>>(column: &str, value: T) -> FilterGroup {
-//     let q = format!("{} < $0", column);
-//     let bsons: Vec<Bson> = vec![value.into()];
-//     FilterGroup::BASIC((q, bsons))
-// }
+        if self.current_filter.is_none() {
+            self.filter.push(doc);
+        } else {
+            let map = self.current_filter.clone().unwrap();
+            let hp = self.filters_group.get(&map.clone());
+            match hp {
+                None => {}
+                Some(filter) => {
+                    let mut f = filter.clone();
+                    f.filter.push(doc);
+                    self.filters_group.insert(map, f);
+                }
+            }
+        }
+        self
+    }
 
-// pub fn lte<T: Into<Bson>>(column: &str, value: T) -> FilterGroup {
-//     let q = format!("{} <= $0", column);
-//     let bsons: Vec<Bson> = vec![value.into()];
-//     FilterGroup::BASIC((q, bsons))
-// }
+    pub fn filter_like(mut self, column: &str, value: &str) -> Self {
+        let mut doc = Document::new();
 
-// #[cfg(test)]
-// mod test {
+        doc.insert(
+            column,
+            doc! {
+                "$regex":value,
+                "$options":"i"
+            },
+        );
 
-//     use crate::common::orm::orm::DB;
+        if self.current_filter.is_none() {
+            self.filter.push(doc);
+        } else {
+            let map = self.current_filter.clone().unwrap();
+            let hp = self.filters_group.get(&map.clone());
+            match hp {
+                None => {}
+                Some(filter) => {
+                    let mut f = filter.clone();
+                    f.filter.push(doc);
+                    self.filters_group.insert(map, f);
+                }
+            }
+        }
+        self
+    }
 
-//     fn test() {}
-// }
+    pub fn filter_search_string(
+        mut self,
+        column: &str,
+        operator: Option<&str>,
+        value: &str,
+    ) -> Self {
+        let mut doc = Document::new();
+        if operator.is_none() {
+            doc.insert(column, value);
+        } else {
+            let mut eq = Document::new();
+            eq.insert(operator.unwrap(), value);
+            doc.insert(column, eq);
+        }
+
+        if self.current_filter.is_none() {
+            self.filter.push(doc);
+        } else {
+            let map = self.current_filter.clone().unwrap();
+            let hp = self.filters_group.get(&map.clone());
+            match hp {
+                None => {}
+                Some(filter) => {
+                    let mut f = filter.clone();
+                    f.filter.push(doc);
+                    self.filters_group.insert(map, f);
+                }
+            }
+        }
+        self
+    }
+    pub fn filter_object_id(mut self, column: &str, value: &ObjectId) -> Self {
+        let mut doc = Document::new();
+
+        doc.insert(column, value);
+
+        if self.current_filter.is_none() {
+            self.filter.push(doc);
+        } else {
+            let map = self.current_filter.clone().unwrap();
+            let hp = self.filters_group.get(&map.clone());
+            match hp {
+                None => {}
+                Some(filter) => {
+                    let mut f = filter.clone();
+                    f.filter.push(doc);
+                    self.filters_group.insert(map, f);
+                }
+            }
+        }
+        self
+    }
+
+    pub fn filter_doc(mut self, column: &str, value: Document) -> Self {
+        let mut doc = Document::new();
+
+        doc.insert(column, value);
+
+        if self.current_filter.is_none() {
+            self.filter.push(doc);
+        } else {
+            let map = self.current_filter.clone().unwrap();
+            let hp = self.filters_group.get(&map.clone());
+            match hp {
+                None => {}
+                Some(filter) => {
+                    let mut f = filter.clone();
+                    f.filter.push(doc);
+                    self.filters_group.insert(map, f);
+                }
+            }
+        }
+        self
+    }
+
+    pub fn filter_object_id_with_equal(mut self, column: &str, value: &ObjectId) -> Self {
+        let mut doc = Document::new();
+
+        doc.insert(column, doc! {"$eq":value});
+
+        if self.current_filter.is_none() {
+            self.filter.push(doc);
+        } else {
+            let map = self.current_filter.clone().unwrap();
+            let hp = self.filters_group.get(&map.clone());
+            match hp {
+                None => {}
+                Some(filter) => {
+                    let mut f = filter.clone();
+                    f.filter.push(doc);
+                    self.filters_group.insert(map, f);
+                }
+            }
+        }
+        self
+    }
+
+    pub fn merge_field_all(self, is_aggregate: bool) -> Vec<Document> {
+        let mut result: Vec<Document> = Vec::new();
+
+        if self.filters_group.len() > 0 {
+            let mut parent: Document = Document::new();
+            let mut upper_filter: Document = Document::new();
+            for (_, filter) in self.filters_group {
+                //if opr = $text use object instead
+                if filter.operator == "$text" {
+                    if filter.filter.len() > 1 {
+                        let mut result_child = Document::new();
+                        for child in filter.filter {
+                            for child_key in child.keys() {
+                                result_child.insert(child_key, child.get(child_key));
+                            }
+                        }
+                        upper_filter.insert(filter.operator.clone(), result_child);
+                    }
+                } else {
+                    if filter.filter.len() > 1 {
+                        let mut result_child: Vec<Document> = Vec::new();
+
+                        for child in filter.filter {
+                            result_child.push(child);
+                        }
+                        upper_filter.insert(filter.operator, result_child);
+                    }
+                }
+            }
+
+            if !upper_filter.is_empty() {
+                if is_aggregate {
+                    parent.insert("$match", upper_filter);
+                    result.push(parent.clone());
+                } else {
+                    result.push(upper_filter.clone());
+                }
+            }
+        } else {
+            let mut parent = Document::new();
+            let mut result2: Vec<Document> = Vec::new();
+            for f in self.filter {
+                if is_aggregate {
+                    result2.push(f.clone());
+                } else {
+                    result.push(f.clone());
+                }
+            }
+            if is_aggregate {
+                if result2.len() > 1 {
+                    parent.insert("$match", result2);
+                } else {
+                    if result2.get(0).is_some() {
+                        let v = result2.get(0).unwrap();
+                        parent.insert("$match", v);
+                    }
+                }
+                if !parent.is_empty() {
+                    result.push(parent.clone());
+                }
+            }
+        }
+
+        if self.sort.len() > 0 {
+            let mut sort_doc = Document::new();
+            let mut doc = Document::new();
+            for child in self.sort {
+                for key in child.keys() {
+                    doc.insert(key, child.get(key));
+                }
+            }
+            sort_doc.insert("$sort", doc);
+            result.push(sort_doc);
+        }
+
+        for lookup in self.lookup {
+            result.push(lookup);
+        }
+
+        for unwind in self.unwind {
+            result.push(unwind);
+        }
+
+        for field in self.add_fields {
+            result.push(field);
+        }
+
+        for project in self.projects {
+            result.push(project);
+        }
+
+        if self.count.is_some() {
+            result.push(self.count.unwrap());
+        }
+
+        if self.skip.is_some() {
+            result.push(self.skip.unwrap());
+        }
+        // NO NEED LIMIT
+        // if self.limit.is_some() {
+        //     result.push(self.limit.unwrap());
+        // }
+        result
+    }
+
+    pub fn merge_field_pageable(self, is_aggregate: bool) -> (Vec<Document>, Vec<Document>) {
+        let mut result_count: Vec<Document> = Vec::new();
+        let mut result: Vec<Document> = Vec::new();
+
+        if self.filters_group.len() > 0 {
+            let mut parent: Document = Document::new();
+            let mut upper_filter: Document = Document::new();
+            for (_, filter) in self.filters_group {
+                //if opr = $text use object instead
+
+                if filter.operator == "$text" {
+                    //info!(target:"upper filter empty","{:?}",filter.clone());
+                    if filter.filter.len() > 0 {
+                        let mut result_child = Document::new();
+                        for child in filter.filter {
+                            for child_key in child.keys() {
+                                result_child.insert(child_key, child.get(child_key));
+                            }
+                        }
+                        upper_filter.insert(filter.operator.clone(), result_child);
+                    }
+                } else {
+                    if filter.filter.len() > 0 {
+                        let mut result_child: Vec<Document> = Vec::new();
+
+                        for child in filter.filter {
+                            result_child.push(child);
+                        }
+                        upper_filter.insert(filter.operator, result_child);
+                    }
+                }
+            }
+
+            if !upper_filter.is_empty() {
+                if is_aggregate {
+                    parent.insert("$match", upper_filter);
+                    result.push(parent.clone());
+                    result_count.push(parent.clone());
+                } else {
+                    result.push(upper_filter.clone());
+                    result_count.push(parent.clone());
+                }
+            }
+        } else {
+            let mut parent = Document::new();
+            let mut result2: Vec<Document> = Vec::new();
+            for f in self.filter {
+                if is_aggregate {
+                    result2.push(f.clone());
+                } else {
+                    result.push(f.clone());
+                }
+            }
+            if is_aggregate {
+                if result2.len() > 1 {
+                    parent.insert("$match", result2);
+                } else {
+                    if result2.get(0).is_some() {
+                        let v = result2.get(0).unwrap();
+                        parent.insert("$match", v);
+                    }
+                }
+                if !parent.is_empty() {
+                    result.push(parent.clone());
+                    result_count.push(parent.clone());
+                }
+            }
+        }
+        if self.sort.len() > 0 {
+            let mut sort_doc = Document::new();
+            let mut doc = Document::new();
+            for child in self.sort {
+                for key in child.keys() {
+                    doc.insert(key, child.get(key));
+                }
+            }
+            sort_doc.insert("$sort", doc);
+            result.push(sort_doc);
+        }
+
+        for lookup in self.lookup {
+            result.push(lookup.clone());
+            result_count.push(lookup);
+        }
+
+        for unwind in self.unwind {
+            result.push(unwind.clone());
+            result_count.push(unwind);
+        }
+        for field in self.add_fields {
+            result.push(field);
+        }
+
+        for project in self.projects {
+            result.push(project);
+        }
+        if self.count.is_some() {
+            result_count.push(self.count.unwrap());
+        }
+        if self.limit.is_some() {
+            result.push(self.limit.unwrap())
+        }
+        if self.skip.is_some() {
+            result.push(self.skip.unwrap())
+        }
+
+        (result, result_count)
+    }
+    pub fn get_filter_as_doc(self) -> Document {
+        if self.filters_group.len() > 0 {
+            let mut upper_filter: Document = Document::new();
+            for (_, filter) in self.filters_group {
+                let mut result_child: Vec<Document> = Vec::new();
+                for child in filter.filter {
+                    result_child.push(child);
+                }
+                upper_filter.insert(filter.operator, result_child);
+            }
+            upper_filter
+        } else {
+            self.filter.first().unwrap().clone()
+        }
+    }
+
+    pub fn merge_field(self, is_aggregate: bool) -> Vec<Document> {
+        let mut result: Vec<Document> = Vec::new();
+
+        if self.filters_group.len() > 0 {
+            let mut parent: Document = Document::new();
+            let mut upper_filter: Document = Document::new();
+            for (_, filter) in self.filters_group {
+                if filter.filter.len() > 1 {
+                    let mut result_child: Vec<Document> = Vec::new();
+                    for child in filter.filter {
+                        result_child.push(child);
+                    }
+                    upper_filter.insert(filter.operator, result_child);
+                }
+            }
+            if !upper_filter.is_empty() {
+                if is_aggregate {
+                    parent.insert("$match", upper_filter);
+                    result.push(parent.clone());
+                } else {
+                    result.push(upper_filter.clone());
+                }
+            }
+        } else {
+            let mut parent = Document::new();
+            let mut result2: Vec<Document> = Vec::new();
+            for f in self.filter {
+                if is_aggregate {
+                    result2.push(f.clone());
+                } else {
+                    result.push(f.clone());
+                }
+            }
+            if is_aggregate {
+                if result2.len() > 1 {
+                    parent.insert("$match", result2);
+                } else {
+                    if let Some(m) = result2.get(0) {
+                        parent.insert("$match", m);
+                    }
+                }
+                if !parent.is_empty() {
+                    result.push(parent.clone());
+                }
+            }
+        }
+
+        if self.sort.len() > 0 {
+            let mut sort_doc = Document::new();
+            let mut doc = Document::new();
+            for child in self.sort {
+                for key in child.keys() {
+                    doc.insert(key, child.get(key));
+                }
+            }
+            sort_doc.insert("$sort", doc);
+            result.push(sort_doc);
+        }
+        for lookup in self.lookup {
+            result.push(lookup);
+        }
+
+        for unwind in self.unwind {
+            result.push(unwind);
+        }
+
+        if self.count.is_some() {
+            result.push(self.count.unwrap());
+        }
+
+        if self.skip.is_some() {
+            result.push(self.skip.unwrap());
+        }
+        if self.limit.is_some() {
+            result.push(self.limit.unwrap());
+        }
+        result
+    }
+
+    pub fn show_merging(self) -> Vec<Document> {
+        self.merge_field(true)
+    }
+}

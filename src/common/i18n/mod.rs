@@ -35,7 +35,6 @@ impl I18n {
             for (index, feature) in features.iter().enumerate() {
                 info!(target:"load::locale::loading","attempt {} feature {}",index+1,feature);
                 let minio = MinIO::new()
-                    .await
                     .get_file("assets".to_string(), format!("{}.json", feature))
                     .await;
                 if minio.is_ok() {
@@ -75,7 +74,7 @@ impl I18n {
     pub fn translate(self, name: &str) -> String {
         if let Some(locale) = self.languages.get(name) {
             if let Some(greeting) = locale.get(&self.locale) {
-                let mut str = greeting.to_string();
+                let str = greeting.to_string();
                 info!(target: "i18n::translating","{}",name);
                 str
             } else {

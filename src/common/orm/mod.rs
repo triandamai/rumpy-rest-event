@@ -1,7 +1,13 @@
-// #[macro_use]
-// pub mod filter;
+use crate::common::env_config::EnvConfig;
 
-// pub mod r#trait;
-// pub mod orm;
+pub mod delete;
+pub mod get;
+pub mod insert;
+pub mod orm;
+pub mod replace;
+pub mod update;
 
-pub const DB_NAME: &str = "strong-teams";
+pub fn get_db_name() -> String {
+    let env = EnvConfig::init();
+    format!("RUMPY-{}", env.mode).to_lowercase()
+}

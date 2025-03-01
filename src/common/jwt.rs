@@ -7,7 +7,6 @@ use axum::http::request::Parts;
 use axum::response::{IntoResponse, Response};
 use axum::RequestPartsExt;
 
-use bson::oid::ObjectId;
 use chrono::{Duration, Local};
 use jsonwebtoken::{
     errors::Error as JwtError, Algorithm, DecodingKey, EncodingKey, Header, TokenData, Validation,
@@ -19,7 +18,6 @@ use super::app_state::AppState;
 use crate::common::api_response::ApiResponse;
 use crate::common::env_config::EnvConfig;
 use crate::common::permission::permission::app;
-use crate::common::utils::{create_object_id_option, create_or_new_object_id};
 
 pub struct JwtUtil {
     pub claims: JwtClaims,
@@ -36,9 +34,8 @@ pub struct JwtClaims {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AuthContext {
     pub claims: JwtClaims,
+    pub session: HashMap<String, String>,
     pub permissions: HashMap<String, String>,
-    pub branch_id: Option<ObjectId>,
-    pub user_id: Option<ObjectId>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -86,13 +83,6 @@ impl JwtUtil {
 }
 
 impl AuthContext {
-    pub fn is_branch_id_equal(&self, id: &ObjectId) -> bool {
-        if self.branch_id.is_none() {
-            return false;
-        }
-        let branch_id = self.branch_id.unwrap();
-        branch_id.eq(id)
-    }
     pub fn authorize(&self, permission: &str) -> bool {
         if self.permissions.contains_key(app::admin::ALL) {
             return true;
@@ -171,7 +161,7 @@ where
                     let mut state = state.unwrap();
 
                     let default_hashmap: HashMap<String, String> = HashMap::new();
-                    let default = String::from("");
+
                     let session = state.redis.get_session_sign_in(claims.sub.clone().as_str());
 
                     if session.is_err() {
@@ -184,12 +174,6 @@ where
                         return Err(AuthError::MissingCredentials);
                     }
 
-                    let user_id = session
-                        .get("USER-ID")
-                        .map_or(None, |s| create_object_id_option(s.as_str()));
-                    let branch_id = session.get("BRANCH-KEY").unwrap_or(&default);
-                    let branch_id = create_or_new_object_id(branch_id);
-
                     let permissions = &state
                         .redis
                         .get_session_permission(claims.sub.clone().as_str())
@@ -197,9 +181,8 @@ where
 
                     Ok(AuthContext {
                         claims,
-                        branch_id,
-                        user_id,
                         permissions: permissions.clone(),
+                        session: session.clone(),
                     })
                 } else {
                     return Err(AuthError::MissingCredentials);
@@ -212,6 +195,42 @@ where
         }
     }
 }
+
+
+impl<S> FromRequestParts<S> for JwtClaims
+where
+    AppState: FromRef<S>,
+    S: Send + Sync,
+{
+    type Rejection = AuthError;
+
+    async fn from_request_parts(parts: &mut Parts, _s: &S) -> Result<Self, Self::Rejection> {
+        if let Some(auth) = parts.headers.get("authorization") {
+            if let Ok(auth_str) = auth.to_str() {
+                if let Some(token) = auth_str.strip_prefix("Bearer ") {
+                    let token =
+                        JwtUtil::decode(token.to_string()).map_err(|_| AuthError::InvalidToken);
+
+                    if token.is_err() {
+                        return Err(token.unwrap_err());
+                    }
+                    let sub = token?;
+
+                    let claims = sub.claims;
+
+                    Ok(claims)
+                } else {
+                    Err(AuthError::MissingCredentials)
+                }
+            } else {
+                Err(AuthError::MissingCredentials)
+            }
+        } else {
+            Err(AuthError::MissingCredentials)
+        }
+    }
+}
+
 
 impl IntoResponse for AuthError {
     fn into_response(self) -> Response {

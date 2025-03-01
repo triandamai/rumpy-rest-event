@@ -25,12 +25,26 @@ pub struct PaginationRequest {
     pub page: Option<i64>,
     pub size: Option<i64>,
     pub q: Option<String>,
-    pub name: Option<String>,
-    pub price: Option<String>,
-    pub date: Option<String>,
-    pub from: Option<String>,
-    pub to: Option<String>,
-    pub is_membership:Option<bool>
+    pub order: Option<String>,
+}
+
+impl PaginationRequest {
+    pub fn get_limit(self) -> i64 {
+        let size = self.size.unwrap_or(10);
+        if self.page.is_some() {
+            let page = self.get_offset().clone();
+            return if page < 1 { size } else { page * size };
+        }
+        size
+    }
+
+    pub fn get_offset(self) -> i64 {
+        let page = self.page.unwrap();
+        if page < 1 {
+            return 0;
+        }
+        page
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]

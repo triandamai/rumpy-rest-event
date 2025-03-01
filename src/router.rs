@@ -2,13 +2,73 @@ use crate::common::api_response::ApiResponse;
 use crate::common::app_state::AppState;
 use crate::common::middleware::method_not_allowed;
 use crate::{feature, routes};
-use axum::routing::{get, post};
+use axum::routing::{delete, get, post, put};
 use axum::Router;
 
 pub fn init_routes(state: AppState) -> Router {
     Router::new()
         .route("/", get(routes::index::index))
         .route("/auth/sign-up-email", post(feature::auth::sign_up_email))
+        .route(
+            "/auth/sign-up-email/verify/{code}",
+            post(feature::auth::sign_up_email_confirmation),
+        )
+        .route("/auth/sign-in-email", post(feature::auth::sign_in_email))
+        .route(
+            "/auth/reset-password/request",
+            post(feature::auth::request_reset_password),
+        )
+        .route(
+            "/auth/reset-password/verify/{code}",
+            post(feature::auth::verify_reset_password),
+        )
+        .route(
+            "/auth/reset-password/set",
+            post(feature::auth::set_new_password),
+        )
+        .route("/user/profile", get(feature::user::get_user_profile))
+        .route(
+            "/user/update-profile-picture",
+            put(feature::user::update_profile_picture),
+        )
+        .route(
+            "/user/change-password",
+            post(feature::user::change_password),
+        )
+        .route(
+            "/thread/public/list",
+            get(feature::thread::get_list_public_thread),
+        )
+        .route(
+            "/thread/discussion/list",
+            get(feature::thread::get_list_discussion_thread),
+        )
+        .route(
+            "/thread/comments/list/{thread_id}",
+            get(feature::thread::get_list_comment_thread),
+        )
+        .route(
+            "/thread/user/{user_id}",
+            get(feature::thread::get_list_user_thread),
+        )
+        .route("/thread/create", post(feature::thread::create_thread))
+        .route(
+            "/thread/upload-attachment",
+            post(feature::thread::upload_attachment),
+        )
+        .route(
+            "/thread/update/{thread_id}",
+            put(feature::thread::update_thread),
+        )
+        .route(
+            "/thread/delete/{thread_id}",
+            delete(feature::thread::delete_thread),
+        )
+        .route(
+            "/thread/vote/down/{thread_id}",
+            post(feature::thread::downvote),
+        )
+        .route("/thread/vote/up/{thread_id}", post(feature::thread::upvote))
         .layer(axum::middleware::from_fn(method_not_allowed))
         .fallback(handle_404)
         .with_state(state)

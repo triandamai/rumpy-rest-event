@@ -16,7 +16,7 @@ pub struct EnvConfig {
 
 impl EnvConfig {
     pub fn init() -> Arc<EnvConfig> {
-        info!(target: "env::config","Initializing env config...");
+        //info!(target: "env::config","Initializing env config...");
         dotenv().ok();
         let env_mode = std::env::var("MODE").unwrap_or("DEV".to_string());
 
@@ -87,7 +87,7 @@ impl EnvConfig {
                 env_redis.unwrap_err().to_string()
             )
         }
-        info!(target: "env::config","Finish Init env config...");
+        //info!(target: "env::config","Finish Init env config...");
         Arc::new(EnvConfig {
             database_url: env_database.unwrap(),
             base_url: env_base_url.unwrap(),
