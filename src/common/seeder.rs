@@ -62,6 +62,22 @@ pub async fn init_seeder(db_client: &Client) {
                     .build(),
             )
             .await;
+
+        let _index_topic = &db_client
+            .database(&get_db_name())
+            .collection::<Document>("topic")
+            .create_index(
+                IndexModel::builder()
+                    .keys(doc! {  "name":"text","description":"text" })
+                    .options(
+                        IndexOptions::builder()
+                            .name("topic-index-fts".to_string())
+                            .unique(true)
+                            .build(),
+                    )
+                    .build(),
+            )
+            .await;
     }
     info!(target: "seeder", "seeding completed application ready");
 }

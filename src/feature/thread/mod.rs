@@ -3,7 +3,7 @@ use std::str::FromStr;
 use crate::common::api_response::{ApiResponse, PaginationRequest, PagingResponse};
 use crate::common::app_state::AppState;
 use crate::common::constant::{
-    BUCKET_THREAD, KIND_DISCUSSION, KIND_PUBLIC, KIND_THREAD_ATTACHMENT, KIND_UPVOTE_THREAD,
+    BUCKET_THREAD, KIND_DISCUSSION, KIND_PUBLIC, KIND_THREAD_ATTACHMENT, KIND_UP_VOTE_THREAD,
     REDIS_KEY_USER_EMAIL,
 };
 use crate::common::jwt::AuthContext;
@@ -44,33 +44,18 @@ pub async fn get_list_public_thread(
 
     let mut find_thread = Orm::get("thread");
 
-    if query.order.is_some() {
-        let ordering = query.order.unwrap_or("".to_string());
-        if !ordering.is_empty() {
-            let split = ordering.split(":").collect::<Vec<&str>>();
-            let column = split.get(0);
-            let group = split.get(1);
-            if column.is_some() {
-                if group.is_some() {
-                    if split[1] == "ASC" {
-                        find_thread = find_thread.group_by_asc(split[0]);
-                    } else {
-                        find_thread = find_thread.group_by_desc(split[0]);
-                    }
-                } else {
-                    find_thread = find_thread.group_by_desc(split[0]);
-                }
-            }
-        }
-    } else {
-        find_thread = find_thread.group_by_desc("created_at");
-    }
-
-    if query.q.is_some() {
-        let text = query.q.clone().unwrap_or("".to_string());
+    if let Some(text) = query.q.clone() {
         find_thread = find_thread
             .text()
             .filter_string("$search", None, text.as_str());
+    }
+
+    if let Some((column, order)) = query.get_order() {
+        find_thread = if order == "ASC" {
+            find_thread.group_by_asc(&column)
+        } else {
+            find_thread.group_by_desc(&column)
+        };
     }
 
     let find_thread = find_thread
@@ -96,8 +81,8 @@ pub async fn get_list_public_thread(
         .filter_string("kind", Some("$eq"), KIND_PUBLIC)
         .pageable::<ThreadDTO>(page, size, &state.db)
         .await;
-    if find_thread.is_err() {
-        info!(target:"thread::list","failed to fetch {:?}",find_thread.unwrap_err());
+    if let Err(err) = find_thread {
+        info!(target:"thread::list","failed to fetch {:?}",err);
         return ApiResponse::failed(&i18n.translate("thread.not-found"));
     }
 
@@ -118,33 +103,18 @@ pub async fn get_list_discussion_thread(
 
     let mut find_thread = Orm::get("thread");
 
-    if query.order.is_some() {
-        let ordering = query.order.unwrap_or("".to_string());
-        if !ordering.is_empty() {
-            let split = ordering.split(":").collect::<Vec<&str>>();
-            let column = split.get(0);
-            let group = split.get(1);
-            if column.is_some() {
-                if group.is_some() {
-                    if split[1] == "ASC" {
-                        find_thread = find_thread.group_by_asc(split[0]);
-                    } else {
-                        find_thread = find_thread.group_by_desc(split[0]);
-                    }
-                } else {
-                    find_thread = find_thread.group_by_desc(split[0]);
-                }
-            }
-        }
-    } else {
-        find_thread = find_thread.group_by_desc("created_at");
-    }
-
-    if query.q.is_some() {
-        let text = query.q.clone().unwrap_or("".to_string());
+    if let Some(text) = query.q.clone() {
         find_thread = find_thread
             .text()
             .filter_string("$search", None, text.as_str());
+    }
+
+    if let Some((column, order)) = query.get_order() {
+        find_thread = if order == "ASC" {
+            find_thread.group_by_asc(&column)
+        } else {
+            find_thread.group_by_desc(&column)
+        };
     }
 
     let find_thread = find_thread
@@ -170,8 +140,8 @@ pub async fn get_list_discussion_thread(
         .filter_string("kind", Some("$eq"), KIND_DISCUSSION)
         .pageable::<ThreadDTO>(page, size, &state.db)
         .await;
-    if find_thread.is_err() {
-        info!(target:"thread::list","failed to fetch {:?}",find_thread.unwrap_err());
+    if let Err(err) = find_thread {
+        info!(target:"thread::list","failed to fetch {:?}",err);
         return ApiResponse::failed(&i18n.translate("thread.not-found"));
     }
 
@@ -192,40 +162,25 @@ pub async fn get_list_user_thread(
     let size = query.clone().size.unwrap_or(10);
 
     let create_user_id = ObjectId::from_str(&user_id);
-    if create_user_id.is_err() {
-        info!(target:"","");
+    if let Err(err) = create_user_id {
+        info!(target:"user::thread::not-found","cannot create user id {:?}",err);
         return ApiResponse::not_found(&i18n.translate("thread.list.user.not-found"));
     }
 
     let mut find_thread = Orm::get("thread");
 
-    if query.order.is_some() {
-        let ordering = query.order.unwrap_or("".to_string());
-        if !ordering.is_empty() {
-            let split = ordering.split(":").collect::<Vec<&str>>();
-            let column = split.get(0);
-            let group = split.get(1);
-            if column.is_some() {
-                if group.is_some() {
-                    if split[1] == "ASC" {
-                        find_thread = find_thread.group_by_asc(split[0]);
-                    } else {
-                        find_thread = find_thread.group_by_desc(split[0]);
-                    }
-                } else {
-                    find_thread = find_thread.group_by_desc(split[0]);
-                }
-            }
-        }
-    } else {
-        find_thread = find_thread.group_by_desc("created_at");
-    }
-
-    if query.q.is_some() {
-        let text = query.q.clone().unwrap_or("".to_string());
+    if let Some(text) = query.q.clone() {
         find_thread = find_thread
             .text()
             .filter_string("$search", None, text.as_str());
+    }
+
+    if let Some((column, order)) = query.get_order() {
+        find_thread = if order == "ASC" {
+            find_thread.group_by_asc(&column)
+        } else {
+            find_thread.group_by_desc(&column)
+        };
     }
 
     let find_thread = find_thread
@@ -250,8 +205,8 @@ pub async fn get_list_user_thread(
         .filter_object_id("created_by_id", &create_user_id.unwrap())
         .pageable::<ThreadDTO>(page, size, &state.db)
         .await;
-    if find_thread.is_err() {
-        info!(target:"thread::list","failed to fetch {:?}",find_thread.unwrap_err());
+    if let Err(err) = find_thread {
+        info!(target:"thread::list","failed to fetch {:?}",err);
         return ApiResponse::failed(&i18n.translate("thread.not-found"));
     }
 
@@ -279,33 +234,18 @@ pub async fn get_list_comment_thread(
 
     let mut find_thread = Orm::get("thread");
 
-    if query.order.is_some() {
-        let ordering = query.order.unwrap_or("".to_string());
-        if !ordering.is_empty() {
-            let split = ordering.split(":").collect::<Vec<&str>>();
-            let column = split.get(0);
-            let group = split.get(1);
-            if column.is_some() {
-                if group.is_some() {
-                    if split[1] == "ASC" {
-                        find_thread = find_thread.group_by_asc(split[0]);
-                    } else {
-                        find_thread = find_thread.group_by_desc(split[0]);
-                    }
-                } else {
-                    find_thread = find_thread.group_by_desc(split[0]);
-                }
-            }
-        }
-    } else {
-        find_thread = find_thread.group_by_desc("created_at");
-    }
-
-    if query.q.is_some() {
-        let text = query.q.clone().unwrap_or("".to_string());
+    if let Some(text) = query.q.clone() {
         find_thread = find_thread
             .text()
             .filter_string("$search", None, text.as_str());
+    }
+
+    if let Some((column, order)) = query.get_order() {
+        find_thread = if order == "ASC" {
+            find_thread.group_by_asc(&column)
+        } else {
+            find_thread.group_by_desc(&column)
+        };
     }
 
     let find_thread = find_thread
@@ -331,8 +271,8 @@ pub async fn get_list_comment_thread(
         .filter_string("kind", Some("$eq"), KIND_PUBLIC)
         .pageable::<ThreadDTO>(page, size, &state.db)
         .await;
-    if find_thread.is_err() {
-        info!(target:"thread::list","failed to fetch {:?}",find_thread.unwrap_err());
+    if let Err(err) = find_thread {
+        info!(target:"thread::list","failed to fetch {:?}",err);
         return ApiResponse::failed(&i18n.translate("thread.not-found"));
     }
 
@@ -348,14 +288,13 @@ pub async fn upload_attachment(
     let i18n = i18n!("user", lang);
 
     let validate = form_data.validate();
-    if validate.is_err() {
-        let err = validate.unwrap_err();
+    if let Err(err) = validate{
         info!(target:"user::profile::validation-error","{:?}",err.clone());
         return ApiResponse::error_validation(err, i18n.translate("user.profile.failed").as_str());
     }
 
     let user_email: Option<&String> = auth_context.session.get(REDIS_KEY_USER_EMAIL);
-    if user_email.is_none() {
+    if let None = user_email {
         info!(target:"user::profile::failed","connection error");
         return ApiResponse::failed(i18n.translate("user.profile.failed").as_str());
     }
@@ -366,8 +305,8 @@ pub async fn upload_attachment(
         .filter_string("email", Some("$eq"), &user_email)
         .one::<User>(&state.db)
         .await;
-    if find_user.is_err() {
-        info!(target:"user::profile::failed","connection error");
+    if let Err(err) = find_user{
+        info!(target:"user::profile::failed","user not found {:?}",err);
         return ApiResponse::failed(i18n.translate("user.profile.failed").as_str());
     }
 
@@ -384,8 +323,7 @@ pub async fn upload_attachment(
     };
 
     let session = state.db.start_session().await;
-    if session.is_err() {
-        let err = session.unwrap_err();
+    if let Err(err) = session {
         info!(target:"stock::update","{:?}",err);
         return ApiResponse::failed(&i18n.translate("thread::create::failed"));
     }
@@ -394,8 +332,8 @@ pub async fn upload_attachment(
     let save_attachment = Orm::insert("reserve-attachment")
         .one_with_session(attachment.clone(), &state.db, &mut session)
         .await;
-    if save_attachment.is_err() {
-        info!(target:"attachment::upload::faile","{:?}",save_attachment.unwrap_err());
+    if let Err(err)= save_attachment{
+        info!(target:"attachment::upload::faile","{:?}",err);
         let _ = session.abort_transaction().await;
         let _ = file.remove_file();
         return ApiResponse::failed(&i18n.translate("attachment.failed"));
@@ -409,8 +347,8 @@ pub async fn upload_attachment(
         )
         .await;
 
-    if upload.is_err() {
-        info!(target:"attachment::upload::faile","{:?}",upload.unwrap_err());
+    if let Err(err)= upload{
+        info!(target:"attachment::upload::faile","{:?}",err);
         let _ = session.abort_transaction().await;
         let _ = file.remove_file();
         return ApiResponse::failed(&i18n.translate("attachment.failed"));
@@ -430,14 +368,13 @@ pub async fn create_thread(
     let i18n = i18n!("user", lang);
 
     let validate = body.validate();
-    if validate.is_err() {
-        let err = validate.unwrap_err();
+    if let Err(err)= validate {
         info!(target:"user::profile::validation-error","{:?}",err.clone());
         return ApiResponse::error_validation(err, i18n.translate("user.profile.failed").as_str());
     }
 
     let user_email: Option<&String> = auth_context.session.get(REDIS_KEY_USER_EMAIL);
-    if user_email.is_none() {
+    if let None = user_email{
         info!(target:"user::profile::failed","connection error");
         return ApiResponse::failed(i18n.translate("user.profile.failed").as_str());
     }
@@ -448,8 +385,8 @@ pub async fn create_thread(
         .filter_string("email", Some("$eq"), &user_email)
         .one::<User>(&state.db)
         .await;
-    if find_user.is_err() {
-        info!(target:"user::profile::failed","connection error");
+    if let Err(err) = find_user {
+        info!(target:"user::profile::failed","{:?}",err);
         return ApiResponse::failed(i18n.translate("user.profile.failed").as_str());
     }
 
@@ -481,6 +418,7 @@ pub async fn create_thread(
         title: body.title,
         content: body.content,
         attachment: find_all_attachment.clone(),
+        topics: Some(body.topics.clone()),
         up_vote_count: 0,
         down_vote_count: 0,
         quote_count: 0,
@@ -489,8 +427,7 @@ pub async fn create_thread(
         updated_at: DateTime::now(),
     };
     let session = state.db.start_session().await;
-    if session.is_err() {
-        let err = session.unwrap_err();
+    if let Err(err)= session {
         info!(target:"stock::update","{:?}",err);
         return ApiResponse::failed(&i18n.translate("thread::create::failed"));
     }
@@ -501,20 +438,19 @@ pub async fn create_thread(
         .one_with_session(thread, &state.db, &mut session)
         .await;
 
-    if insert_thread.is_err() {
-        let err = insert_thread.unwrap_err();
+    if let Err(err)= insert_thread {
         info!(target:"stock::update","insert failed {:?}",err);
         let _ = session.abort_transaction().await;
         return ApiResponse::failed(&i18n.translate("thread::create::failed"));
     }
 
     //update counter
-    if quote.is_some() {
+    if let Some(quote) = quote {
         let update_counter = Orm::update("thread")
             .inc(doc! {
                 "quote_count":1
             })
-            .filter_object_id("_id", &quote.unwrap())
+            .filter_object_id("_id", &quote)
             .execute_one_with_session(&state.db, &mut session)
             .await;
         if update_counter.is_err() {
@@ -525,16 +461,15 @@ pub async fn create_thread(
         }
     }
 
-    if reply.is_some() {
+    if let Some(reply) = reply {
         let update_counter = Orm::update("thread")
             .inc(doc! {
                 "reply_count":1
             })
-            .filter_object_id("_id", &quote.unwrap())
+            .filter_object_id("_id", &reply)
             .execute_one_with_session(&state.db, &mut session)
             .await;
-        if update_counter.is_err() {
-            let err = update_counter.unwrap_err();
+        if let Err(err)= update_counter {
             info!(target:"stock::update","insert failed {:?}",err);
             let _ = session.abort_transaction().await;
             return ApiResponse::failed(&i18n.translate("thread::create::failed"));
@@ -547,8 +482,7 @@ pub async fn create_thread(
         .many_with_session(&state.db, &mut session)
         .await;
 
-    if delete_all_reserve_attachment.is_err() {
-        let err = delete_all_reserve_attachment.unwrap_err();
+    if let Err(err) = delete_all_reserve_attachment{
         info!(target:"stock::update","insert failed {:?}",err);
         let _ = session.abort_transaction().await;
         return ApiResponse::failed(&i18n.translate("thread::create::failed"));
@@ -560,8 +494,7 @@ pub async fn create_thread(
     }
 
     let commit = session.commit_transaction().await;
-    if commit.is_err() {
-        let err = commit.unwrap_err();
+    if let Err(err) = commit {
         info!(target:"stock::update","insert failed {:?}",err);
         return ApiResponse::failed(&i18n.translate("thread::create::failed"));
     }
@@ -587,8 +520,8 @@ pub async fn create_thread(
         .filter_object_id("_id", &insert_thread.unwrap())
         .one::<ThreadDTO>(&state.db)
         .await;
-    if find_thread.is_err() {
-        info!(target:"thread::list","failed to fetch {:?}",find_thread.unwrap_err());
+    if let Err(err)= find_thread {
+        info!(target:"thread::list","failed to fetch {:?}",err);
         return ApiResponse::failed(&i18n.translate("thread.not-found"));
     }
     ApiResponse::ok(
@@ -607,20 +540,19 @@ pub async fn update_thread(
     let i18n = i18n!("user", lang);
 
     let validate = body.validate();
-    if validate.is_err() {
-        let err = validate.unwrap_err();
+    if let Err(err) = validate {
         info!(target:"user::profile::validation-error","{:?}",err.clone());
         return ApiResponse::error_validation(err, i18n.translate("user.profile.failed").as_str());
     }
 
     let create_thread_id = create_object_id_option(&thread_id);
 
-    if create_thread_id.is_none() {
+    if let None = create_thread_id {
         info!(target:"user::profile::failed","connection error");
         return ApiResponse::failed(i18n.translate("user.profile.failed").as_str());
     }
     let user_email: Option<&String> = auth_context.session.get(REDIS_KEY_USER_EMAIL);
-    if user_email.is_none() {
+    if let None = user_email {
         info!(target:"user::profile::failed","connection error");
         return ApiResponse::failed(i18n.translate("user.profile.failed").as_str());
     }
@@ -631,7 +563,7 @@ pub async fn update_thread(
         .filter_string("email", Some("$eq"), &user_email)
         .one::<User>(&state.db)
         .await;
-    if find_user.is_err() {
+    if let Err(err) = find_user {
         info!(target:"user::profile::failed","connection error");
         return ApiResponse::failed(i18n.translate("user.profile.failed").as_str());
     }
@@ -661,14 +593,14 @@ pub async fn update_thread(
         .filter_object_id("created_by_id", &user.id.unwrap())
         .one::<ThreadDTO>(&state.db)
         .await;
-    if find_thread.is_err() {
-        info!(target:"thread::list","failed to fetch {:?}",find_thread.unwrap_err());
+    if let Err(err) = find_thread {
+        info!(target:"thread::list","failed to fetch {:?}",err);
         return ApiResponse::failed(&i18n.translate("thread.not-found"));
     }
     let mut thread = find_thread.unwrap();
 
-    let mut deleted_attachement: Vec<ThreadAttachment> = Vec::new();
-    let mut new_attachement: Vec<ThreadAttachment> = Vec::new();
+    let mut deleted_attachment: Vec<ThreadAttachment> = Vec::new();
+    let mut new_attachment: Vec<ThreadAttachment> = Vec::new();
 
     let active_attachment = thread.attachment.clone();
 
@@ -680,9 +612,9 @@ pub async fn update_thread(
                 .iter()
                 .any(|v| v.contains(&id.to_string()))
             {
-                deleted_attachement.push(attachment.into());
+                deleted_attachment.push(attachment.into());
             } else {
-                new_attachement.push(attachment.into());
+                new_attachment.push(attachment.into());
             }
         }
     }
@@ -694,8 +626,8 @@ pub async fn update_thread(
         .unwrap_or(Vec::new());
 
     for attachment in find_reserved_attachement {
-        deleted_attachement.push(attachment.clone());
-        new_attachement.push(attachment);
+        deleted_attachment.push(attachment.clone());
+        new_attachment.push(attachment);
     }
 
     let quote = body.quote_thread_id.map_or_else(
@@ -704,8 +636,7 @@ pub async fn update_thread(
     );
 
     let session = state.db.start_session().await;
-    if session.is_err() {
-        let err = session.unwrap_err();
+    if let Err(err)= session{
         info!(target:"stock::update","{:?}",err);
         return ApiResponse::failed(&i18n.translate("thread::create::failed"));
     }
@@ -724,24 +655,22 @@ pub async fn update_thread(
         thread.quote_thread_id = None;
     }
 
-    if body.slug.is_some() {
-        insert_thread =
-            insert_thread.set_str("slug", body.slug.clone().unwrap_or("".to_string()).as_str());
-        thread.slug = body.slug.unwrap_or("".to_string());
+    if let Some(slug) = body.slug {
+        insert_thread = insert_thread.set_str("slug", slug.clone().as_str());
+        thread.slug = slug;
     }
-    if body.title.is_some() {
-        insert_thread = insert_thread.set_str(
-            "title",
-            body.title.clone().unwrap_or("".to_string()).as_str(),
-        );
-        thread.content = body.title.unwrap_or("".to_string());
+    if let Some(title) = body.title {
+        insert_thread = insert_thread.set_str("title", title.clone().as_str());
+        thread.content = title.clone();
     }
-    if body.content.is_some() {
-        insert_thread = insert_thread.set_str(
-            "content",
-            body.content.clone().unwrap_or("".to_string()).as_str(),
-        );
-        thread.content = body.content.unwrap_or("".to_string());
+    if let Some(content) = body.content {
+        insert_thread = insert_thread.set_str("content", content.clone().as_str());
+        thread.content = content.clone();
+    }
+
+    if let Some(topics) = body.topics {
+        insert_thread = insert_thread.set_vec("topics", topics.clone());
+        thread.topics = Some(topics);
     }
 
     let update_thread = insert_thread
@@ -749,8 +678,7 @@ pub async fn update_thread(
         .execute_one_with_session(&state.db, &mut session)
         .await;
 
-    if update_thread.is_err() {
-        let err = update_thread.unwrap_err();
+    if let Err(err) = update_thread {
         info!(target:"stock::update","insert failed {:?}",err);
         let _ = session.abort_transaction().await;
         return ApiResponse::failed(&i18n.translate("thread::create::failed"));
@@ -760,7 +688,7 @@ pub async fn update_thread(
         .filter_array(
             "_id",
             Some("$in"),
-            deleted_attachement
+            deleted_attachment
                 .clone()
                 .iter()
                 .map(|v| v.id.unwrap().to_string())
@@ -769,22 +697,20 @@ pub async fn update_thread(
         .many_with_session(&state.db, &mut session)
         .await;
 
-    if delete_all_reserve_attachment.is_err() {
-        let err = delete_all_reserve_attachment.unwrap_err();
+    if let Err(err) = delete_all_reserve_attachment {
         info!(target:"stock::update","insert failed {:?}",err);
         let _ = session.abort_transaction().await;
         return ApiResponse::failed(&i18n.translate("thread::create::failed"));
     }
 
-    for deleted in deleted_attachement {
+    for deleted in deleted_attachment {
         let _delete_from_bucket = MinIO::new()
             .delete_file(deleted.file_name, BUCKET_THREAD.to_string())
             .await;
     }
 
     let commit = session.commit_transaction().await;
-    if commit.is_err() {
-        let err = commit.unwrap_err();
+    if let Err(err) = commit {
         info!(target:"stock::update","insert failed {:?}",err);
         return ApiResponse::failed(&i18n.translate("thread::create::failed"));
     }
@@ -802,12 +728,12 @@ pub async fn delete_thread(
 
     let create_thread_id = create_object_id_option(&thread_id);
 
-    if create_thread_id.is_none() {
+    if let None = create_thread_id {
         info!(target:"user::profile::failed","connection error");
         return ApiResponse::failed(i18n.translate("user.profile.failed").as_str());
     }
     let user_email: Option<&String> = auth_context.session.get(REDIS_KEY_USER_EMAIL);
-    if user_email.is_none() {
+    if let None = user_email {
         info!(target:"user::profile::failed","connection error");
         return ApiResponse::failed(i18n.translate("user.profile.failed").as_str());
     }
@@ -818,7 +744,7 @@ pub async fn delete_thread(
         .filter_string("email", Some("$eq"), &user_email)
         .one::<User>(&state.db)
         .await;
-    if find_user.is_err() {
+    if let Err(err) = find_user {
         info!(target:"user::profile::failed","connection error");
         return ApiResponse::failed(i18n.translate("user.profile.failed").as_str());
     }
@@ -848,8 +774,8 @@ pub async fn delete_thread(
         .filter_object_id("created_by_id", &user.id.unwrap())
         .one::<ThreadDTO>(&state.db)
         .await;
-    if find_thread.is_err() {
-        info!(target:"thread::list","failed to fetch {:?}",find_thread.unwrap_err());
+    if let Err(err) = find_thread {
+        info!(target:"thread::list","failed to fetch {:?}",err);
         return ApiResponse::failed(&i18n.translate("thread.not-found"));
     }
     let thread = find_thread.unwrap();
@@ -858,8 +784,8 @@ pub async fn delete_thread(
         .filter_object_id("_id", &create_thread_id.unwrap())
         .one(&state.db)
         .await;
-    if delete_thread.is_err() {
-        info!(target:"thread::list","failed to fetch {:?}",delete_thread.unwrap_err());
+    if let Err(err) = delete_thread {
+        info!(target:"thread::list","failed to fetch {:?}",err);
         return ApiResponse::failed(&i18n.translate("thread.not-found"));
     }
     ApiResponse::ok(thread, "message")
@@ -875,12 +801,12 @@ pub async fn upvote(
 
     let create_thread_id = create_object_id_option(&thread_id);
 
-    if create_thread_id.is_none() {
+    if let None = create_thread_id{
         info!(target:"user::profile::failed","connection error");
         return ApiResponse::failed(i18n.translate("user.profile.failed").as_str());
     }
     let user_email: Option<&String> = auth_context.session.get(REDIS_KEY_USER_EMAIL);
-    if user_email.is_none() {
+    if let None = user_email {
         info!(target:"user::profile::failed","connection error");
         return ApiResponse::failed(i18n.translate("user.profile.failed").as_str());
     }
@@ -891,13 +817,13 @@ pub async fn upvote(
         .filter_string("email", Some("$eq"), &user_email)
         .one::<User>(&state.db)
         .await;
-    if find_user.is_err() {
+    if let Err(err) = find_user{
         info!(target:"user::profile::failed","connection error");
         return ApiResponse::failed(i18n.translate("user.profile.failed").as_str());
     }
 
     let create_thread_id = ObjectId::from_str(&thread_id);
-    if create_thread_id.is_err() {
+    if let Err(err)= create_thread_id {
         info!(target:"user::profile::failed","connection error");
         return ApiResponse::failed(i18n.translate("user.profile.failed").as_str());
     }
@@ -907,19 +833,18 @@ pub async fn upvote(
 
     let find_thread = Orm::get("thread-vote")
         .and()
-        .filter_string("kind", Some("$eq"), KIND_UPVOTE_THREAD)
+        .filter_string("kind", Some("$eq"), KIND_UP_VOTE_THREAD)
         .filter_object_id("created_by_id", &user.id.unwrap())
         .filter_object_id("thread_id", &create_thread_id)
         .one::<ThreadVote>(&state.db)
         .await;
 
-    if find_thread.is_ok() {
+    if let Ok(vote)= find_thread {
         info!(target:"user::profile::failed","already_vote");
         return ApiResponse::failed(i18n.translate("user.profile.failed").as_str());
     }
     let session = state.db.start_session().await;
-    if session.is_err() {
-        let err = session.unwrap_err();
+    if let Err(err)= session{
         info!(target:"stock::update","{:?}",err);
         return ApiResponse::failed(&i18n.translate("thread::create::failed"));
     }
@@ -931,7 +856,7 @@ pub async fn upvote(
         id: Some(ObjectId::new()),
         created_by_id: user.id,
         thread_id: Some(create_thread_id),
-        kind: KIND_UPVOTE_THREAD.to_string(),
+        kind: KIND_UP_VOTE_THREAD.to_string(),
         created_at: DateTime::now(),
         updated_at: DateTime::now(),
     };
@@ -939,8 +864,7 @@ pub async fn upvote(
     let insert_vote = Orm::insert("thread-vote")
         .one_with_session(vote, &state.db, &mut session)
         .await;
-    if insert_vote.is_err() {
-        let err = insert_vote.unwrap_err();
+    if let Err(err)= insert_vote {
         info!(target:"stock::update","{:?}",err);
         let _ = session.abort_transaction().await;
         return ApiResponse::failed(&i18n.translate("thread::create::failed"));
@@ -953,8 +877,7 @@ pub async fn upvote(
         .execute_one_with_session(&state.db, &mut session)
         .await;
 
-    if update_counter.is_err() {
-        let err = update_counter.unwrap_err();
+    if let Err(err)= update_counter {
         info!(target:"stock::update","{:?}",err);
         let _ = session.abort_transaction().await;
         return ApiResponse::failed(&i18n.translate("thread::create::failed"));
@@ -965,7 +888,7 @@ pub async fn upvote(
     ApiResponse::failed("")
 }
 
-pub async fn downvote(
+pub async fn down_vote(
     state: State<AppState>,
     lang: Lang,
     auth_context: AuthContext,
@@ -975,12 +898,12 @@ pub async fn downvote(
 
     let create_thread_id = create_object_id_option(&thread_id);
 
-    if create_thread_id.is_none() {
+    if let None = create_thread_id{
         info!(target:"user::profile::failed","connection error");
         return ApiResponse::failed(i18n.translate("user.profile.failed").as_str());
     }
     let user_email: Option<&String> = auth_context.session.get(REDIS_KEY_USER_EMAIL);
-    if user_email.is_none() {
+    if let None = user_email {
         info!(target:"user::profile::failed","connection error");
         return ApiResponse::failed(i18n.translate("user.profile.failed").as_str());
     }
@@ -991,13 +914,13 @@ pub async fn downvote(
         .filter_string("email", Some("$eq"), &user_email)
         .one::<User>(&state.db)
         .await;
-    if find_user.is_err() {
+    if let Err(err)= find_user {
         info!(target:"user::profile::failed","connection error");
         return ApiResponse::failed(i18n.translate("user.profile.failed").as_str());
     }
 
     let create_thread_id = ObjectId::from_str(&thread_id);
-    if create_thread_id.is_err() {
+    if let Err(err)= create_thread_id {
         info!(target:"user::profile::failed","connection error");
         return ApiResponse::failed(i18n.translate("user.profile.failed").as_str());
     }
@@ -1007,20 +930,19 @@ pub async fn downvote(
 
     let find_thread = Orm::get("thread-vote")
         .and()
-        .filter_string("kind", Some("$eq"), KIND_UPVOTE_THREAD)
+        .filter_string("kind", Some("$eq"), KIND_UP_VOTE_THREAD)
         .filter_object_id("created_by_id", &user.id.unwrap())
         .filter_object_id("thread_id", &create_thread_id)
         .one::<ThreadVote>(&state.db)
         .await;
 
-    if find_thread.is_err() {
+    if let Err(err)= find_thread {
         info!(target:"user::profile::failed","not vote yet");
         return ApiResponse::failed(i18n.translate("user.profile.failed").as_str());
     }
     let vote = find_thread.unwrap();
     let session = state.db.start_session().await;
-    if session.is_err() {
-        let err = session.unwrap_err();
+    if let Err(err)= session {
         info!(target:"stock::update","{:?}",err);
         return ApiResponse::failed(&i18n.translate("thread::create::failed"));
     }
@@ -1033,8 +955,7 @@ pub async fn downvote(
         .one_with_session(&state.db, &mut session)
         .await;
 
-    if delete_vote.is_err() {
-        let err = delete_vote.unwrap_err();
+    if let Err(err)= delete_vote {
         info!(target:"stock::update","{:?}",err);
         let _ = session.abort_transaction().await;
         return ApiResponse::failed(&i18n.translate("thread::create::failed"));
@@ -1047,8 +968,7 @@ pub async fn downvote(
         .execute_one_with_session(&state.db, &mut session)
         .await;
 
-    if update_counter.is_err() {
-        let err = update_counter.unwrap_err();
+    if let Err(err)= update_counter {
         info!(target:"stock::update","{:?}",err);
         let _ = session.abort_transaction().await;
         return ApiResponse::failed(&i18n.translate("thread::create::failed"));

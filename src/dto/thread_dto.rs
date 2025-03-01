@@ -41,6 +41,7 @@ pub struct ThreadDTO {
     pub title: String,
     pub content: String,
     pub attachment: Vec<ThreadAttachmentDTO>,
+    pub topics:Option<Vec<String>>,
     pub up_vote_count: i64,
     pub down_vote_count: i64,
     pub quote_count: i64,
@@ -88,6 +89,7 @@ pub struct ThreadIncludeDTO {
     pub title: Option<String>,
     pub content: Option<String>,
     pub attachment: Option<Vec<ThreadAttachmentDTO>>,
+    pub topics:Option<Vec<String>>,
     pub up_vote_count: Option<i64>,
     pub down_vote_count: Option<i64>,
     pub quote_count: Option<i64>,
@@ -117,6 +119,7 @@ impl Into<ThreadDTO> for crate::entity::thread::Thread {
                 .iter()
                 .map(|v| v.clone().into())
                 .collect::<Vec<ThreadAttachmentDTO>>(),
+            topics: self.topics,
             up_vote_count: self.up_vote_count,
             down_vote_count: self.down_vote_count,
             quote_count: self.quote_count,

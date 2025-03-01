@@ -12,6 +12,7 @@ pub struct CreatedThreadRequest {
     #[validate(length(min = 1))]
     pub content: String,
     pub attachment: Vec<String>,
+    pub topics:Vec<String>
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Validate)]
@@ -25,4 +26,5 @@ pub struct UpdateThreadRequest {
     pub content: Option<String>,
     pub new_attachment: Vec<String>,
     pub removed_attachment: Vec<String>,
+    pub topics:Option<Vec<String>>
 }

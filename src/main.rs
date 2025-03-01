@@ -17,7 +17,7 @@ pub mod routes;
 async fn main() -> Result<(), ()> {
     let _ = tracing_subscriber::fmt().init();
     let app_state = AppState::init().await;
-    let _i18n = I18n::sync_locales(&["auth"]).await;
+    let _i18n = I18n::sync_locales(&["auth","thread","thread-vote","topic"]).await;
     let _init_seeder = init_seeder(&app_state.db).await;
 
     let app = init_routes(app_state);

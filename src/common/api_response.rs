@@ -45,6 +45,26 @@ impl PaginationRequest {
         }
         page
     }
+
+    pub fn get_order(self) -> Option<(String, String)> {
+        let mut column: String = String::new();
+        let mut order: String = String::new();
+        let ordering = self.order.unwrap_or("".to_string());
+        if !ordering.is_empty() {
+            let split = ordering.split(":").collect::<Vec<&str>>();
+            let field = split.get(0);
+            let group = split.get(1);
+            if field.is_some() {
+                if group.is_some() {
+                    order = split[1].to_string();
+                } else {
+                    order = "DESC".to_string();
+                }
+                return Some((column, order));
+            }
+        }
+        None
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]

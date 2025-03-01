@@ -2,5 +2,41 @@
   "message": {
     "en": "Hello, ${name}. ${hohoe}",
     "id-ID": "Halo, ${name}. ${hohoe}"
+  },
+  "user.get-profile.not-found": {
+    "en": "Profile not found",
+    "id-ID": "Profil tidak ditemukan"
+  },
+  "user.get-profile.success": {
+    "en": "Profile",
+    "id-ID": "Profil"
+  },
+  "user.change-password.validation.error": {
+    "en": "Failed to change password, request not valid.",
+    "id-ID": "Gagal merubah password, permintaan tidak sesuai."
+  },
+  "user.change-password.user.not-found": {
+    "en": "Failed to change password, request not valid.",
+    "id-ID": "Gagal merubah password, permintaan tidak sesuai."
+  },
+  "user.change-password.user.invalid": {
+    "en": "Failed to change password, request not valid.",
+    "id-ID": "Gagal merubah password, permintaan tidak sesuai."
+  },
+  "user.change-password.success": {
+    "en": "Success to change password.",
+    "id-ID": "Berhasil merubah password."
+  },
+  "user.update-profile-picture.failed": {
+    "en": "Failed to update profile picture.",
+    "id-ID": "Gagal update foto profil."
+  },
+  "user.update-profile-picture.not-found": {
+    "en": "Failed to update profile picture, session invalid.",
+    "id-ID": "Gagal update foto profil, sesi tidak ditemukan."
+  },
+  "user.update-profile-picture.success": {
+    "en": "Profile picture, updated.",
+    "id-ID": "Berhasil update foto profil."
   }
 }

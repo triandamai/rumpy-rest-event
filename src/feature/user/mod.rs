@@ -5,7 +5,7 @@ use bson::{doc, DateTime, Document};
 use log::info;
 use validator::Validate;
 
-use crate::common::constant::BUCKET_PROFILE_PICTURE;
+use crate::common::constant::{BUCKET_PROFILE_PICTURE, PROVIDER_BASIC};
 use crate::common::middleware::Json;
 use crate::common::minio::MinIO;
 use crate::common::multipart_file::SingleFileExtractor;
@@ -31,7 +31,6 @@ pub async fn get_user_profile(
 ) -> ApiResponse<UserDTO> {
     let i18n = i18n!("user", lang);
     //getting connection from pool
-
     let user_email = auth_context
         .session
         .get(REDIS_KEY_USER_EMAIL)
@@ -42,14 +41,14 @@ pub async fn get_user_profile(
         .one::<UserDTO>(&state.db)
         .await;
 
-    if find_user.is_err() {
-        info!(target:"user::profile::failed","connection error {:?}",find_user.err());
-        return ApiResponse::failed(i18n.translate("user.profile.failed").as_str());
+    if let Err(err)= find_user {
+        info!(target:"user::profile::failed","connection error {:?}",err);
+        return ApiResponse::not_found(i18n.translate("user.get-profile.not-found").as_str());
     }
 
+    info!(target:"user::profile::failed","successfully get user profile");
     let data = find_user.unwrap();
-
-    ApiResponse::ok(data, i18n.translate("user.profile").as_str())
+    ApiResponse::ok(data, i18n.translate("user.get-profile.success").as_str())
 }
 
 pub async fn change_password(
@@ -61,16 +60,15 @@ pub async fn change_password(
     let i18n = i18n!("user", lang);
 
     let validate = body.validate();
-    if validate.is_err() {
-        let err = validate.unwrap_err();
-        info!(target:"user::profile::validation-error","{:?}",err.clone());
-        return ApiResponse::error_validation(err, i18n.translate("user.profile.failed").as_str());
+    if let Err(err)= validate {
+        info!(target:"user::change-password::validation-error","{:?}",err.clone());
+        return ApiResponse::error_validation(err, i18n.translate("user.change-password.validation.error").as_str());
     }
 
     let user_email: Option<&String> = auth_context.session.get(REDIS_KEY_USER_EMAIL);
-    if user_email.is_none() {
-        info!(target:"user::profile::failed","connection error");
-        return ApiResponse::failed(i18n.translate("user.profile.failed").as_str());
+    if let None = user_email {
+        info!(target:"user::change-password::failed","session not found {:?}",auth_context.session);
+        return ApiResponse::failed(i18n.translate("user.change-password.user.not-found").as_str());
     }
 
     let user_email = user_email.unwrap();
@@ -79,9 +77,9 @@ pub async fn change_password(
         .filter_string("email", Some("$eq"), &user_email)
         .one::<User>(&state.db)
         .await;
-    if find_user.is_err() {
-        info!(target:"user::profile::failed","connection error");
-        return ApiResponse::failed(i18n.translate("user.profile.failed").as_str());
+    if let Err(err)= find_user {
+        info!(target:"user::change-password::failed","user not found");
+        return ApiResponse::failed(i18n.translate("user.change-password.user.not-found").as_str());
     }
 
     let mut user = find_user.unwrap();
@@ -90,31 +88,31 @@ pub async fn change_password(
         .unwrap_or(UserMetaData { providers: None });
     let mut providers = meta_data.providers.unwrap_or(Vec::new());
     //check whether user provider BASIC(email)
-    if providers.contains(&"BASIC".to_string()) {
-        info!(target:"change::password","user provider has BASIC, verify current password");
+    if providers.contains(&PROVIDER_BASIC.to_string()) {
+        info!(target:"user::change-password","user provider has BASIC provider, verifying current password");
         let verify = bcrypt::verify(
             body.current_password,
             user.password.unwrap_or("".to_string()).as_str(),
         );
         if verify.is_err() {
-            info!(target:"user::profile::failed","current password invalid");
-            return ApiResponse::failed(i18n.translate("user.profile.failed").as_str());
+            info!(target:"user::change-password::failed","current password invalid");
+            return ApiResponse::failed(i18n.translate("user.change-password.user.invalid").as_str());
         }
         if !verify.unwrap() {
-            info!(target:"user::profile::failed","current password invalid");
-            return ApiResponse::failed(i18n.translate("user.profile.failed").as_str());
+            info!(target:"user::change-password::failed","current password invalid");
+            return ApiResponse::failed(i18n.translate("user.change-password.user.invalid").as_str());
         }
     } else {
-        info!(target:"change::password","user provider has not BASIC, skip verify current password");
-        providers.push("BASIC".to_string());
+        info!(target:"user::change-password","user provider has not BASIC, skip verify current password");
+        providers.push(PROVIDER_BASIC.to_string());
         meta_data.providers = Some(providers);
         user.user_meta_data = Some(meta_data);
     }
 
     let create_password = bcrypt::hash(body.new_password, DEFAULT_COST);
-    if create_password.is_err() {
-        info!(target:"user::profile::failed","connection error");
-        return ApiResponse::failed(i18n.translate("user.profile.failed").as_str());
+    if let Err(err)= create_password {
+        info!(target:"user::change-password::failed","error while create has password {:?}",err);
+        return ApiResponse::failed(i18n.translate("user.change-password.user.invalid").as_str());
     }
 
     let update_password = Orm::update("user")
@@ -126,14 +124,15 @@ pub async fn change_password(
         .execute_one(&state.db)
         .await;
 
-    if update_password.is_err() {
-        info!(target:"user::profile::failed","connection error");
-        return ApiResponse::failed(i18n.translate("user.profile.failed").as_str());
+    if let Err(err)= update_password {
+        info!(target:"user::change-password::failed","failed to update password {:?}",err);
+        return ApiResponse::failed(i18n.translate("user.change-password.user.invalid").as_str());
     }
 
+    info!(target:"user::change-password","updated password success");
     ApiResponse::ok(
         "OK".to_string(),
-        i18n.translate("user.profile.success").as_str(),
+        i18n.translate("user.change-password.success").as_str(),
     )
 }
 
@@ -146,9 +145,9 @@ pub async fn update_profile_picture(
     let i18n = i18n!("user", lang);
 
     let user_email: Option<&String> = auth_context.session.get(REDIS_KEY_USER_EMAIL);
-    if user_email.is_none() {
-        info!(target:"user::profile::failed","session not found");
-        return ApiResponse::failed(i18n.translate("user.profile.failed").as_str());
+    if let None = user_email {
+        info!(target:"user::profile-picture::failed","session not found");
+        return ApiResponse::access_denied(i18n.translate("user.update-profile-picture.not-found").as_str());
     }
     let user_email = user_email.unwrap();
     let find_user = Orm::get("user")
@@ -156,9 +155,9 @@ pub async fn update_profile_picture(
         .one::<User>(&state.db)
         .await;
 
-    if find_user.is_err() {
-        info!(target:"user::profile::failed","user not found");
-        return ApiResponse::failed(i18n.translate("user.profile.failed").as_str());
+    if let Err(err)= find_user {
+        info!(target:"user::profile-picture::failed","user not found");
+        return ApiResponse::failed(i18n.translate("user.update-profile-picture.not-found").as_str());
     }
     let mut user = find_user.unwrap();
 
@@ -172,10 +171,10 @@ pub async fn update_profile_picture(
             part_file_name.clone(),
         )
         .await;
-    if upload.is_err() {
+    if let Err(err)= upload {
         let _remove = form_data.remove_file();
-        info!(target:"user::profile::failed","uplod file error {:?}",upload.unwrap_err());
-        return ApiResponse::failed(i18n.translate("user.profile.failed").as_str());
+        info!(target:"user::profile-picture::failed","upload file error {:?}",err);
+        return ApiResponse::failed(i18n.translate("user.update-profile-picture.failed").as_str());
     }
     let _remove = form_data.remove_file();
 
@@ -196,12 +195,12 @@ pub async fn update_profile_picture(
         .execute_one(&state.db)
         .await;
 
-    if insert_profile_picture.is_err() {
+    if let Err(err)= insert_profile_picture {
         let _remove = form_data.remove_file();
-        info!(target:"user::profile::failed","failed update data {:?}",insert_profile_picture.unwrap_err());
-        return ApiResponse::failed(i18n.translate("user.profile.failed").as_str());
+        info!(target:"user::profile-picture::failed","failed update data {:?}",err);
+        return ApiResponse::failed(i18n.translate("user.update-profile-picture.failed").as_str());
     }
     user.profile_picture = Some(profile_picture);
-    info!(target:"user::profile::success","success");
+    info!(target:"user::profile-picture::success","success");
     ApiResponse::ok(user, i18n.translate("user.profile.failed").as_str())
 }

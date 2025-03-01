@@ -15,6 +15,7 @@ pub struct Thread {
     pub title: String,
     pub content: String,
     pub attachment: Vec<ThreadAttachment>,
+    pub topics:Option<Vec<String>>,
     pub up_vote_count: i64,
     pub down_vote_count: i64,
     pub quote_count: i64,

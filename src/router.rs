@@ -66,7 +66,7 @@ pub fn init_routes(state: AppState) -> Router {
         )
         .route(
             "/thread/vote/down/{thread_id}",
-            post(feature::thread::downvote),
+            post(feature::thread::down_vote),
         )
         .route("/thread/vote/up/{thread_id}", post(feature::thread::upvote))
         .layer(axum::middleware::from_fn(method_not_allowed))

@@ -1,0 +1,15 @@
+use axum::extract::{Query, State};
+use crate::common::api_response::{ApiResponse, PaginationRequest};
+use crate::common::app_state::AppState;
+use crate::common::lang::Lang;
+
+pub mod topic_model;
+
+pub async fn get_list_topic(
+    state: State<AppState>,
+    lang:Lang,
+    Query(query):Query<PaginationRequest>
+)->ApiResponse<String>{
+
+    ApiResponse::failed("")
+}
