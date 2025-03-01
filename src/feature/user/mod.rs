@@ -156,7 +156,7 @@ pub async fn update_profile_picture(
         .await;
 
     if let Err(err)= find_user {
-        info!(target:"user::profile-picture::failed","user not found");
+        info!(target:"user::profile-picture::failed","user not found {:?}",err);
         return ApiResponse::failed(i18n.translate("user.update-profile-picture.not-found").as_str());
     }
     let mut user = find_user.unwrap();
