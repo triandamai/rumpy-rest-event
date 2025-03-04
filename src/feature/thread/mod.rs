@@ -3,8 +3,8 @@ use std::str::FromStr;
 use crate::common::api_response::{ApiResponse, PaginationRequest, PagingResponse};
 use crate::common::app_state::AppState;
 use crate::common::constant::{
-    BUCKET_THREAD, KIND_DISCUSSION, KIND_PUBLIC, KIND_THREAD_ATTACHMENT, KIND_UP_VOTE_THREAD,
-    REDIS_KEY_USER_EMAIL,
+    BUCKET_THREAD, KIND_DISCUSSION, KIND_DOWN_VOTE_THREAD, KIND_PUBLIC, KIND_THREAD_ATTACHMENT,
+    KIND_UP_VOTE_THREAD, REDIS_KEY_USER_EMAIL,
 };
 use crate::common::jwt::AuthContext;
 use crate::common::lang::Lang;
@@ -16,7 +16,7 @@ use crate::common::utils::create_object_id_option;
 use crate::dto::thread_attachment_dto::ThreadAttachmentDTO;
 use crate::dto::thread_dto::ThreadDTO;
 
-use crate::common::mongo::filter::{equal, FilterGroup};
+use crate::common::mongo::filter::{equal, is, is_in, FilterGroup};
 use crate::common::mongo::lookup::{one, one_merge_to};
 use crate::common::mongo::DB;
 use crate::entity::thread::Thread;
@@ -50,15 +50,14 @@ pub async fn get_list_public_thread(
         find_thread = find_thread.text(text.as_str());
     }
 
-
     if let Some((column, order)) = query.get_sorted() {
         find_thread = if order == "ASC" {
-            find_thread.sort(vec![(&column.clone(),1)])
+            find_thread.sort(vec![(&column.clone(), 1)])
         } else {
-            find_thread.sort(vec![(&column.clone(),-1)])
+            find_thread.sort(vec![(&column.clone(), -1)])
         };
-    }else{
-        find_thread = find_thread.sort(vec![("created_at",-1)]);
+    } else {
+        find_thread = find_thread.sort(vec![("created_at", -1)]);
     }
 
     let find_thread = find_thread
@@ -110,182 +109,216 @@ pub async fn get_list_discussion_thread(
     let page = query.clone().page.unwrap_or(0);
     let size = query.clone().size.unwrap_or(10);
 
-    let mut find_thread = Orm::get("thread");
-
+    let mut find_thread = DB::get("thread");
     if let Some(text) = query.q.clone() {
-        find_thread = find_thread
-            .text()
-            .filter_string("$search", None, text.as_str());
+        find_thread = find_thread.text(text.as_str());
     }
 
     if let Some((column, order)) = query.get_sorted() {
         find_thread = if order == "ASC" {
-            find_thread.group_by_asc(&column)
+            find_thread.sort(vec![(&column.clone(), 1)])
         } else {
-            find_thread.group_by_desc(&column)
+            find_thread.sort(vec![(&column.clone(), -1)])
         };
+    } else {
+        find_thread = find_thread.sort(vec![("created_at", -1)]);
     }
 
     let find_thread = find_thread
-        .join_one("user", "created_by_id", "_id", "created_by")
-        .join_one("thread", "quote_thread_id", "_id", "quote_thread")
-        .join_one_nested(
-            "user",
-            "quote_thread.created_by_id",
-            "_id",
-            "created_by",
-            "quote_thread",
-        )
-        .join_one("thread", "reply_to_thread_id", "_id", "reply_to_thread")
-        .join_one_nested(
-            "user",
-            "reply_to_thread.created_by_id",
-            "_id",
-            "created_by",
-            "reply_to_thread",
-        )
-        .and()
-        .filter_null("reply_to_thread_id", Some("$eq"))
-        .filter_string("kind", Some("$eq"), KIND_DISCUSSION)
-        .pageable::<ThreadDTO>(page, size, &state.db)
+        .lookup(&[
+            one("user", "created_by_id", "_id", "created_by"),
+            one("thread", "quote_thread_id", "_id", "quote_thread"),
+            one_merge_to(
+                "user",
+                "quote_thread.created_by_id",
+                "_id",
+                "created_by",
+                "quote_thread",
+            ),
+            one("thread", "reply_to_thread_id", "_id", "reply_to_thread"),
+            one_merge_to(
+                "user",
+                "reply_to_thread.created_by_id",
+                "_id",
+                "created_by",
+                "reply_to_thread",
+            ),
+            one("thread", "top_thread_id", "_id", "top_thread"),
+            one_merge_to(
+                "user",
+                "top_thread.created_by_id",
+                "_id",
+                "created_by",
+                "top_thread",
+            ),
+        ])
+        .filter(vec![
+            equal("reply_to_thread_id", None::<i32>),
+            equal("kind", KIND_DISCUSSION),
+        ])
+        .get_per_page::<ThreadDTO>(page, size, &state.db)
         .await;
     if let Err(err) = find_thread {
         info!(target:"thread::list","failed to fetch {:?}",err);
-        return ApiResponse::failed(&i18n.translate("thread.not-found"));
+        return ApiResponse::failed(&i18n.translate("get.public.thread.not-found"));
     }
 
-    ApiResponse::ok(find_thread.unwrap(), &i18n.translate("thread.list"))
+    ApiResponse::ok(
+        find_thread.unwrap(),
+        &i18n.translate("get.public.thread.success"),
+    )
 }
 
 pub async fn get_list_user_thread(
     state: State<AppState>,
     lang: Lang,
-    _auth_context: AuthContext,
+    auth_context: AuthContext,
     Path(user_id): Path<String>,
     Query(query): Query<PaginationRequest>,
 ) -> ApiResponse<PagingResponse<ThreadDTO>> {
     let i18n = i18n!("thread", lang);
     //getting connection from pool
+    if let None = auth_context.get_user_id() {
+        info!(target:"thread::list","failed to find user_id");
+        return ApiResponse::failed(&i18n.translate(""));
+    }
+
+    let create_user_id = create_object_id_option(&user_id);
+    if let None = create_user_id {
+        info!(target:"thread::list","failed to find user_id");
+        return ApiResponse::failed(&i18n.translate(""));
+    }
 
     let page = query.clone().page.unwrap_or(0);
     let size = query.clone().size.unwrap_or(10);
 
-    let create_user_id = ObjectId::from_str(&user_id);
-    if let Err(err) = create_user_id {
-        info!(target:"user::thread::not-found","cannot create user id {:?}",err);
-        return ApiResponse::not_found(&i18n.translate("thread.list.user.not-found"));
-    }
-
-    let mut find_thread = Orm::get("thread");
-
+    let mut find_thread = DB::get("thread");
     if let Some(text) = query.q.clone() {
-        find_thread = find_thread
-            .text()
-            .filter_string("$search", None, text.as_str());
+        find_thread = find_thread.text(text.as_str());
     }
 
     if let Some((column, order)) = query.get_sorted() {
         find_thread = if order == "ASC" {
-            find_thread.group_by_asc(&column)
+            find_thread.sort(vec![(&column.clone(), 1)])
         } else {
-            find_thread.group_by_desc(&column)
+            find_thread.sort(vec![(&column.clone(), -1)])
         };
+    } else {
+        find_thread = find_thread.sort(vec![("created_at", -1)]);
     }
 
     let find_thread = find_thread
-        .join_one("user", "created_by_id", "_id", "created_by")
-        .join_one("thread", "quote_thread_id", "_id", "quote_thread")
-        .join_one_nested(
-            "user",
-            "quote_thread.created_by_id",
-            "_id",
-            "created_by",
-            "quote_thread",
-        )
-        .join_one("thread", "reply_to_thread_id", "_id", "reply_to_thread")
-        .join_one_nested(
-            "user",
-            "reply_to_thread.created_by_id",
-            "_id",
-            "created_by",
-            "reply_to_thread",
-        )
-        .and()
-        .filter_object_id("created_by_id", &create_user_id.unwrap())
-        .pageable::<ThreadDTO>(page, size, &state.db)
+        .lookup(&[
+            one("user", "created_by_id", "_id", "created_by"),
+            one("thread", "quote_thread_id", "_id", "quote_thread"),
+            one_merge_to(
+                "user",
+                "quote_thread.created_by_id",
+                "_id",
+                "created_by",
+                "quote_thread",
+            ),
+            one("thread", "reply_to_thread_id", "_id", "reply_to_thread"),
+            one_merge_to(
+                "user",
+                "reply_to_thread.created_by_id",
+                "_id",
+                "created_by",
+                "reply_to_thread",
+            ),
+            one("thread", "top_thread_id", "_id", "top_thread"),
+            one_merge_to(
+                "user",
+                "top_thread.created_by_id",
+                "_id",
+                "created_by",
+                "top_thread",
+            ),
+        ])
+        .filter(vec![is("created_by_id", create_user_id)])
+        .get_per_page::<ThreadDTO>(page, size, &state.db)
         .await;
     if let Err(err) = find_thread {
         info!(target:"thread::list","failed to fetch {:?}",err);
-        return ApiResponse::failed(&i18n.translate("thread.not-found"));
+        return ApiResponse::failed(&i18n.translate("get.public.thread.not-found"));
     }
 
-    ApiResponse::ok(find_thread.unwrap(), &i18n.translate("thread.list"))
+    ApiResponse::ok(
+        find_thread.unwrap(),
+        &i18n.translate("get.public.thread.success"),
+    )
 }
 
 pub async fn get_list_comment_thread(
     state: State<AppState>,
     lang: Lang,
-    _auth_context: AuthContext,
+    auth_context: AuthContext,
     Path(thread_id): Path<String>,
     Query(query): Query<PaginationRequest>,
 ) -> ApiResponse<PagingResponse<ThreadDTO>> {
     let i18n = i18n!("thread", lang);
     //getting connection from pool
+    if let None = auth_context.get_user_id() {
+        info!(target:"thread::list","failed to find user_id");
+        return ApiResponse::failed(&i18n.translate(""));
+    }
+
+    let create_thread_id = create_object_id_option(&thread_id);
+    if let None = create_thread_id {
+        info!(target:"thread::list","failed to find user_id");
+        return ApiResponse::failed(&i18n.translate(""));
+    }
 
     let page = query.clone().page.unwrap_or(0);
     let size = query.clone().size.unwrap_or(10);
 
-    let created_thread_id = ObjectId::from_str(&thread_id);
-    if created_thread_id.is_err() {
-        return ApiResponse::not_found(&i18n.translate("thread not found"));
-    }
-    let created_thread_id = created_thread_id.unwrap();
-
-    let mut find_thread = Orm::get("thread");
-
+    let mut find_thread = DB::get("thread");
     if let Some(text) = query.q.clone() {
-        find_thread = find_thread
-            .text()
-            .filter_string("$search", None, text.as_str());
+        find_thread = find_thread.text(text.as_str());
     }
 
     if let Some((column, order)) = query.get_sorted() {
         find_thread = if order == "ASC" {
-            find_thread.group_by_asc(&column)
+            find_thread.sort(vec![(&column.clone(), 1)])
         } else {
-            find_thread.group_by_desc(&column)
+            find_thread.sort(vec![(&column.clone(), -1)])
         };
+    } else {
+        find_thread = find_thread.sort(vec![("created_at", -1)]);
     }
 
     let find_thread = find_thread
-        .join_one("user", "created_by_id", "_id", "created_by")
-        .join_one("thread", "quote_thread_id", "_id", "quote_thread")
-        .join_one_nested(
-            "user",
-            "quote_thread.created_by_id",
-            "_id",
-            "created_by",
-            "quote_thread",
-        )
-        .join_one("thread", "reply_to_thread_id", "_id", "reply_to_thread")
-        .join_one_nested(
-            "user",
-            "reply_to_thread.created_by_id",
-            "_id",
-            "created_by",
-            "reply_to_thread",
-        )
-        .and()
-        .filter_object_id("reply_to_thread_id", &created_thread_id)
-        .filter_string("kind", Some("$eq"), KIND_PUBLIC)
-        .pageable::<ThreadDTO>(page, size, &state.db)
+        .lookup(&[
+            one("user", "created_by_id", "_id", "created_by"),
+            one("thread", "quote_thread_id", "_id", "quote_thread"),
+            one_merge_to(
+                "user",
+                "quote_thread.created_by_id",
+                "_id",
+                "created_by",
+                "quote_thread",
+            ),
+            one("thread", "reply_to_thread_id", "_id", "reply_to_thread"),
+            one_merge_to(
+                "user",
+                "reply_to_thread.created_by_id",
+                "_id",
+                "created_by",
+                "reply_to_thread",
+            ),
+        ])
+        .filter(vec![is("reply_to_thread_id", create_thread_id)])
+        .get_per_page::<ThreadDTO>(page, size, &state.db)
         .await;
     if let Err(err) = find_thread {
         info!(target:"thread::list","failed to fetch {:?}",err);
-        return ApiResponse::failed(&i18n.translate("thread.not-found"));
+        return ApiResponse::failed(&i18n.translate("get.public.thread.not-found"));
     }
 
-    ApiResponse::ok(find_thread.unwrap(), &i18n.translate("thread.list"))
+    ApiResponse::ok(
+        find_thread.unwrap(),
+        &i18n.translate("get.public.thread.success"),
+    )
 }
 
 pub async fn upload_attachment(
@@ -310,9 +343,9 @@ pub async fn upload_attachment(
 
     let user_email = user_email.unwrap();
 
-    let find_user = Orm::get("user")
-        .filter_string("email", Some("$eq"), &user_email)
-        .one::<User>(&state.db)
+    let find_user = DB::get("user")
+        .filter(vec![equal("email", &user_email)])
+        .get_one::<User>(&state.db)
         .await;
     if let Err(err) = find_user {
         info!(target:"user::profile::failed","user not found {:?}",err);
@@ -390,9 +423,9 @@ pub async fn create_thread(
 
     let user_email = user_email.unwrap();
 
-    let find_user = Orm::get("user")
-        .filter_string("email", Some("$eq"), &user_email)
-        .one::<User>(&state.db)
+    let find_user = DB::get("user")
+        .filter(vec![equal("email", &user_email)])
+        .get_one::<User>(&state.db)
         .await;
     if let Err(err) = find_user {
         info!(target:"user::profile::failed","{:?}",err);
@@ -401,9 +434,9 @@ pub async fn create_thread(
 
     let user = find_user.unwrap();
 
-    let find_all_attachment = Orm::get("reserve-attachment")
-        .filter_array("_id", Some("$in"), body.attachment.clone())
-        .all::<ThreadAttachment>(&state.db)
+    let find_all_attachment = DB::get("reserve-attachment")
+        .filter(vec![is_in("_id", body.attachment.clone())])
+        .get_all::<ThreadAttachment>(&state.db)
         .await
         .unwrap_or(Vec::new());
 
@@ -422,6 +455,7 @@ pub async fn create_thread(
         created_by_id: user.id,
         quote_thread_id: quote,
         reply_to_thread_id: reply,
+        top_thread_id: None,
         kind: KIND_PUBLIC.to_string(),
         slug: body.slug,
         title: body.title,
@@ -443,7 +477,7 @@ pub async fn create_thread(
     let mut session = session.unwrap();
     let _ = session.start_transaction().await;
 
-    let insert_thread = Orm::insert("thread")
+    let insert_thread = DB::insert("thread")
         .one_with_session(thread, &state.db, &mut session)
         .await;
 
@@ -455,12 +489,12 @@ pub async fn create_thread(
 
     //update counter
     if let Some(quote) = quote {
-        let update_counter = Orm::update("thread")
+        let update_counter = DB::update("thread")
             .inc(doc! {
                 "quote_count":1
             })
-            .filter_object_id("_id", &quote)
-            .execute_one_with_session(&state.db, &mut session)
+            .filter(vec![is("_id", &quote)])
+            .execute_with_session(&state.db, &mut session)
             .await;
         if update_counter.is_err() {
             let err = update_counter.unwrap_err();
@@ -471,12 +505,12 @@ pub async fn create_thread(
     }
 
     if let Some(reply) = reply {
-        let update_counter = Orm::update("thread")
+        let update_counter = DB::update("thread")
             .inc(doc! {
                 "reply_count":1
             })
-            .filter_object_id("_id", &reply)
-            .execute_one_with_session(&state.db, &mut session)
+            .filter(vec![is("_id", &reply)])
+            .execute_with_session(&state.db, &mut session)
             .await;
         if let Err(err) = update_counter {
             info!(target:"stock::update","insert failed {:?}",err);
@@ -486,8 +520,8 @@ pub async fn create_thread(
     }
     //end update counter
 
-    let delete_all_reserve_attachment = Orm::delete("reserve-attachment")
-        .filter_array("_id", Some("$in"), body.attachment)
+    let delete_all_reserve_attachment = DB::delete("reserve-attachment")
+        .filter(vec![is_in("_id", body.attachment)])
         .many_with_session(&state.db, &mut session)
         .await;
 
@@ -508,26 +542,28 @@ pub async fn create_thread(
         return ApiResponse::failed(&i18n.translate("thread::create::failed"));
     }
 
-    let find_thread = Orm::get("thread")
-        .join_one("user", "created_by_id", "_id", "created_by")
-        .join_one("thread", "quote_thread_id", "_id", "quote_thread")
-        .join_one_nested(
-            "user",
-            "quote_thread.created_by_id",
-            "_id",
-            "created_by",
-            "quote_thread",
-        )
-        .join_one("thread", "reply_to_thread_id", "_id", "reply_to_thread")
-        .join_one_nested(
-            "user",
-            "reply_to_thread.created_by_id",
-            "_id",
-            "created_by",
-            "reply_to_thread",
-        )
-        .filter_object_id("_id", &insert_thread.unwrap())
-        .one::<ThreadDTO>(&state.db)
+    let find_thread = DB::get("thread")
+        .lookup(&[
+            one("user", "created_by_id", "_id", "created_by"),
+            one("thread", "quote_thread_id", "_id", "quote_thread"),
+            one_merge_to(
+                "user",
+                "quote_thread.created_by_id",
+                "_id",
+                "created_by",
+                "quote_thread",
+            ),
+            one("thread", "reply_to_thread_id", "_id", "reply_to_thread"),
+            one_merge_to(
+                "user",
+                "reply_to_thread.created_by_id",
+                "_id",
+                "created_by",
+                "reply_to_thread",
+            ),
+        ])
+        .filter(vec![is("_id", &insert_thread.unwrap())])
+        .get_one::<ThreadDTO>(&state.db)
         .await;
     if let Err(err) = find_thread {
         info!(target:"thread::list","failed to fetch {:?}",err);
@@ -568,9 +604,9 @@ pub async fn update_thread(
 
     let user_email = user_email.unwrap();
 
-    let find_user = Orm::get("user")
-        .filter_string("email", Some("$eq"), &user_email)
-        .one::<User>(&state.db)
+    let find_user = DB::get("user")
+        .filter(vec![equal("email", &user_email)])
+        .get_one::<User>(&state.db)
         .await;
     if let Err(err) = find_user {
         info!(target:"user::profile::failed","{:?}",err);
@@ -579,28 +615,31 @@ pub async fn update_thread(
 
     let user = find_user.unwrap();
 
-    let find_thread = Orm::get("thread")
-        .join_one("user", "created_by_id", "_id", "created_by")
-        .join_one("thread", "quote_thread_id", "_id", "quote_thread")
-        .join_one_nested(
-            "user",
-            "quote_thread.created_by_id",
-            "_id",
-            "created_by",
-            "quote_thread",
-        )
-        .join_one("thread", "reply_to_thread_id", "_id", "reply_to_thread")
-        .join_one_nested(
-            "user",
-            "reply_to_thread.created_by_id",
-            "_id",
-            "created_by",
-            "reply_to_thread",
-        )
-        .and()
-        .filter_object_id("_id", &create_thread_id.unwrap())
-        .filter_object_id("created_by_id", &user.id.unwrap())
-        .one::<ThreadDTO>(&state.db)
+    let find_thread = DB::get("thread")
+        .lookup(&[
+            one("user", "created_by_id", "_id", "created_by"),
+            one("thread", "quote_thread_id", "_id", "quote_thread"),
+            one_merge_to(
+                "user",
+                "quote_thread.created_by_id",
+                "_id",
+                "created_by",
+                "quote_thread",
+            ),
+            one("thread", "reply_to_thread_id", "_id", "reply_to_thread"),
+            one_merge_to(
+                "user",
+                "reply_to_thread.created_by_id",
+                "_id",
+                "created_by",
+                "reply_to_thread",
+            ),
+        ])
+        .filter(vec![
+            is("_id", &create_thread_id),
+            is("created_by_id", &user.id),
+        ])
+        .get_one::<ThreadDTO>(&state.db)
         .await;
     if let Err(err) = find_thread {
         info!(target:"thread::list","failed to fetch {:?}",err);
@@ -628,13 +667,13 @@ pub async fn update_thread(
         }
     }
 
-    let find_reserved_attachement = Orm::get("reserve-attachment")
-        .filter_array("_id", Some("$in"), body.new_attachment.clone())
-        .all::<ThreadAttachment>(&state.db)
+    let find_reserved_attachment = DB::get("reserve-attachment")
+        .filter(vec![is_in("_id", body.new_attachment.clone())])
+        .get_all::<ThreadAttachment>(&state.db)
         .await
         .unwrap_or(Vec::new());
 
-    for attachment in find_reserved_attachement {
+    for attachment in find_reserved_attachment {
         deleted_attachment.push(attachment.clone());
         new_attachment.push(attachment);
     }
@@ -693,16 +732,15 @@ pub async fn update_thread(
         return ApiResponse::failed(&i18n.translate("thread::create::failed"));
     }
 
-    let delete_all_reserve_attachment = Orm::delete("reserve-attachment")
-        .filter_array(
+    let delete_all_reserve_attachment = DB::delete("reserve-attachment")
+        .filter(vec![is_in(
             "_id",
-            Some("$in"),
             deleted_attachment
                 .clone()
                 .iter()
                 .map(|v| v.id.unwrap().to_string())
-                .collect(),
-        )
+                .collect::<Vec<String>>(),
+        )])
         .many_with_session(&state.db, &mut session)
         .await;
 
@@ -725,6 +763,10 @@ pub async fn update_thread(
     }
 
     ApiResponse::ok(thread, &i18n.translate("thread::create::success"))
+}
+
+pub async fn add_top_answer() -> ApiResponse<ThreadDTO> {
+    ApiResponse::failed("")
 }
 
 pub async fn delete_thread(
@@ -760,28 +802,31 @@ pub async fn delete_thread(
 
     let user = find_user.unwrap();
 
-    let find_thread = Orm::get("thread")
-        .join_one("user", "created_by_id", "_id", "created_by")
-        .join_one("thread", "quote_thread_id", "_id", "quote_thread")
-        .join_one_nested(
-            "user",
-            "quote_thread.created_by_id",
-            "_id",
-            "created_by",
-            "quote_thread",
-        )
-        .join_one("thread", "reply_to_thread_id", "_id", "reply_to_thread")
-        .join_one_nested(
-            "user",
-            "reply_to_thread.created_by_id",
-            "_id",
-            "created_by",
-            "reply_to_thread",
-        )
-        .and()
-        .filter_object_id("_id", &create_thread_id.unwrap())
-        .filter_object_id("created_by_id", &user.id.unwrap())
-        .one::<ThreadDTO>(&state.db)
+    let find_thread = DB::get("thread")
+        .lookup(&[
+            one("user", "created_by_id", "_id", "created_by"),
+            one("thread", "quote_thread_id", "_id", "quote_thread"),
+            one_merge_to(
+                "user",
+                "quote_thread.created_by_id",
+                "_id",
+                "created_by",
+                "quote_thread",
+            ),
+            one("thread", "reply_to_thread_id", "_id", "reply_to_thread"),
+            one_merge_to(
+                "user",
+                "reply_to_thread.created_by_id",
+                "_id",
+                "created_by",
+                "reply_to_thread",
+            ),
+        ])
+        .filter(vec![
+            is("_id", &create_thread_id),
+            is("created_by_id", &user.id),
+        ])
+        .get_one::<ThreadDTO>(&state.db)
         .await;
     if let Err(err) = find_thread {
         info!(target:"thread::list","failed to fetch {:?}",err);
@@ -789,8 +834,8 @@ pub async fn delete_thread(
     }
     let thread = find_thread.unwrap();
 
-    let delete_thread = Orm::delete("thread")
-        .filter_object_id("_id", &create_thread_id.unwrap())
+    let delete_thread = DB::delete("thread")
+        .filter(vec![is_in("_id", thread_id)])
         .one(&state.db)
         .await;
     if let Err(err) = delete_thread {
@@ -822,9 +867,9 @@ pub async fn upvote(
 
     let user_email = user_email.unwrap();
 
-    let find_user = Orm::get("user")
-        .filter_string("email", Some("$eq"), &user_email)
-        .one::<User>(&state.db)
+    let find_user = DB::get("user")
+        .filter(vec![equal("email", &user_email)])
+        .get_one::<User>(&state.db)
         .await;
     if let Err(err) = find_user {
         info!(target:"user::profile::failed","{:?}",err);
@@ -840,12 +885,13 @@ pub async fn upvote(
 
     let user = find_user.unwrap();
 
-    let find_thread = Orm::get("thread-vote")
-        .and()
-        .filter_string("kind", Some("$eq"), KIND_UP_VOTE_THREAD)
-        .filter_object_id("created_by_id", &user.id.unwrap())
-        .filter_object_id("thread_id", &create_thread_id)
-        .one::<ThreadVote>(&state.db)
+    let find_thread = DB::get("thread-vote")
+        .filter(vec![
+            equal("kind", KIND_UP_VOTE_THREAD),
+            is("created_by_id", &user.id),
+            is("thread_id", &create_thread_id),
+        ])
+        .get_one::<ThreadVote>(&state.db)
         .await;
 
     if let Ok(vote) = find_thread {
@@ -870,7 +916,7 @@ pub async fn upvote(
         updated_at: DateTime::now(),
     };
 
-    let insert_vote = Orm::insert("thread-vote")
+    let insert_vote = DB::insert("thread-vote")
         .one_with_session(vote, &state.db, &mut session)
         .await;
     if let Err(err) = insert_vote {
@@ -919,9 +965,9 @@ pub async fn down_vote(
 
     let user_email = user_email.unwrap();
 
-    let find_user = Orm::get("user")
-        .filter_string("email", Some("$eq"), &user_email)
-        .one::<User>(&state.db)
+    let find_user = DB::get("user")
+        .filter(vec![equal("email", &user_email)])
+        .get_one::<User>(&state.db)
         .await;
     if let Err(err) = find_user {
         info!(target:"user::profile::failed","connection error {:?}",err);
@@ -937,12 +983,13 @@ pub async fn down_vote(
 
     let user = find_user.unwrap();
 
-    let find_thread = Orm::get("thread-vote")
-        .and()
-        .filter_string("kind", Some("$eq"), KIND_UP_VOTE_THREAD)
-        .filter_object_id("created_by_id", &user.id.unwrap())
-        .filter_object_id("thread_id", &create_thread_id)
-        .one::<ThreadVote>(&state.db)
+    let find_thread = DB::get("thread-vote")
+        .filter(vec![
+            equal("kind", KIND_DOWN_VOTE_THREAD),
+            is("created_by_id", &user.id),
+            is("thread_id", &create_thread_id),
+        ])
+        .get_one::<ThreadVote>(&state.db)
         .await;
 
     if let Err(err) = find_thread {
@@ -959,8 +1006,8 @@ pub async fn down_vote(
     let mut session = session.unwrap();
     let _ = session.start_transaction().await;
 
-    let delete_vote = Orm::delete("thread-vote")
-        .filter_object_id("_id", &vote.id.unwrap())
+    let delete_vote = DB::delete("thread-vote")
+        .filter(vec![equal("_id", &vote.id)])
         .one_with_session(&state.db, &mut session)
         .await;
 
@@ -969,12 +1016,12 @@ pub async fn down_vote(
         let _ = session.abort_transaction().await;
         return ApiResponse::failed(&i18n.translate("thread::create::failed"));
     }
-    let update_counter = Orm::update("thread")
+    let update_counter = DB::update("thread")
         .inc(doc! {
             "up_vote_count":-1
         })
-        .filter_object_id("_id", &create_thread_id)
-        .execute_one_with_session(&state.db, &mut session)
+        .filter(vec![equal("thread_id", &create_thread_id)])
+        .execute_with_session(&state.db, &mut session)
         .await;
 
     if let Err(err) = update_counter {

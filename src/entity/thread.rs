@@ -10,6 +10,7 @@ pub struct Thread {
     pub created_by_id: Option<ObjectId>,
     pub quote_thread_id: Option<ObjectId>,
     pub reply_to_thread_id: Option<ObjectId>,
+    pub top_thread_id: Option<ObjectId>,
     pub kind:String,
     pub slug: String,
     pub title: String,

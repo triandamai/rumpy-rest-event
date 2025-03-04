@@ -36,6 +36,14 @@ pub struct ThreadDTO {
     pub reply_to_thread_id: Option<ObjectId>,
     #[serde(rename = "reply_to_thread")]
     pub reply_to_thread: Option<ThreadIncludeDTO>,
+    #[serde(
+        rename = "top_thread_id",
+        serialize_with = "serialize_object_id",
+        deserialize_with = "deserialize_object_id"
+    )]
+    pub top_thread_id: Option<ObjectId>,
+    #[serde(rename = "top_thread")]
+    pub top_thread: Option<ThreadIncludeDTO>,
     pub kind: String,
     pub slug: String,
     pub title: String,
@@ -110,6 +118,8 @@ impl Into<ThreadDTO> for crate::entity::thread::Thread {
             quote_thread: None,
             reply_to_thread_id: self.reply_to_thread_id,
             reply_to_thread: None,
+            top_thread_id: self.top_thread_id,
+            top_thread: None,
             kind: self.kind,
             slug: self.slug,
             title: self.title,

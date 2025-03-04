@@ -38,9 +38,7 @@ pub async fn get_my_profile(
 ) -> ApiResponse<UserDTO> {
     let i18n = i18n!("user", lang);
     //getting connection from pool
-    let user_email = auth_context
-        .session
-        .get(REDIS_KEY_USER_EMAIL)
+    let user_email = auth_context.get(REDIS_KEY_USER_EMAIL)
         .map_or_else(|| "".to_string(), |v| v.clone());
 
     let find_user = Orm::get("user")
@@ -76,7 +74,7 @@ pub async fn change_password(
         );
     }
 
-    let user_email: Option<&String> = auth_context.session.get(REDIS_KEY_USER_EMAIL);
+    let user_email: Option<&String> = auth_context.get(REDIS_KEY_USER_EMAIL);
     if let None = user_email {
         info!(target:"user::change-password::failed","session not found {:?}",auth_context.session);
         return ApiResponse::failed(
