@@ -1,6 +1,4 @@
-use crate::common::constant::{
-    PROVIDER_BASIC, REDIS_KEY_USER_EMAIL, REDIS_KEY_USER_ID, REDIS_KEY_USER_TOKEN,
-};
+use crate::common::constant::{COLLECTION_USER, PROVIDER_BASIC, REDIS_KEY_USER_EMAIL, REDIS_KEY_USER_ID, REDIS_KEY_USER_TOKEN};
 use crate::common::jwt::{JwtClaims, JwtUtil};
 use crate::entity::user::User;
 use crate::entity::user_metadata::UserMetaData;
@@ -41,7 +39,7 @@ pub async fn sign_up_email(
         );
     }
 
-    let find_user = DB::get("user")
+    let find_user = DB::get(COLLECTION_USER)
         .filter(vec![equal("email",  body.email.clone())])
         .get_one::<User>(&state.db)
         .await;
@@ -76,7 +74,7 @@ pub async fn sign_up_email(
         confirmation_sent_at: Some(now),
     };
 
-    let insert_data = DB::insert("user").one(create_user, &state.db).await;
+    let insert_data = DB::insert(COLLECTION_USER).one(create_user, &state.db).await;
 
     if let Err(err) = insert_data {
         info!(target:"sign-up::email::failed","insert user failed {:?}",err);
@@ -125,7 +123,7 @@ pub async fn sign_up_email_confirmation(
     }
     let user_email = user_email.unwrap();
 
-    let find_user = DB::get("user")
+    let find_user = DB::get(COLLECTION_USER)
         .filter(vec![equal("email", user_email)])
         .get_one::<User>(&state.db)
         .await;
@@ -137,7 +135,7 @@ pub async fn sign_up_email_confirmation(
 
     let user = find_user.unwrap();
 
-    let update_user = DB::update("user")
+    let update_user = DB::update(COLLECTION_USER)
         .set(doc! {
             "updated_at":DateTime::now(),
             "confirmation_at": DateTime::now()
@@ -166,7 +164,7 @@ pub async fn sign_in_email(
 ) -> ApiResponse<SignInResponse> {
     let i18n = i18n!("auth", lang);
 
-    let find_user = DB::get("user")
+    let find_user = DB::get(COLLECTION_USER)
         .filter(vec![equal("email", &body.email)])
         .get_one::<User>(&state.db)
         .await;
@@ -270,7 +268,7 @@ pub async fn request_reset_password(
         );
     }
 
-    let find_user = DB::get("user")
+    let find_user = DB::get(COLLECTION_USER)
         .filter(vec![equal("email", &body.email)])
         .get_one::<User>(&state.db)
         .await;
@@ -391,7 +389,7 @@ pub async fn set_new_password(
         );
     }
 
-    let update_password = DB::update("user")
+    let update_password = DB::update(COLLECTION_USER)
         .set(doc! {
             "password":create_password.unwrap()
         })

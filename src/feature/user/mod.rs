@@ -6,14 +6,13 @@ use log::info;
 use validator::Validate;
 
 use crate::common::api_response::{PaginationRequest, PagingResponse};
-use crate::common::constant::{BUCKET_PROFILE_PICTURE, PROVIDER_BASIC, REDIS_KEY_USER_ID};
+use crate::common::constant::{BUCKET_PROFILE_PICTURE, COLLECTION_FOLLOWER, COLLECTION_USER, COLLECTION_USER_PROFILE, PROVIDER_BASIC, REDIS_KEY_USER_ID};
 use crate::common::middleware::Json;
 use crate::common::minio::MinIO;
-use crate::common::mongo::filter::is;
+use crate::common::mongo::filter::{equal, is};
 use crate::common::mongo::lookup::one;
 use crate::common::mongo::DB;
 use crate::common::multipart_file::SingleFileExtractor;
-use crate::common::orm::orm::Orm;
 use crate::common::utils::create_object_id_option;
 use crate::dto::following_dto::FollowingDTO;
 use crate::dto::user_dto::UserDTO;
@@ -38,12 +37,13 @@ pub async fn get_my_profile(
 ) -> ApiResponse<UserDTO> {
     let i18n = i18n!("user", lang);
     //getting connection from pool
-    let user_email = auth_context.get(REDIS_KEY_USER_EMAIL)
+    let user_email = auth_context
+        .get(REDIS_KEY_USER_EMAIL)
         .map_or_else(|| "".to_string(), |v| v.clone());
 
-    let find_user = Orm::get("user")
-        .filter_string("email", Some("$eq"), &user_email)
-        .one::<UserDTO>(&state.db)
+    let find_user = DB::get(COLLECTION_USER)
+        .filter(vec![equal("email", &user_email)])
+        .get_one::<UserDTO>(&state.db)
         .await;
 
     if let Err(err) = find_user {
@@ -85,9 +85,9 @@ pub async fn change_password(
 
     let user_email = user_email.unwrap();
 
-    let find_user = Orm::get("user")
-        .filter_string("email", Some("$eq"), &user_email)
-        .one::<User>(&state.db)
+    let find_user = DB::get(COLLECTION_USER)
+        .filter(vec![equal("email", &user_email)])
+        .get_one::<User>(&state.db)
         .await;
     if let Err(err) = find_user {
         info!(target:"user::change-password::failed","user not found {:?}",err);
@@ -134,13 +134,13 @@ pub async fn change_password(
         return ApiResponse::failed(i18n.translate("user.change-password.user.invalid").as_str());
     }
 
-    let update_password = Orm::update("user")
+    let update_password = DB::update(COLLECTION_USER)
         .set(doc! {
             "password":create_password.unwrap(),
             "updated_at":DateTime::now()
         })
-        .filter_object_id("_id", &user.id.unwrap())
-        .execute_one(&state.db)
+        .filter(vec![equal("_id", &user.id)])
+        .execute(&state.db)
         .await;
 
     if let Err(err) = update_password {
@@ -172,9 +172,9 @@ pub async fn update_profile_picture(
         );
     }
     let user_email = user_email.unwrap();
-    let find_user = Orm::get("user")
-        .filter_string("email", Some("$eq"), &user_email)
-        .one::<User>(&state.db)
+    let find_user = DB::get(COLLECTION_USER)
+        .filter(vec![equal("email", &user_email)])
+        .get_one::<User>(&state.db)
         .await;
 
     if let Err(err) = find_user {
@@ -214,13 +214,13 @@ pub async fn update_profile_picture(
         created_at: DateTime::now(),
         updated_at: DateTime::now(),
     };
-    let insert_profile_picture = Orm::update("user")
+    let insert_profile_picture = DB::update(COLLECTION_USER)
         .set(doc! {
             "profile_picture":bson::to_document(&profile_picture).unwrap_or(Document::new()),
             "updated_at":DateTime::now()
         })
-        .filter_object_id("_id", &user.id.unwrap())
-        .execute_one(&state.db)
+        .filter(vec![is("_id", &user.id)])
+        .execute(&state.db)
         .await;
 
     if let Err(err) = insert_profile_picture {
@@ -254,7 +254,7 @@ pub async fn get_user_profile(
         return ApiResponse::failed(i18n.translate("user.profile.not-found").as_str());
     }
 
-    let data = DB::get("user")
+    let data = DB::get(COLLECTION_USER)
         .lookup(&[one("user-profile", "_id", "_id", "profile")])
         .filter(vec![is("_id", create_user_id.unwrap())])
         .get_one::<UserDTO>(&state.db)
@@ -285,7 +285,7 @@ pub async fn get_list_follower(
         info!(target:"user::profile-picture::failed","session not found");
         return ApiResponse::failed(i18n.translate("user.profile.not-found").as_str());
     }
-    let mut data = DB::get("follower");
+    let mut data = DB::get(COLLECTION_FOLLOWER);
 
     if let Some(q) = query.q {
         data = data.text(q);
@@ -324,7 +324,7 @@ pub async fn get_list_following(
         info!(target:"user::profile-picture::failed","session not found");
         return ApiResponse::failed(i18n.translate("user.profile.not-found").as_str());
     }
-    let mut data = DB::get("follower");
+    let mut data = DB::get(COLLECTION_FOLLOWER);
 
     if let Some(q) = query.q {
         data = data.text(q);
@@ -365,7 +365,7 @@ pub async fn follow_user(
         return ApiResponse::failed(i18n.translate("user.profile.not-found").as_str());
     }
 
-    let find_user = DB::get("user")
+    let find_user = DB::get(COLLECTION_USER)
         .filter(vec![
             is("user_id", create_user_id.unwrap()),
             is("follower_id", current_user_id.unwrap()),
@@ -375,7 +375,10 @@ pub async fn follow_user(
 
     if let Some(_user) = find_user {
         info!(target:"user::profile-picture::failed","session not found");
-        return ApiResponse::ok("OK".to_string(),i18n.translate("user.follow.exist").as_str());
+        return ApiResponse::ok(
+            "OK".to_string(),
+            i18n.translate("user.follow.exist").as_str(),
+        );
     }
 
     let session = state.db.start_session().await;
@@ -386,27 +389,27 @@ pub async fn follow_user(
     let mut session = session.unwrap();
     let _ = session.start_transaction().await;
 
-    let following = Following{
+    let following = Following {
         user_id: create_user_id,
         follower_id: current_user_id,
         created_at: DateTime::now(),
         updated_at: DateTime::now(),
     };
 
-    let save_following = DB::insert("follower")
-        .one_with_session(following,&state.db,&mut session)
+    let save_following = DB::insert(COLLECTION_FOLLOWER)
+        .one_with_session(following, &state.db, &mut session)
         .await;
     if let Err(err) = save_following {
         info!(target:"stock::update","{:?}",err);
         let _abort = session.abort_transaction().await;
         return ApiResponse::failed(&i18n.translate("thread::create::failed"));
     }
-    let increment_follower = DB::update("user-profile")
+    let increment_follower = DB::update(COLLECTION_USER_PROFILE)
         .inc(doc! {
             "follower":1
         })
         .filter(vec![is("_id", create_user_id.unwrap())])
-        .execute_with_session(&state.db,&mut session)
+        .execute_with_session(&state.db, &mut session)
         .await;
     if let Err(err) = increment_follower {
         info!(target:"stock::update","{:?}",err);
@@ -414,12 +417,12 @@ pub async fn follow_user(
         return ApiResponse::failed(&i18n.translate("thread::create::failed"));
     }
 
-    let increment_following = DB::update("user-profile")
+    let increment_following = DB::update(COLLECTION_USER_PROFILE)
         .inc(doc! {
             "following":1
         })
         .filter(vec![is("_id", current_user_id.unwrap())])
-        .execute_with_session(&state.db,&mut session)
+        .execute_with_session(&state.db, &mut session)
         .await;
     if let Err(err) = increment_following {
         info!(target:"stock::update","{:?}",err);
@@ -428,7 +431,7 @@ pub async fn follow_user(
     }
 
     let _commit = session.commit_transaction().await;
-    ApiResponse::ok("OK".to_string(),&i18n.translate("user.profile.not-found"))
+    ApiResponse::ok("OK".to_string(), &i18n.translate("user.profile.not-found"))
 }
 
 pub async fn unfollow_user(
@@ -451,7 +454,7 @@ pub async fn unfollow_user(
         return ApiResponse::failed(i18n.translate("user.profile.not-found").as_str());
     }
 
-    let find_user = DB::get("user")
+    let find_user = DB::get(COLLECTION_USER)
         .filter(vec![
             is("user_id", create_user_id.unwrap()),
             is("follower_id", current_user_id.unwrap()),
@@ -461,7 +464,10 @@ pub async fn unfollow_user(
 
     if let None = find_user {
         info!(target:"user::profile-picture::failed","already unfollow");
-        return ApiResponse::ok("OK".to_string(),i18n.translate("user.follow.exist").as_str());
+        return ApiResponse::ok(
+            "OK".to_string(),
+            i18n.translate("user.follow.exist").as_str(),
+        );
     }
 
     let session = state.db.start_session().await;
@@ -472,13 +478,12 @@ pub async fn unfollow_user(
     let mut session = session.unwrap();
     let _ = session.start_transaction().await;
 
-
-    let save_following = DB::delete("follower")
+    let save_following = DB::delete(COLLECTION_FOLLOWER)
         .filter(vec![
             is("user_id", create_user_id.unwrap()),
             is("follower_id", current_user_id.unwrap()),
         ])
-        .one_with_session(&state.db,&mut session)
+        .one_with_session(&state.db, &mut session)
         .await;
 
     if let Err(err) = save_following {
@@ -493,12 +498,12 @@ pub async fn unfollow_user(
         return ApiResponse::failed(&i18n.translate("thread::create::failed"));
     }
 
-    let increment_follower = DB::update("user-profile")
+    let increment_follower = DB::update(COLLECTION_USER_PROFILE)
         .inc(doc! {
             "follower":-1
         })
         .filter(vec![is("_id", create_user_id.unwrap())])
-        .execute_with_session(&state.db,&mut session)
+        .execute_with_session(&state.db, &mut session)
         .await;
 
     if let Err(err) = increment_follower {
@@ -507,12 +512,12 @@ pub async fn unfollow_user(
         return ApiResponse::failed(&i18n.translate("thread::create::failed"));
     }
 
-    let increment_following = DB::update("user-profile")
+    let increment_following = DB::update(COLLECTION_USER_PROFILE)
         .inc(doc! {
             "following":-1
         })
         .filter(vec![is("_id", current_user_id.unwrap())])
-        .execute_with_session(&state.db,&mut session)
+        .execute_with_session(&state.db, &mut session)
         .await;
     if let Err(err) = increment_following {
         info!(target:"stock::update","{:?}",err);
@@ -521,5 +526,5 @@ pub async fn unfollow_user(
     }
 
     let _commit = session.commit_transaction().await;
-    ApiResponse::ok("OK".to_string(),&i18n.translate("user.profile.not-found"))
+    ApiResponse::ok("OK".to_string(), &i18n.translate("user.profile.not-found"))
 }

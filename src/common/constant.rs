@@ -19,3 +19,10 @@ pub const REDIS_KEY_USER_ID: &str = "id";
 
 pub const DEFAULT_ID_NON_MEMBER: &str = "6742c74a15e68b0e7ee06145";
 
+pub const COLLECTION_USER: &str = "user";
+pub const COLLECTION_FOLLOWER: &str = "follower";
+pub const COLLECTION_USER_PROFILE: &str = "user-profile";
+pub const COLLECTION_THREAD: &str = "thread";
+pub const COLLECTION_THREAD_VOTE: &str = "thread-vote";
+pub const COLLECTION_RESERVE_ATTACHMENT: &str = "reserve-attachment";
+
