@@ -3,7 +3,7 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use rand::{thread_rng, Rng};
+use rand::{rng, Rng};
 use redis::{Client, Commands, RedisResult};
 
 #[derive(Clone, Debug)]
@@ -155,11 +155,11 @@ impl RedisClient {
             .unwrap()
             .as_secs()
             / 30;
-        let mut rng = thread_rng();
-        let random_number: u32 = rng.gen_range(0..10000);
+        let mut rng = rng();
+        let random_number: u32 = rng.random_range(0..10000);
         let otp = (now as u32 ^ random_number) % 10000;
         if otp.to_string().len() < 4 {
-            return format!("{}{}", otp, rng.gen_range(0..10));
+            return format!("{}{}", otp, rng.random_range(0..10));
         }
         format!("{}", otp)
     }

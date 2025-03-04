@@ -2,7 +2,6 @@ use crate::common::constant::{
     PROVIDER_BASIC, REDIS_KEY_USER_EMAIL, REDIS_KEY_USER_ID, REDIS_KEY_USER_TOKEN,
 };
 use crate::common::jwt::{JwtClaims, JwtUtil};
-use crate::common::orm::orm::Orm;
 use crate::entity::user::User;
 use crate::entity::user_metadata::UserMetaData;
 use auth_model::{SignInEmailRequest, SignInResponse, SignUpRequest};
@@ -11,15 +10,17 @@ use bcrypt::DEFAULT_COST;
 use bson::oid::ObjectId;
 use bson::{doc, DateTime};
 use log::info;
+use std::ptr::eq;
 use validator::Validate;
 
+use crate::common::mongo::filter::{equal, is};
+use crate::common::mongo::DB;
+use crate::feature::auth::auth_model::{
+    ResetPasswordRequest, SetNewPasswordRequest, VerifyResetPasswordResponse,
+};
 use crate::{
     common::{api_response::ApiResponse, app_state::AppState, lang::Lang, middleware::Json},
     i18n,
-};
-
-use crate::feature::auth::auth_model::{
-    ResetPasswordRequest, SetNewPasswordRequest, VerifyResetPasswordResponse,
 };
 
 pub mod auth_model;
@@ -38,6 +39,16 @@ pub async fn sign_up_email(
             err,
             i18n.translate("sign-up.validation.failed").as_str(),
         );
+    }
+
+    let find_user = DB::get("user")
+        .filter(vec![equal("email",  body.email.clone())])
+        .get_one::<User>(&state.db)
+        .await;
+
+    if let Ok(_user) = find_user {
+        info!(target:"sign-up::email::failed","email already in use");
+        return ApiResponse::failed(i18n.translate("sign-up.email.in-use").as_str());
     }
 
     let create_password = bcrypt::hash(body.password, bcrypt::DEFAULT_COST);
@@ -65,7 +76,7 @@ pub async fn sign_up_email(
         confirmation_sent_at: Some(now),
     };
 
-    let insert_data = Orm::insert("user").one(create_user, &state.db).await;
+    let insert_data = DB::insert("user").one(create_user, &state.db).await;
 
     if let Err(err) = insert_data {
         info!(target:"sign-up::email::failed","insert user failed {:?}",err);
@@ -114,29 +125,29 @@ pub async fn sign_up_email_confirmation(
     }
     let user_email = user_email.unwrap();
 
-    let find_user = Orm::get("user")
-        .filter_string("email", Some("$eq"), &user_email)
-        .one::<User>(&state.db)
+    let find_user = DB::get("user")
+        .filter(vec![equal("email", user_email)])
+        .get_one::<User>(&state.db)
         .await;
 
-    if let Err(err)= find_user {
-        info!(target:"sign-up::verify-email::failed","redis session not contain email");
+    if let Err(err) = find_user {
+        info!(target:"sign-up::verify-email::failed","{:?}",err);
         return ApiResponse::failed(i18n.translate("sign-up.email.confirmation.failed").as_str());
     }
 
     let user = find_user.unwrap();
 
-    let update_user = Orm::update("user")
+    let update_user = DB::update("user")
         .set(doc! {
             "updated_at":DateTime::now(),
             "confirmation_at": DateTime::now()
         })
-        .filter_object_id("_id", &user.id.unwrap())
-        .execute_one(&state.db)
+        .filter(vec![is("_id",&user.id.unwrap())])
+        .execute(&state.db)
         .await;
 
-    if let Err(err)= update_user {
-        info!(target:"sign-up::verify-email::failed","redis session not contain email");
+    if let Err(err) = update_user {
+        info!(target:"sign-up::verify-email::failed","{:?}",err);
         return ApiResponse::failed(i18n.translate("sign-up.email.confirmation.failed").as_str());
     }
 
@@ -155,12 +166,12 @@ pub async fn sign_in_email(
 ) -> ApiResponse<SignInResponse> {
     let i18n = i18n!("auth", lang);
 
-    let find_user = Orm::get("user")
-        .filter_string("email", Some("$eq"), &body.email)
-        .one::<User>(&state.db)
+    let find_user = DB::get("user")
+        .filter(vec![equal("email", &body.email)])
+        .get_one::<User>(&state.db)
         .await;
 
-    if let Err(err)= find_user {
+    if let Err(err) = find_user {
         info!(target:"sign-in::email::failed","connection error {:?}",err);
         return ApiResponse::failed(i18n.translate("sign-in.email.user.not-found").as_str());
     }
@@ -183,7 +194,7 @@ pub async fn sign_in_email(
                 .as_str(),
         );
     }
-    if let None= user.password {
+    if let None = user.password {
         info!(target:"sign-in::email::failed","user doesn't have BASIC password");
         return ApiResponse::failed(
             i18n.translate("sign-in.email.user.provider.not-found")
@@ -192,7 +203,7 @@ pub async fn sign_in_email(
     }
     let current_password = user.password.clone().unwrap();
     let verify_password = bcrypt::verify(body.password, &current_password);
-    if let Err(err)= verify_password {
+    if let Err(err) = verify_password {
         info!(target:"sign-in::email::failed","password invalid {:?}",err);
         return ApiResponse::failed(
             i18n.translate("sign-in.email.user.invalid-credential")
@@ -229,7 +240,7 @@ pub async fn sign_in_email(
         ],
     );
 
-    if let Err(err)= save_token_to_redis {
+    if let Err(err) = save_token_to_redis {
         info!(target:"sign-in::email::failed","save token error {:?}",err);
         return ApiResponse::failed(i18n.translate("sign-in.email.failed").as_str());
     }
@@ -251,7 +262,7 @@ pub async fn request_reset_password(
     let i18n = i18n!("auth", lang);
 
     let validate = body.validate();
-    if let Err(err)= validate {
+    if let Err(err) = validate {
         info!(target:"reset-password::validate::failed","validation error {}",err);
         return ApiResponse::error_validation(
             err,
@@ -259,11 +270,11 @@ pub async fn request_reset_password(
         );
     }
 
-    let find_user = Orm::get("user")
-        .filter_string("email", Some("$eq"), &body.email)
-        .one::<User>(&state.db)
+    let find_user = DB::get("user")
+        .filter(vec![equal("email", &body.email)])
+        .get_one::<User>(&state.db)
         .await;
-    if let Err(err)= find_user {
+    if let Err(err) = find_user {
         info!(target:"reset-password::request::failed","connection error {:?}",err);
         return ApiResponse::failed(i18n.translate("forgot.password.request.failed").as_str());
     }
@@ -275,7 +286,7 @@ pub async fn request_reset_password(
         session_id.clone().as_str(),
         &[(REDIS_KEY_USER_EMAIL, user.email.clone())],
     );
-    if let Err(err)= save_session {
+    if let Err(err) = save_session {
         info!(target:"reset-password::request::failed","connection error {:?}",err);
         return ApiResponse::failed(i18n.translate("forgot.password.request.failed").as_str());
     }
@@ -300,7 +311,7 @@ pub async fn verify_reset_password(
         .redis
         .get_session_reset_password(code.clone().as_str());
 
-    if let Err(err)= get_session {
+    if let Err(err) = get_session {
         info!(target:"reset-password::request::failed","connection error {:?}",err);
         return ApiResponse::failed(i18n.translate("reset-password.failed").as_str());
     }
@@ -331,8 +342,8 @@ pub async fn verify_reset_password(
         &[(REDIS_KEY_USER_EMAIL, user_email.clone())],
     );
 
-    if let Err(err)= save_session{
-        info!(target:"reset-password::request::failed","connection error ");
+    if let Err(err) = save_session {
+        info!(target:"reset-password::request::failed","{:?}",err);
         return ApiResponse::failed(i18n.translate("reset-password.failed").as_str());
     }
     ApiResponse::ok(
@@ -352,7 +363,7 @@ pub async fn set_new_password(
     let get_session = state
         .redis
         .get_session_reset_password(jwt.sub.clone().as_str());
-    if let Err(err)= get_session {
+    if let Err(err) = get_session {
         info!(target:"auth::request::failed","connection error {:?}",err);
         return ApiResponse::failed(
             i18n.translate("forgot.password.set-password.expire")
@@ -372,7 +383,7 @@ pub async fn set_new_password(
     let user_email = user_email.unwrap();
 
     let create_password = bcrypt::hash(body.new_password, DEFAULT_COST);
-    if let Err(err)= create_password {
+    if let Err(err) = create_password {
         info!(target:"auth::request::failed","connection error {:?}",err);
         return ApiResponse::failed(
             i18n.translate("forgot.password.set-password.failed")
@@ -380,15 +391,15 @@ pub async fn set_new_password(
         );
     }
 
-    let update_password = Orm::update("user")
+    let update_password = DB::update("user")
         .set(doc! {
             "password":create_password.unwrap()
         })
-        .filter_string("email", Some("$eq"), &user_email)
-        .execute_one(&state.db)
+        .filter(vec![equal("email", &user_email)])
+        .execute(&state.db)
         .await;
-    if let Err(err)= update_password {
-        info!(target:"auth::request::failed","connection error ");
+    if let Err(err) = update_password {
+        info!(target:"auth::request::failed","connection error {:?}",err);
         return ApiResponse::failed(
             i18n.translate("forgot.password.set-password.failed")
                 .as_str(),

@@ -19,3 +19,4 @@ pub mod multipart_file;
 pub mod permission;
 pub mod seeder;
 pub mod serialize;
+pub mod mongo;

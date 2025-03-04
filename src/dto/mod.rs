@@ -5,3 +5,5 @@ pub mod thread_vote_dto;
 pub mod user_dto;
 pub mod user_metadata_dto;
 pub mod topic_dto;
+pub mod user_profile_dto;
+pub mod following_dto;

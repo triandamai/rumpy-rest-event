@@ -2,5 +2,13 @@
   "message": {
     "en": "Hello, ${name}. ${hohoe}",
     "id-ID": "Halo, ${name}. ${hohoe}"
+  },
+  "get.public.thread.not-found": {
+    "en": "No data found",
+    "id-ID": "Tidak ditemukan satupun data"
+  },
+  "get.public.thread.success": {
+    "en": "Data thread",
+    "id-ID": "Data thread"
   }
 }

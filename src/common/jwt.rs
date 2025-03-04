@@ -6,7 +6,7 @@ use axum::extract::{FromRef, FromRequestParts};
 use axum::http::request::Parts;
 use axum::response::{IntoResponse, Response};
 use axum::RequestPartsExt;
-
+use bson::oid::ObjectId;
 use chrono::{Duration, Local};
 use jsonwebtoken::{
     errors::Error as JwtError, Algorithm, DecodingKey, EncodingKey, Header, TokenData, Validation,
@@ -16,8 +16,10 @@ use serde::{Deserialize, Serialize};
 
 use super::app_state::AppState;
 use crate::common::api_response::ApiResponse;
+use crate::common::constant::REDIS_KEY_USER_ID;
 use crate::common::env_config::EnvConfig;
 use crate::common::permission::permission::app;
+use crate::common::utils::create_object_id_option;
 
 pub struct JwtUtil {
     pub claims: JwtClaims,
@@ -37,6 +39,7 @@ pub struct AuthContext {
     pub session: HashMap<String, String>,
     pub permissions: HashMap<String, String>,
 }
+
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum AuthError {
@@ -88,6 +91,14 @@ impl AuthContext {
             return true;
         }
         self.permissions.get(&permission.to_string()).is_some()
+    }
+
+    pub fn get(&self, key: &str) -> Option<&String> {
+        self.session.get(key)
+    }
+
+    pub fn get_user_id(&self) -> Option<ObjectId> {
+        self.get(REDIS_KEY_USER_ID).map_or_else(|| None, |id| create_object_id_option(id))
     }
 
     pub fn authorize_multiple(&self, permissions: Vec<&str>) -> bool {

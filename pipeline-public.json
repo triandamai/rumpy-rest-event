@@ -1,23 +1,12 @@
 [
     {
         "$match": {
-            "$and": [
-                {
-                    "reply_to_thread_id": {
-                        "$eq": null
-                    }
-                },
-                {
-                    "kind": {
-                        "$eq": "PUBLIC"
-                    }
-                }
-            ]
-        }
-    },
-    {
-        "$sort": {
-            "created_at": -1
+            "reply_to_thread_id": {
+                "$eq": null
+            },
+            "kind": {
+                "$eq": "PUBLIC"
+            }
         }
     },
     {
@@ -29,6 +18,12 @@
         }
     },
     {
+        "$unwind": {
+            "path": "$created_by",
+            "preserveNullAndEmptyArrays": true
+        }
+    },
+    {
         "$lookup": {
             "from": "thread",
             "localField": "quote_thread_id",
@@ -37,39 +32,17 @@
         }
     },
     {
+        "$unwind": {
+            "path": "$quote_thread",
+            "preserveNullAndEmptyArrays": true
+        }
+    },
+    {
         "$lookup": {
             "from": "user",
             "localField": "quote_thread.created_by_id",
             "foreignField": "_id",
             "as": "quote_threadcreated_by"
-        }
-    },
-    {
-        "$lookup": {
-            "from": "thread",
-            "localField": "reply_to_thread_id",
-            "foreignField": "_id",
-            "as": "reply_to_thread"
-        }
-    },
-    {
-        "$lookup": {
-            "from": "user",
-            "localField": "reply_to_thread.created_by_id",
-            "foreignField": "_id",
-            "as": "reply_to_threadcreated_by"
-        }
-    },
-    {
-        "$unwind": {
-            "path": "$created_by",
-            "preserveNullAndEmptyArrays": true
-        }
-    },
-    {
-        "$unwind": {
-            "path": "$quote_thread",
-            "preserveNullAndEmptyArrays": true
         }
     },
     {
@@ -116,9 +89,25 @@
         }
     },
     {
+        "$lookup": {
+            "from": "thread",
+            "localField": "reply_to_thread_id",
+            "foreignField": "_id",
+            "as": "reply_to_thread"
+        }
+    },
+    {
         "$unwind": {
             "path": "$reply_to_thread",
             "preserveNullAndEmptyArrays": true
+        }
+    },
+    {
+        "$lookup": {
+            "from": "user",
+            "localField": "reply_to_thread.created_by_id",
+            "foreignField": "_id",
+            "as": "reply_to_threadcreated_by"
         }
     },
     {
@@ -162,6 +151,11 @@
                     "else": "$$REMOVE"
                 }
             }
+        }
+    },
+    {
+        "$sort": {
+            "created_at": -1
         }
     },
     {

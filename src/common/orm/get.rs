@@ -34,7 +34,7 @@ impl Get {
 
         // info!(target: "db::get::pipeline","{:?}",pipeline);
         if data.is_err() {
-            let message = format!("{:?}", data.unwrap_err().kind);
+            let message = format!("{:?}", data.err().unwrap().kind);
             info!(target: "db::get::error","{}",message.clone());
             return Err(message);
         }
@@ -142,7 +142,7 @@ impl Get {
         let data = collection.aggregate(query).await;
 
         if data.is_err() {
-            let message = format!("{:?}", data.unwrap_err().kind);
+            let message = format!("{:?}", data.err().unwrap().kind);
             info!(target: "db::get::error","{}",message.clone());
             return Err(message);
         }

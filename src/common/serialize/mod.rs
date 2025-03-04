@@ -1,6 +1,6 @@
 use serde::Serializer;
 
-pub fn serialize_to_empty_string<S>(
+pub fn serialize_to_redact_password<S>(
     value: &Option<String>,
     serializer: S,
 ) -> Result<S::Ok, S::Error>

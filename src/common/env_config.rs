@@ -1,5 +1,4 @@
 use dotenv::dotenv;
-use log::info;
 use std::sync::Arc;
 
 #[derive(Clone, Debug)]

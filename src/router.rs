@@ -26,7 +26,12 @@ pub fn init_routes(state: AppState) -> Router {
             "/auth/reset-password/set",
             post(feature::auth::set_new_password),
         )
-        .route("/user/profile", get(feature::user::get_user_profile))
+        .route("/user/profile", get(feature::user::get_my_profile))
+        .route("/user/public-profile", get(feature::user::get_user_profile))
+        .route("/user/{user_id}/follower", get(feature::user::get_list_follower))
+        .route("/user/{user_id}/following", get(feature::user::get_list_following))
+        .route("/user/{user_id}/follow", get(feature::user::follow_user))
+        .route("/user/{user_id}/unfollow", get(feature::user::unfollow_user))
         .route(
             "/user/update-profile-picture",
             put(feature::user::update_profile_picture),

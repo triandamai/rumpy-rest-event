@@ -1,7 +1,7 @@
 use bson::{oid::ObjectId, DateTime};
 use serde::{Deserialize, Serialize};
 
-use crate::common::serialize::serialize_to_empty_string;
+use crate::common::serialize::serialize_to_redact_password;
 
 use super::{profile_picture::ProfilePicture, user_metadata::UserMetaData};
 
@@ -12,7 +12,6 @@ pub struct User {
     pub display_name: String,
     pub email: String,
     pub phone_number: Option<String>,
-    #[serde(serialize_with = "serialize_to_empty_string")]
     pub password: Option<String>,
     pub app_meta_data: Option<serde_json::Value>,
     pub user_meta_data: Option<UserMetaData>,

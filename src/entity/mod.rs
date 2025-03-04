@@ -5,3 +5,5 @@ pub mod thread_vote;
 pub mod user;
 pub mod user_metadata;
 pub mod topic;
+pub mod user_profile;
+pub mod following;

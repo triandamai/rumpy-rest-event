@@ -25,7 +25,7 @@ pub struct PaginationRequest {
     pub page: Option<i64>,
     pub size: Option<i64>,
     pub q: Option<String>,
-    pub order: Option<String>,
+    pub sort: Option<String>,
 }
 
 impl PaginationRequest {
@@ -46,15 +46,15 @@ impl PaginationRequest {
         page
     }
 
-    pub fn get_order(self) -> Option<(String, String)> {
-        let mut column: String = String::new();
-        let mut order: String = String::new();
-        let ordering = self.order.unwrap_or("".to_string());
+    pub fn get_sorted(self) -> Option<(String, String)> {
+        let column: String = String::new();
+        let ordering = self.sort.unwrap_or("".to_string());
         if !ordering.is_empty() {
             let split = ordering.split(":").collect::<Vec<&str>>();
             let field = split.get(0);
             let group = split.get(1);
             if field.is_some() {
+                let mut order: String = String::new();
                 if group.is_some() {
                     order = split[1].to_string();
                 } else {
