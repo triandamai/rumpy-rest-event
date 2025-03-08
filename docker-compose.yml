@@ -3,7 +3,7 @@ services:
   string-team-api:
     build:
       context: .
-      dockerfile: prod.Dockerfile
+      dockerfile: Dockerfile
     environment:
       MODE: ${MODE}
       RUST_BACKTRACE: ${RUST_BACKTRACE}

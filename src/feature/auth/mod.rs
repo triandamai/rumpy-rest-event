@@ -383,10 +383,7 @@ pub async fn set_new_password(
     let create_password = bcrypt::hash(body.new_password, DEFAULT_COST);
     if let Err(err) = create_password {
         info!(target:"auth::request::failed","connection error {:?}",err);
-        return ApiResponse::failed(
-            i18n.translate("forgot.password.set-password.failed")
-                .as_str(),
-        );
+        return ApiResponse::failed(&i18n.translate("forgot.password.set-password.failed"), );
     }
 
     let update_password = DB::update(COLLECTION_USER)
@@ -398,10 +395,7 @@ pub async fn set_new_password(
         .await;
     if let Err(err) = update_password {
         info!(target:"auth::request::failed","connection error {:?}",err);
-        return ApiResponse::failed(
-            i18n.translate("forgot.password.set-password.failed")
-                .as_str(),
-        );
+        return ApiResponse::failed(&i18n.translate("forgot.password.set-password.failed"), );
     }
 
     let _remove_session = state
@@ -410,7 +404,6 @@ pub async fn set_new_password(
 
     ApiResponse::ok(
         "OK".to_string(),
-        i18n.translate("forgot.password.set-password.success")
-            .as_str(),
+        &i18n.translate("forgot.password.set-password.success"),
     )
 }
