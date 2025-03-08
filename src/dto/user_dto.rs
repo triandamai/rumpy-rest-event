@@ -25,7 +25,7 @@ pub struct UserDTO {
     pub app_meta_data: Option<serde_json::Value>,
     pub user_meta_data: Option<UserMetaDataDTO>,
     pub profile_picture: Option<ProfilePictureDTO>,
-    pub profile:Option<UserProfileDTO>,
+    pub profile: Option<UserProfileDTO>,
     #[serde(serialize_with = "serialize_datetime")]
     pub created_at: DateTime,
     #[serde(serialize_with = "serialize_datetime")]
@@ -53,6 +53,7 @@ impl Into<UserDTO> for User {
             updated_at: self.updated_at,
             confirmation_at: self.confirmation_at,
             confirmation_sent_at: self.confirmation_sent_at,
+            profile: None,
         }
     }
 }

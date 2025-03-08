@@ -6,7 +6,10 @@ use log::info;
 use validator::Validate;
 
 use crate::common::api_response::{PaginationRequest, PagingResponse};
-use crate::common::constant::{BUCKET_PROFILE_PICTURE, COLLECTION_FOLLOWER, COLLECTION_USER, COLLECTION_USER_PROFILE, PROVIDER_BASIC, REDIS_KEY_USER_ID};
+use crate::common::constant::{
+    BUCKET_PROFILE_PICTURE, COLLECTION_FOLLOWER, COLLECTION_USER, COLLECTION_USER_PROFILE,
+    PROVIDER_BASIC, REDIS_KEY_USER_ID,
+};
 use crate::common::middleware::Json;
 use crate::common::minio::MinIO;
 use crate::common::mongo::filter::{equal, is};
@@ -373,7 +376,7 @@ pub async fn follow_user(
         .get_one::<UserDTO>(&state.db)
         .await;
 
-    if let Some(_user) = find_user {
+    if let Ok(_user) = find_user {
         info!(target:"user::profile-picture::failed","session not found");
         return ApiResponse::ok(
             "OK".to_string(),
@@ -462,8 +465,8 @@ pub async fn unfollow_user(
         .get_one::<UserDTO>(&state.db)
         .await;
 
-    if let None = find_user {
-        info!(target:"user::profile-picture::failed","already unfollow");
+    if let Err(why) = find_user {
+        info!(target:"user::profile-picture::failed","already unfollow {}",why);
         return ApiResponse::ok(
             "OK".to_string(),
             i18n.translate("user.follow.exist").as_str(),
