@@ -79,6 +79,14 @@ pub async fn get_list_public_thread(
                 "created_by",
                 "reply_to_thread",
             ),
+            one("thread", "top_thread_id", "_id", "top_thread"),
+            one_merge_to(
+                "user",
+                "top_thread.created_by_id",
+                "_id",
+                "created_by",
+                "top_thread",
+            ),
         ])
         .filter(vec![
             equal("reply_to_thread_id", None::<i32>),
@@ -142,6 +150,14 @@ pub async fn get_list_discussion_thread(
                 "_id",
                 "created_by",
                 "reply_to_thread",
+            ),
+            one("thread", "top_thread_id", "_id", "top_thread"),
+            one_merge_to(
+                "user",
+                "top_thread.created_by_id",
+                "_id",
+                "created_by",
+                "top_thread",
             ),
             one("thread", "top_thread_id", "_id", "top_thread"),
             one_merge_to(
@@ -309,6 +325,86 @@ pub async fn get_list_comment_thread(
         ])
         .filter(vec![is("reply_to_thread_id", create_thread_id)])
         .get_per_page::<ThreadDTO>(page, size, &state.db)
+        .await;
+    if let Err(err) = find_thread {
+        info!(target:"thread::list","failed to fetch {:?}",err);
+        return ApiResponse::failed(&i18n.translate("get.public.thread.not-found"));
+    }
+
+    ApiResponse::ok(
+        find_thread.unwrap(),
+        &i18n.translate("get.public.thread.success"),
+    )
+}
+
+pub async fn get_detail_thread(
+    state: State<AppState>,
+    lang: Lang,
+    auth_context: AuthContext,
+    Path(thread_id): Path<String>,
+    Query(query): Query<PaginationRequest>,
+) -> ApiResponse<ThreadDTO> {
+    let i18n = i18n!("thread", lang);
+    //getting connection from pool
+    if let None = auth_context.get_user_id() {
+        info!(target:"thread::list","failed to find user_id");
+        return ApiResponse::failed(&i18n.translate(""));
+    }
+
+    let create_thread_id = create_object_id_option(&thread_id);
+    if let None = create_thread_id {
+        info!(target:"thread::list","failed to find user_id");
+        return ApiResponse::failed(&i18n.translate(""));
+    }
+
+    let page = query.clone().page.unwrap_or(0);
+    let size = query.clone().size.unwrap_or(10);
+
+    let mut find_thread = DB::get(COLLECTION_THREAD);
+    if let Some(text) = query.q.clone() {
+        find_thread = find_thread.text(text.as_str());
+    }
+
+    if let Some((column, order)) = query.get_sorted() {
+        find_thread = if order == "ASC" {
+            find_thread.sort(vec![(&column.clone(), 1)])
+        } else {
+            find_thread.sort(vec![(&column.clone(), -1)])
+        };
+    } else {
+        find_thread = find_thread.sort(vec![("created_at", -1)]);
+    }
+
+    let find_thread = find_thread
+        .lookup(&[
+            one("user", "created_by_id", "_id", "created_by"),
+            one("thread", "quote_thread_id", "_id", "quote_thread"),
+            one_merge_to(
+                "user",
+                "quote_thread.created_by_id",
+                "_id",
+                "created_by",
+                "quote_thread",
+            ),
+            one("thread", "reply_to_thread_id", "_id", "reply_to_thread"),
+            one_merge_to(
+                "user",
+                "reply_to_thread.created_by_id",
+                "_id",
+                "created_by",
+                "reply_to_thread",
+            ),
+            one("thread", "top_thread_id", "_id", "top_thread"),
+            one_merge_to(
+                "user",
+                "top_thread.created_by_id",
+                "_id",
+                "created_by",
+                "top_thread",
+            ),
+        ])
+        .filter(vec![is("_id", create_thread_id)])
+        .get_one::<ThreadDTO>(&state.db)
         .await;
     if let Err(err) = find_thread {
         info!(target:"thread::list","failed to fetch {:?}",err);

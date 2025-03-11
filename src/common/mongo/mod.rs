@@ -1,30 +1,30 @@
 use crate::common::api_response::PagingResponse;
-use crate::common::mongo::filter::{when, or, search, Filter, FilterGroup};
+use crate::common::mongo::delete::Delete;
+use crate::common::mongo::filter::{or, search, when, Filter, FilterGroup};
+use crate::common::mongo::insert::Insert;
 use crate::common::mongo::lookup::{many, one, one_merge_to, Lookup};
+use crate::common::mongo::update::Update;
+use crate::common::mongo::upsert::Upsert;
 use crate::common::orm::get_db_name;
 use crate::common::orm::orm::{create_count_field, create_limit_field, create_skip_field};
 use bson::{doc, Bson, Document};
 use log::info;
 use mongodb::{Client, Collection};
 use serde::de::DeserializeOwned;
+use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
-use serde::{Serialize,Deserialize};
 use tokio_stream::StreamExt;
-use crate::common::mongo::delete::Delete;
-use crate::common::mongo::insert::Insert;
-use crate::common::mongo::update::Update;
-use crate::common::mongo::upsert::Upsert;
 
+pub mod delete;
 pub mod filter;
-pub mod lookup;
 pub mod insert;
+pub mod lookup;
 pub mod update;
 pub mod upsert;
-pub mod delete;
 
-#[derive(Debug,Serialize,Deserialize,Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct DB {
-    collection:String,
+    collection: String,
     filter: Option<Filter>,
     lookup: Vec<Lookup>,
     sort: Option<Document>,
@@ -36,7 +36,7 @@ pub struct DB {
 impl DB {
     pub fn get(collection: &str) -> Self {
         DB {
-            collection:collection.to_string(),
+            collection: collection.to_string(),
             filter: None,
             lookup: Vec::new(),
             sort: None,
@@ -72,10 +72,10 @@ impl DB {
         self
     }
 
-    pub fn sort(mut self,sort:Vec<(&str,i32)>) -> Self {
+    pub fn sort(mut self, sort: Vec<(&str, i32)>) -> Self {
         let mut sort_doc = Document::new();
         let mut doc = self.sort.clone().unwrap_or(Document::new());
-        for (col,order) in sort{
+        for (col, order) in sort {
             doc.insert(col, order);
         }
         sort_doc.insert("$sort", doc);
@@ -110,7 +110,7 @@ impl DB {
         self
     }
 
-    pub fn populate_filter(mut self)->Document{
+    pub fn populate_filter(mut self) -> Document {
         let mut doc = Document::new();
         if let Some(filter) = self.filter {
             for item in filter.and {
@@ -154,8 +154,6 @@ impl DB {
             }
             match_doc.insert("$match", inside_match_doc);
             pipeline.push(match_doc);
-
-
         }
         let mut count_all = pipeline.clone();
         for l in self.lookup {
@@ -286,24 +284,24 @@ impl DB {
         let collection: Collection<Document> = db.collection(&self.collection);
 
         self.count = Some(create_count_field());
-        let (page,size) = if page > 1 {
+        let (limit, skip) = if page > 1 {
             (page.clone() * size.clone(), (page - 1) * size.clone())
         } else {
             (size.clone(), 0)
         };
 
-        let mut limit = Document::new();
-        limit.insert("$limit", page);
-        self.limit = Some(limit);
+        let mut limit_doc = Document::new();
+        limit_doc.insert("$limit", limit);
+        self.limit = Some(limit_doc);
 
-        let mut skip = Document::new();
-        skip.insert("$skip",size);
-        self.skip = Some(skip);
+        let mut skip_doc = Document::new();
+        skip_doc.insert("$skip", skip);
+        self.skip = Some(skip_doc);
 
         //prepare query
         let (query, query_count) = self.populate_pipeline();
 
-        info!(target: "db::get","{:?}",query);
+        // info!(target: "db::get","{:?}",query);
         let get_count = collection.aggregate(query_count).await;
 
         let total_items = match get_count {
@@ -348,7 +346,7 @@ impl DB {
             }
         }
 
-        let total_pages = (total_items.clone() as f64 / size as f64).ceil() as u32;
+        let total_pages = (total_items.clone() as f64 / skip as f64).ceil() as u32;
         //info!(target: "db::get::ok","total pages {}", total_items.clone());
         Ok(PagingResponse {
             total_items: total_items as i64,
@@ -411,9 +409,6 @@ impl DB {
         }
         result
     }
-
 }
 
-pub fn tst() {
-
-}
+pub fn tst() {}

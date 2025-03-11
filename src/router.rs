@@ -28,10 +28,19 @@ pub fn init_routes(state: AppState) -> Router {
         )
         .route("/user/profile", get(feature::user::get_my_profile))
         .route("/user/public-profile", get(feature::user::get_user_profile))
-        .route("/user/{user_id}/follower", get(feature::user::get_list_follower))
-        .route("/user/{user_id}/following", get(feature::user::get_list_following))
+        .route(
+            "/user/{user_id}/follower",
+            get(feature::user::get_list_follower),
+        )
+        .route(
+            "/user/{user_id}/following",
+            get(feature::user::get_list_following),
+        )
         .route("/user/{user_id}/follow", get(feature::user::follow_user))
-        .route("/user/{user_id}/unfollow", get(feature::user::unfollow_user))
+        .route(
+            "/user/{user_id}/unfollow",
+            get(feature::user::unfollow_user),
+        )
         .route(
             "/user/update-profile-picture",
             put(feature::user::update_profile_picture),
@@ -47,6 +56,10 @@ pub fn init_routes(state: AppState) -> Router {
         .route(
             "/thread/discussion/list",
             get(feature::thread::get_list_discussion_thread),
+        )
+        .route(
+            "/thread/{thread_id}",
+            get(feature::thread::get_detail_thread),
         )
         .route(
             "/thread/comments/list/{thread_id}",
