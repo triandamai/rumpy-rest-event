@@ -5,6 +5,7 @@ use validator::Validate;
 pub struct CreatedThreadRequest {
     pub quote_thread_id: Option<String>,
     pub reply_to_thread_id: Option<String>,
+    pub mentioned_user: Option<Vec<String>>,
     #[validate(length(min = 1))]
     pub slug: String,
     #[validate(length(min = 1))]
@@ -12,7 +13,7 @@ pub struct CreatedThreadRequest {
     #[validate(length(min = 1))]
     pub content: String,
     pub attachment: Vec<String>,
-    pub topics:Vec<String>
+    pub topics: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Validate)]
@@ -26,5 +27,5 @@ pub struct UpdateThreadRequest {
     pub content: Option<String>,
     pub new_attachment: Vec<String>,
     pub removed_attachment: Vec<String>,
-    pub topics:Option<Vec<String>>
+    pub topics: Option<Vec<String>>,
 }

@@ -5,13 +5,14 @@ use crate::common::app_state::AppState;
 use crate::common::constant::{
     BUCKET_THREAD, COLLECTION_RESERVE_ATTACHMENT, COLLECTION_THREAD, COLLECTION_THREAD_VOTE,
     COLLECTION_USER, KIND_DISCUSSION, KIND_DOWN_VOTE_THREAD, KIND_PUBLIC, KIND_THREAD_ATTACHMENT,
-    KIND_UP_VOTE_THREAD, REDIS_KEY_USER_EMAIL,
+    KIND_UP_VOTE_THREAD, REDIS_KEY_USER_EMAIL, REDIS_KEY_USER_ID,
 };
 use crate::common::jwt::AuthContext;
 use crate::common::lang::Lang;
 use crate::common::middleware::Json;
 use crate::common::minio::MinIO;
 use crate::common::multipart_file::SingleFileExtractor;
+use crate::common::sse::sse_builder::{SseBuilder, SseTarget};
 use crate::common::utils::create_object_id_option;
 use crate::dto::thread_attachment_dto::ThreadAttachmentDTO;
 use crate::dto::thread_dto::ThreadDTO;
@@ -23,11 +24,13 @@ use crate::entity::thread::Thread;
 use crate::entity::thread_attachment::ThreadAttachment;
 use crate::entity::thread_vote::ThreadVote;
 use crate::entity::user::User;
+use crate::feature::sse::sse_model::{SseEventMessagePayload, SSE_EVENT_MENTIONED};
 use crate::i18n;
 use axum::extract::{Path, Query, State};
 use bson::oid::ObjectId;
 use bson::{doc, DateTime};
 use log::info;
+use serde_json::json;
 use thread_model::{CreatedThreadRequest, UpdateThreadRequest};
 use validator::Validate;
 
@@ -598,6 +601,17 @@ pub async fn create_thread(
 
     //update counter
     if let Some(quote) = quote {
+        let find_quoted_thread = DB::get(COLLECTION_THREAD)
+            .filter(vec![is("_id", &reply)])
+            .get_one::<ThreadDTO>(&state.db)
+            .await;
+        if let Err(err) = find_quoted_thread {
+            info!(target:"user::create::thread::update","insert failed {:?}",err);
+            let _ = session.abort_transaction().await;
+            return ApiResponse::failed(&i18n.translate("thread::create::failed"));
+        }
+        let quoted_thread = find_quoted_thread.unwrap();
+
         let update_counter = DB::update(COLLECTION_THREAD)
             .inc(doc! {
                 "quote_count":1
@@ -611,9 +625,39 @@ pub async fn create_thread(
             let _ = session.abort_transaction().await;
             return ApiResponse::failed(&i18n.translate("thread::create::failed"));
         }
+
+        //send notification to owner replied thread
+        let builder = SseBuilder::new(
+            SseTarget::create()
+                .set_user_id(quoted_thread.created_by_id.clone().unwrap().to_string())
+                .set_event_name(SSE_EVENT_MENTIONED.to_string()),
+            SseEventMessagePayload {
+                ref_id: auth_context
+                    .session
+                    .get(REDIS_KEY_USER_ID)
+                    .unwrap_or(&String::new())
+                    .to_string(),
+                context: json! {{
+
+                }},
+                data: json! {{}},
+            },
+        );
+        //let it go even if it fails
+        let _sse = state.sse.send(builder).await;
     }
 
     if let Some(reply) = reply {
+        let find_replied_thread = DB::get(COLLECTION_THREAD)
+            .filter(vec![is("_id", &reply)])
+            .get_one::<ThreadDTO>(&state.db)
+            .await;
+        if let Err(err) = find_replied_thread {
+            info!(target:"user::create::thread::update","insert failed {:?}",err);
+            let _ = session.abort_transaction().await;
+            return ApiResponse::failed(&i18n.translate("thread::create::failed"));
+        }
+        let replied_thread = find_replied_thread.unwrap();
         let update_counter = DB::update(COLLECTION_THREAD)
             .inc(doc! {
                 "reply_count":1
@@ -626,8 +670,47 @@ pub async fn create_thread(
             let _ = session.abort_transaction().await;
             return ApiResponse::failed(&i18n.translate("thread::create::failed"));
         }
+        //send notification to owner replied thread
+        let builder = SseBuilder::new(
+            SseTarget::create()
+                .set_user_id(replied_thread.created_by_id.clone().unwrap().to_string())
+                .set_event_name(SSE_EVENT_MENTIONED.to_string()),
+            SseEventMessagePayload {
+                ref_id: auth_context
+                    .session
+                    .get(REDIS_KEY_USER_ID)
+                    .unwrap_or(&String::new())
+                    .to_string(),
+                context: json! {{
+
+                }},
+                data: json! {{}},
+            },
+        );
+        //let it go even if it fails
+        let _sse = state.sse.send(builder).await;
     }
     //end update counter
+
+    //send mention notification
+    if let Some(mentioned_user) = body.mentioned_user {
+        for user_id in mentioned_user {
+            let builder = SseBuilder::new(
+                SseTarget::create()
+                    .set_user_id(user_id.clone())
+                    .set_event_name(SSE_EVENT_MENTIONED.to_string()),
+                SseEventMessagePayload {
+                    ref_id: user_id.clone(),
+                    context: json! {{
+
+                    }},
+                    data: json! {{}},
+                },
+            );
+            //let it go even if it fails
+            let _sse = state.sse.send(builder).await;
+        }
+    }
 
     let delete_all_reserve_attachment = DB::delete(COLLECTION_RESERVE_ATTACHMENT)
         .filter(vec![is_in("_id", to_object_id)])
