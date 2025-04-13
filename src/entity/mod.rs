@@ -1,9 +1,11 @@
+pub mod following;
+pub mod notification;
+pub mod notification_log;
 pub mod profile_picture;
 pub mod thread;
 pub mod thread_attachment;
 pub mod thread_vote;
+pub mod topic;
 pub mod user;
 pub mod user_metadata;
-pub mod topic;
 pub mod user_profile;
-pub mod following;

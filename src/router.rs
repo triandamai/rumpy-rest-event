@@ -104,6 +104,22 @@ pub fn init_routes(state: AppState) -> Router {
             post(feature::thread::down_vote),
         )
         .route("/thread/vote/up/{thread_id}", post(feature::thread::upvote))
+        .route(
+            "/notification/me",
+            get(feature::notification::get_notification_list),
+        )
+        .route(
+            "/notification/detail",
+            get(feature::notification::get_detail_notification),
+        )
+        .route(
+            "/notification/status",
+            put(feature::notification::set_read_status_notification),
+        )
+        .route(
+            "/notification/delete",
+            delete(feature::notification::delete_notification),
+        )
         .layer(axum::middleware::from_fn(method_not_allowed))
         .fallback(handle_404)
         .with_state(state)
