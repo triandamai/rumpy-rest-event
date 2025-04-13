@@ -1,11 +1,11 @@
 use crate::common::mongo::filter::FilterGroup;
 use crate::common::mongo::DB;
-use crate::common::orm::get_db_name;
-use crate::common::orm::orm::Orm;
 use bson::{Bson, Document};
 use log::info;
 use mongodb::{Client, ClientSession, Collection};
 use serde::{Deserialize, Serialize};
+
+use super::get_db_name;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Upsert {

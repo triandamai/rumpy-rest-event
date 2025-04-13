@@ -1,5 +1,8 @@
-use crate::common::constant::{COLLECTION_USER, PROVIDER_BASIC, REDIS_KEY_USER_EMAIL, REDIS_KEY_USER_ID, REDIS_KEY_USER_TOKEN};
+use crate::common::constant::{
+    COLLECTION_USER, PROVIDER_BASIC, REDIS_KEY_USER_EMAIL, REDIS_KEY_USER_ID, REDIS_KEY_USER_TOKEN,
+};
 use crate::common::jwt::{JwtClaims, JwtUtil};
+use crate::common::minio::MinIO;
 use crate::entity::user::User;
 use crate::entity::user_metadata::UserMetaData;
 use auth_model::{SignInEmailRequest, SignInResponse, SignUpRequest};
@@ -8,7 +11,6 @@ use bcrypt::DEFAULT_COST;
 use bson::oid::ObjectId;
 use bson::{doc, DateTime};
 use log::info;
-use std::ptr::eq;
 use validator::Validate;
 
 use crate::common::mongo::filter::{equal, is};
@@ -40,7 +42,7 @@ pub async fn sign_up_email(
     }
 
     let find_user = DB::get(COLLECTION_USER)
-        .filter(vec![equal("email",  body.email.clone())])
+        .filter(vec![equal("email", body.email.clone())])
         .get_one::<User>(&state.db)
         .await;
 
@@ -74,7 +76,9 @@ pub async fn sign_up_email(
         confirmation_sent_at: Some(now),
     };
 
-    let insert_data = DB::insert(COLLECTION_USER).one(create_user, &state.db).await;
+    let insert_data = DB::insert(COLLECTION_USER)
+        .one(create_user, &state.db)
+        .await;
 
     if let Err(err) = insert_data {
         info!(target:"sign-up::email::failed","insert user failed {:?}",err);
@@ -140,7 +144,7 @@ pub async fn sign_up_email_confirmation(
             "updated_at":DateTime::now(),
             "confirmation_at": DateTime::now()
         })
-        .filter(vec![is("_id",&user.id.unwrap())])
+        .filter(vec![is("_id", &user.id.unwrap())])
         .execute(&state.db)
         .await;
 
@@ -220,6 +224,7 @@ pub async fn sign_in_email(
     let session_id = user.email.clone();
 
     let create_token = JwtUtil::encode(session_id.clone());
+    info!(target:"sign-email::create-token", "{:?}", create_token.clone());
     if let None = create_token {
         info!(target:"sign-in::email::failed","create token error {:?}",create_token);
         return ApiResponse::failed(i18n.translate("sign-in.email.failed").as_str());
@@ -243,9 +248,12 @@ pub async fn sign_in_email(
         return ApiResponse::failed(i18n.translate("sign-in.email.failed").as_str());
     }
 
+    let minio = MinIO::new();
+
     ApiResponse::ok(
         SignInResponse {
             token: create_token,
+            storage_token: "".to_string(),
             account: user.into(),
         },
         &i18n.translate("sign-in.email.success").as_str(),
@@ -383,7 +391,7 @@ pub async fn set_new_password(
     let create_password = bcrypt::hash(body.new_password, DEFAULT_COST);
     if let Err(err) = create_password {
         info!(target:"auth::request::failed","connection error {:?}",err);
-        return ApiResponse::failed(&i18n.translate("forgot.password.set-password.failed"), );
+        return ApiResponse::failed(&i18n.translate("forgot.password.set-password.failed"));
     }
 
     let update_password = DB::update(COLLECTION_USER)
@@ -395,7 +403,7 @@ pub async fn set_new_password(
         .await;
     if let Err(err) = update_password {
         info!(target:"auth::request::failed","connection error {:?}",err);
-        return ApiResponse::failed(&i18n.translate("forgot.password.set-password.failed"), );
+        return ApiResponse::failed(&i18n.translate("forgot.password.set-password.failed"));
     }
 
     let _remove_session = state

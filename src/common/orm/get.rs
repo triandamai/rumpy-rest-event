@@ -1,4 +1,5 @@
 use crate::common::api_response::PagingResponse;
+use crate::common::mongo::get_db_name;
 use crate::common::orm::orm::{create_count_field, create_limit_field, create_skip_field, Orm};
 use crate::common::utils::create_object_id_option;
 use bson::oid::ObjectId;
@@ -9,8 +10,6 @@ use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use tokio_stream::StreamExt;
-
-use super::get_db_name;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Get {

@@ -14,7 +14,9 @@ pub struct ThreadAttachmentDTO {
     pub mime_type: String,
     pub bucket_name: String,
     pub file_name: String,
+    #[serde(serialize_with = "serialize_datetime")]
     pub created_at: DateTime,
+    #[serde(serialize_with = "serialize_datetime")]
     pub updated_at: DateTime,
 }
 

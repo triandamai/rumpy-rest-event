@@ -8,6 +8,23 @@ use axum::Router;
 pub fn init_routes(state: AppState) -> Router {
     Router::new()
         .route("/", get(routes::index::index))
+        .route("/sync-locales", get(routes::index::generate_locales))
+        .route("/sse/list", get(feature::sse::sse::get_active_subscriber))
+        .route("/sse/register", get(feature::sse::sse::register_sse))
+        .route("/sse/send-to-user", post(feature::sse::sse::send_to_user))
+        .route(
+            "/sse/send-to-user-device",
+            post(feature::sse::sse::send_to_user_device),
+        )
+        .route("/sse/broadcast", post(feature::sse::sse::send_broadcast))
+        .route(
+            "/sse/subscribe-topic",
+            post(feature::sse::sse::subscribe_to_topic),
+        )
+        .route(
+            "/sse/unsubscribe-topic",
+            post(feature::sse::sse::unsubscribe_to_topic),
+        )
         .route("/auth/sign-up-email", post(feature::auth::sign_up_email))
         .route(
             "/auth/sign-up-email/verify/{code}",

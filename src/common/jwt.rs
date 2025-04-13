@@ -40,7 +40,6 @@ pub struct AuthContext {
     pub permissions: HashMap<String, String>,
 }
 
-
 #[derive(Debug, Serialize, Deserialize)]
 pub enum AuthError {
     WrongCredentials,
@@ -53,7 +52,7 @@ const ISS: &str = "strong-teams.id";
 
 impl JwtUtil {
     pub fn encode(sub: String) -> Option<String> {
-        info!(target:"app::Jwt","encode");
+        // info!(target:"app::Jwt","encode");
         let secret = EnvConfig::init();
         let exp = Local::now().add(Duration::hours(12)).timestamp();
         let claims = JwtClaims {
@@ -68,13 +67,19 @@ impl JwtUtil {
             &claims,
             &EncodingKey::from_secret(secret.jwt_secret.as_ref()),
         ) {
-            Ok(token) => Some(token),
-            Err(_) => None,
+            Ok(token) => {
+                //    info!(target:"app::Jwt","encode {}",token);
+                Some(token)
+            }
+            Err(why) => {
+                info!(target:"app::Jwt","encode error {}",why);
+                None
+            }
         }
     }
 
     pub fn decode(token: String) -> Result<TokenData<JwtClaims>, jsonwebtoken::errors::Error> {
-        info!(target:"app::Jwt","decode");
+        // info!(target:"app::Jwt","decode");
         let secret = EnvConfig::init();
         let decoded: Result<TokenData<JwtClaims>, JwtError> = jsonwebtoken::decode::<JwtClaims>(
             &token,
@@ -98,7 +103,8 @@ impl AuthContext {
     }
 
     pub fn get_user_id(&self) -> Option<ObjectId> {
-        self.get(REDIS_KEY_USER_ID).map_or_else(|| None, |id| create_object_id_option(id))
+        self.get(REDIS_KEY_USER_ID)
+            .map_or_else(|| None, |id| create_object_id_option(id))
     }
 
     pub fn authorize_multiple(&self, permissions: Vec<&str>) -> bool {
@@ -207,7 +213,6 @@ where
     }
 }
 
-
 impl<S> FromRequestParts<S> for JwtClaims
 where
     AppState: FromRef<S>,
@@ -241,7 +246,6 @@ where
         }
     }
 }
-
 
 impl IntoResponse for AuthError {
     fn into_response(self) -> Response {

@@ -1,3 +1,4 @@
+use crate::common::mongo::get_db_name;
 use crate::common::orm::orm::Orm;
 use bson::oid::ObjectId;
 use bson::{doc, DateTime, Document};
@@ -6,8 +7,6 @@ use log::info;
 use mongodb::{Client, ClientSession, Collection};
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
-
-use super::get_db_name;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Update {

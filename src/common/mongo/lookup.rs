@@ -1,38 +1,46 @@
 use bson::{doc, Document};
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize,Deserialize,Clone,Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Lookup {
-    pub lookup: Document,
+    pub doc: Document,
     pub unwind: Option<Document>,
     pub set: Option<Document>,
 }
 
-pub fn raw(doc:Document)->Lookup{
-    Lookup{
-        lookup:doc,
-        unwind:None,
-        set:None
+pub fn raw(doc: Document) -> Lookup {
+    Lookup {
+        doc,
+        unwind: None,
+        set: None,
     }
 }
 
-pub fn one(collection: &str, local: &str, foreign: &str, alias: &str) -> Lookup {
-    let mut doc = Document::new();
+pub fn create_lookup_doc(collection: &str, local: &str, foreign: &str, alias: &str) -> Document {
     let mut lookup = Document::new();
     lookup.insert("from", collection);
     lookup.insert("localField", local);
     lookup.insert("foreignField", foreign);
     lookup.insert("as", alias);
-    doc.insert("$lookup", lookup);
+    lookup
+}
+
+pub fn one(collection: &str, local: &str, foreign: &str, alias: &str) -> Lookup {
+    let mut doc = Document::new();
+
+    doc.insert(
+        "$lookup",
+        create_lookup_doc(collection, local, foreign, alias),
+    );
 
     let mut unwind_doc = Document::new();
     let mut unwind = Document::new();
-    unwind.insert("path", format!("${}",alias));
+    unwind.insert("path", format!("${}", alias));
     unwind.insert("preserveNullAndEmptyArrays", true);
     unwind_doc.insert("$unwind", unwind);
 
     Lookup {
-        lookup: doc,
+        doc,
         unwind: Some(unwind_doc),
         set: None,
     }
@@ -47,12 +55,10 @@ pub fn one_merge_to(
 ) -> Lookup {
     let parent_alias = format!("{}{}", parent, alias);
     let mut doc = Document::new();
-    let mut lookup = Document::new();
-    lookup.insert("from", collection);
-    lookup.insert("localField", local);
-    lookup.insert("foreignField", foreign);
-    lookup.insert("as", parent_alias.clone());
-    doc.insert("$lookup", lookup);
+    doc.insert(
+        "$lookup",
+        create_lookup_doc(collection, local, foreign, alias),
+    );
 
     let f_alias = format!("${}", parent_alias);
     let f_parent = format!("${}", parent);
@@ -98,7 +104,7 @@ pub fn one_merge_to(
         }
     };
     Lookup {
-        lookup: doc,
+        doc,
         unwind: None,
         set: Some(set),
     }
@@ -106,15 +112,13 @@ pub fn one_merge_to(
 
 pub fn many(collection: &str, foreign: &str, local: &str, alias: &str) -> Lookup {
     let mut doc = Document::new();
-    let mut lookup = Document::new();
-    lookup.insert("from", collection);
-    lookup.insert("localField", local);
-    lookup.insert("foreignField", foreign);
-    lookup.insert("as", alias);
-    doc.insert("$lookup", lookup);
+    doc.insert(
+        "$lookup",
+        create_lookup_doc(collection, local, foreign, alias),
+    );
 
     Lookup {
-        lookup: doc,
+        doc,
         unwind: None,
         set: None,
     }

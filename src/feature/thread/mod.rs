@@ -504,16 +504,17 @@ pub async fn create_thread(
     Json(body): Json<CreatedThreadRequest>,
 ) -> ApiResponse<ThreadDTO> {
     let i18n = i18n!("user", lang);
+    info!(target:"user::create::thread","trying create thread {:?}",auth_context.claims.sub);
 
     let validate = body.validate();
     if let Err(err) = validate {
-        info!(target:"user::profile::validation-error","{:?}",err.clone());
+        info!(target:"user::create::thread::validation-error","{:?}",err.clone());
         return ApiResponse::error_validation(err, i18n.translate("user.profile.failed").as_str());
     }
 
     let user_email: Option<&String> = auth_context.get(REDIS_KEY_USER_EMAIL);
     if let None = user_email {
-        info!(target:"user::profile::failed","connection error");
+        info!(target:"user::create::thread::failed","connection error");
         return ApiResponse::failed(i18n.translate("user.profile.failed").as_str());
     }
 
@@ -524,17 +525,29 @@ pub async fn create_thread(
         .get_one::<User>(&state.db)
         .await;
     if let Err(err) = find_user {
-        info!(target:"user::profile::failed","{:?}",err);
+        info!(target:"user::create::thread::failed","{:?}",err);
         return ApiResponse::failed(i18n.translate("user.profile.failed").as_str());
     }
 
     let user = find_user.unwrap();
+    info!(target:"create thread","finding id attachment {:?}",body.attachment);
 
+    let to_object_id = body
+        .attachment
+        .iter()
+        .map(|id| create_object_id_option(id))
+        .filter(|id| id.is_some())
+        .map(|id| id.unwrap())
+        .collect::<Vec<ObjectId>>();
+
+    info!(target:"create thread","finding id attachment obj {:?}",&to_object_id);
     let find_all_attachment = DB::get(COLLECTION_RESERVE_ATTACHMENT)
-        .filter(vec![is_in("_id", body.attachment.clone())])
+        .filter(vec![is_in("_id", &to_object_id)])
         .get_all::<ThreadAttachment>(&state.db)
         .await
         .unwrap_or(Vec::new());
+
+    info!(target:"create thread","finding attachment {:?}",find_all_attachment);
 
     let quote = body.quote_thread_id.map_or_else(
         || None,
@@ -567,7 +580,7 @@ pub async fn create_thread(
     };
     let session = state.db.start_session().await;
     if let Err(err) = session {
-        info!(target:"stock::update","{:?}",err);
+        info!(target:"user::create::thread::update","{:?}",err);
         return ApiResponse::failed(&i18n.translate("thread::create::failed"));
     }
     let mut session = session.unwrap();
@@ -578,7 +591,7 @@ pub async fn create_thread(
         .await;
 
     if let Err(err) = insert_thread {
-        info!(target:"stock::update","insert failed {:?}",err);
+        info!(target:"user::create::thread::update","insert failed {:?}",err);
         let _ = session.abort_transaction().await;
         return ApiResponse::failed(&i18n.translate("thread::create::failed"));
     }
@@ -594,7 +607,7 @@ pub async fn create_thread(
             .await;
         if update_counter.is_err() {
             let err = update_counter.unwrap_err();
-            info!(target:"stock::update","insert failed {:?}",err);
+            info!(target:"user::create::thread::update","insert failed {:?}",err);
             let _ = session.abort_transaction().await;
             return ApiResponse::failed(&i18n.translate("thread::create::failed"));
         }
@@ -609,7 +622,7 @@ pub async fn create_thread(
             .execute_with_session(&state.db, &mut session)
             .await;
         if let Err(err) = update_counter {
-            info!(target:"stock::update","insert failed {:?}",err);
+            info!(target:"user::create::thread::update","insert failed {:?}",err);
             let _ = session.abort_transaction().await;
             return ApiResponse::failed(&i18n.translate("thread::create::failed"));
         }
@@ -617,24 +630,19 @@ pub async fn create_thread(
     //end update counter
 
     let delete_all_reserve_attachment = DB::delete(COLLECTION_RESERVE_ATTACHMENT)
-        .filter(vec![is_in("_id", body.attachment)])
+        .filter(vec![is_in("_id", to_object_id)])
         .many_with_session(&state.db, &mut session)
         .await;
 
     if let Err(err) = delete_all_reserve_attachment {
-        info!(target:"stock::update","insert failed {:?}",err);
+        info!(target:"user::create::thread::update","insert failed {:?}",err);
         let _ = session.abort_transaction().await;
         return ApiResponse::failed(&i18n.translate("thread::create::failed"));
-    }
-    for deleted in find_all_attachment {
-        let _delete_from_bucket = MinIO::new()
-            .delete_file(deleted.file_name, BUCKET_THREAD.to_string())
-            .await;
     }
 
     let commit = session.commit_transaction().await;
     if let Err(err) = commit {
-        info!(target:"stock::update","insert failed {:?}",err);
+        info!(target:"user::create::thread::update","insert failed {:?}",err);
         return ApiResponse::failed(&i18n.translate("thread::create::failed"));
     }
 
@@ -662,7 +670,7 @@ pub async fn create_thread(
         .get_one::<ThreadDTO>(&state.db)
         .await;
     if let Err(err) = find_thread {
-        info!(target:"thread::list","failed to fetch {:?}",err);
+        info!(target:"user::create::thread::list","failed to fetch {:?}",err);
         return ApiResponse::failed(&i18n.translate("thread.not-found"));
     }
     ApiResponse::ok(
@@ -763,8 +771,16 @@ pub async fn update_thread(
         }
     }
 
+    let to_object_id = body
+        .new_attachment
+        .iter()
+        .map(|id| create_object_id_option(id))
+        .filter(|id| id.is_some())
+        .map(|id| id.unwrap())
+        .collect::<Vec<ObjectId>>();
+
     let find_reserved_attachment = DB::get(COLLECTION_RESERVE_ATTACHMENT)
-        .filter(vec![is_in("_id", body.new_attachment.clone())])
+        .filter(vec![is_in("_id", to_object_id)])
         .get_all::<ThreadAttachment>(&state.db)
         .await
         .unwrap_or(Vec::new());

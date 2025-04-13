@@ -1,22 +1,20 @@
 use crate::common::mongo::filter::FilterGroup;
 use crate::common::mongo::DB;
-use crate::common::orm::get_db_name;
-use crate::common::orm::orm::Orm;
-use bson::{Bson, Document};
+use bson::Document;
 use log::info;
 use mongodb::{Client, ClientSession, Collection};
 use serde::{Deserialize, Serialize};
 
+use super::get_db_name;
+
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Delete {
-    orm: DB
+    orm: DB,
 }
 
 impl Delete {
     pub fn from(from: &str) -> Self {
-        Delete {
-            orm: DB::get(from),
-        }
+        Delete { orm: DB::get(from) }
     }
 
     pub fn filter<T: Into<FilterGroup>>(mut self, filters: Vec<T>) -> Self {
@@ -63,7 +61,7 @@ impl Delete {
 
         let save = collection.delete_one(query).session(session).await;
 
-        if let Err(why) = save{
+        if let Err(why) = save {
             let message = format!("{:?}", why.kind);
             info!(target: "db::delete::error","{}",message.clone());
             return Err(message);
@@ -73,7 +71,6 @@ impl Delete {
     }
 
     pub async fn many(self, client: &Client) -> Result<u64, String> {
-
         if let None = self.orm.filter {
             return Err("Specify filter before deleting...".to_string());
         }
@@ -108,7 +105,7 @@ impl Delete {
 
         let save = collection.delete_many(query).session(session).await;
 
-        if let Err(why) =save {
+        if let Err(why) = save {
             let message = format!("{:?}", why.kind);
             info!(target: "db::delete::error","{}",message.clone());
             return Err(message);

@@ -1,6 +1,4 @@
-use crate::common::utils::{
-    get_extension_from_mime,
-};
+use crate::common::utils::get_extension_from_mime;
 use axum::extract::multipart::Field;
 use axum::extract::Multipart;
 use bson::oid::ObjectId;
@@ -190,6 +188,7 @@ impl SingleFileExtractor {
                         metadata.is_error = true;
                         metadata.error_message = Some(file.unwrap_err())
                     }
+                    info!(target:"extract_multipart","found file");
                 }
                 _ => {
                     info!(target: "extract_multipart","Unknown field encountered.");

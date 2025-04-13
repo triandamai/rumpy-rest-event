@@ -1,12 +1,10 @@
 use crate::common::api_response::PagingResponse;
 use crate::common::mongo::delete::Delete;
-use crate::common::mongo::filter::{or, search, when, Filter, FilterGroup};
+use crate::common::mongo::filter::{search, Filter, FilterGroup};
 use crate::common::mongo::insert::Insert;
-use crate::common::mongo::lookup::{many, one, one_merge_to, Lookup};
+use crate::common::mongo::lookup::Lookup;
 use crate::common::mongo::update::Update;
 use crate::common::mongo::upsert::Upsert;
-use crate::common::orm::get_db_name;
-use crate::common::orm::orm::{create_count_field, create_limit_field, create_skip_field};
 use bson::{doc, Bson, Document};
 use log::info;
 use mongodb::{Client, Collection};
@@ -14,6 +12,8 @@ use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use tokio_stream::StreamExt;
+
+use super::env_config::EnvConfig;
 
 pub mod delete;
 pub mod filter;
@@ -26,7 +26,7 @@ pub mod upsert;
 pub struct DB {
     collection: String,
     filter: Option<Filter>,
-    lookup: Vec<Lookup>,
+    lookups: Vec<Lookup>,
     sort: Option<Document>,
     limit: Option<Document>,
     skip: Option<Document>,
@@ -38,7 +38,7 @@ impl DB {
         DB {
             collection: collection.to_string(),
             filter: None,
-            lookup: Vec::new(),
+            lookups: Vec::new(),
             sort: None,
             limit: None,
             skip: None,
@@ -102,15 +102,15 @@ impl DB {
     }
 
     pub fn lookup(mut self, lookups: &[Lookup]) -> Self {
-        let mut lookup = self.lookup.clone();
+        let mut lookup = self.lookups.clone();
         for l in lookups {
             lookup.push(l.clone());
         }
-        self.lookup = lookup;
+        self.lookups = lookup;
         self
     }
 
-    pub fn populate_filter(mut self) -> Document {
+    pub fn populate_filter(self) -> Document {
         let mut doc = Document::new();
         if let Some(filter) = self.filter {
             for item in filter.and {
@@ -156,12 +156,12 @@ impl DB {
             pipeline.push(match_doc);
         }
         let mut count_all = pipeline.clone();
-        for l in self.lookup {
-            pipeline.push(l.lookup.clone());
-            if let Some(unwind) = l.unwind {
+        for lookup in self.lookups {
+            pipeline.push(lookup.doc.clone());
+            if let Some(unwind) = lookup.unwind {
                 pipeline.push(unwind);
             }
-            if let Some(set) = l.set {
+            if let Some(set) = lookup.set {
                 pipeline.push(set);
             }
         }
@@ -229,14 +229,11 @@ impl DB {
     }
 
     pub async fn get_all<T: DeserializeOwned + Debug>(
-        mut self,
+        self,
         client: &Client,
     ) -> Result<Vec<T>, String> {
         let db = client.database(&get_db_name());
         let collection: Collection<Document> = db.collection(&self.collection);
-        let mut limit = Document::new();
-        limit.insert("$limit", 1);
-        self.limit = Some(limit);
 
         let (pipeline, _) = self.populate_pipeline();
         let data = collection.aggregate(pipeline).await;
@@ -259,7 +256,7 @@ impl DB {
         for item in extract {
             let transform = bson::from_document::<T>(item.clone());
 
-            // info!(target:"db::get::error:","extract {:?}",item);
+            info!(target:"db::get::error:","extract {:?}",item);
             if transform.is_ok() {
                 // info!(target: "db::get::ok","extracted success");
                 result.push(transform.unwrap());
@@ -278,12 +275,12 @@ impl DB {
         size: i64,
         client: &Client,
     ) -> Result<PagingResponse<T>, String> {
-        info!(target: "db::get","starting get pagination...");
+        // info!(target: "db::get","starting get pagination...");
         //getting collection info
         let db = client.database(&get_db_name());
         let collection: Collection<Document> = db.collection(&self.collection);
 
-        self.count = Some(create_count_field());
+        self.count = Some(doc! {"$count": "total_items"});
         let (limit, skip) = if page > 1 {
             (page.clone() * size.clone(), (page - 1) * size.clone())
         } else {
@@ -351,8 +348,8 @@ impl DB {
         Ok(PagingResponse {
             total_items: total_items as i64,
             total_pages: total_pages as i64,
-            page: page,
-            size: size,
+            page,
+            size,
             items: result,
         })
     }
@@ -396,9 +393,9 @@ impl DB {
         let mut result: Vec<T> = Vec::new();
         let next = next.unwrap();
         for item in next {
-            let tr = bson::from_document::<T>(item.clone());
+            let extract = bson::from_document::<T>(item.clone());
 
-            match tr {
+            match extract {
                 Ok(value) => {
                     result.push(value);
                 }
@@ -411,4 +408,7 @@ impl DB {
     }
 }
 
-pub fn tst() {}
+pub fn get_db_name() -> String {
+    let env = EnvConfig::init();
+    format!("RUMPY-{}", env.mode).to_lowercase()
+}

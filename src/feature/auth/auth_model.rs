@@ -44,5 +44,6 @@ pub struct SetNewPasswordRequest {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SignInResponse {
     pub token: String,
+    pub storage_token: String,
     pub account: UserDTO,
 }

@@ -1,22 +1,20 @@
-use bson::Document;
+use crate::common::mongo::DB;
 use bson::oid::ObjectId;
+use bson::Document;
 use log::info;
 use mongodb::{Client, ClientSession, Collection};
 use serde::{Deserialize, Serialize};
-use crate::common::mongo::DB;
-use crate::common::orm::get_db_name;
-use crate::common::orm::orm::Orm;
+
+use super::get_db_name;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Insert {
-    orm:  DB,
+    orm: DB,
 }
 
 impl Insert {
     pub fn from(from: &str) -> Self {
-        Insert {
-            orm: DB::get(from),
-        }
+        Insert { orm: DB::get(from) }
     }
 
     pub async fn one_with_session<T: Serialize>(
@@ -175,7 +173,7 @@ impl Insert {
         Ok(save)
     }
 
-    pub fn show_merging(self) -> (Vec<Document>,Vec<Document>) {
+    pub fn show_merging(self) -> (Vec<Document>, Vec<Document>) {
         self.orm.populate_pipeline()
     }
 }
