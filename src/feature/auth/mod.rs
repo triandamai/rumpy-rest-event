@@ -125,7 +125,7 @@ pub async fn sign_up_otp(
     }
 
     let create_otp = generate_otp();
-    let created_at = chrono::Local::now().timestamp();
+    let created_at = chrono::Local::now().naive_local().and_utc().timestamp();
 
     let send_otp = wa::send_otp(body.phone_number.clone(), create_otp.clone()).await;
 
@@ -197,6 +197,7 @@ pub async fn sign_in_otp(
         .set(doc! {
             "last_logged_id":DateTime::now()
         })
+        .filter(vec![is("_id", user.id)])
         .execute_with_session(&state.db, &mut session)
         .await;
 
@@ -216,7 +217,7 @@ pub async fn sign_in_otp(
     }
 
     let create_otp = generate_otp();
-    let created_at = chrono::Local::now().timestamp();
+    let created_at = chrono::Local::now().naive_local().and_utc().timestamp();
 
     let send_otp = wa::send_otp(body.phone_number.clone(), create_otp.clone()).await;
 
@@ -306,10 +307,10 @@ pub async fn verify_otp(
         return ApiResponse::un_authorized(&i18n.translate("verify_otp.max_attempt"));
     }
 
-    let current_time = Local::now().naive_local();
-    let duration = session_otp_at - current_time;
+    let current_time = Local::now().naive_local().and_utc();
+    let duration = current_time - session_otp_at;
     if duration.num_minutes() >= 2 {
-        info!(target:"verify_otp","duration more than 3 minutes otp at: {:?}",session_otp_at);
+        info!(target:"verify_otp","duration more than 3 minutes duration: {:?} minutes current:{:?} otp at: {:?}",duration.num_minutes(),current_time,session_otp_at);
         session_attempt += 1;
         let _update_attempt = state.redis.set_session_otp(
             &claims.sub,
@@ -351,7 +352,8 @@ pub async fn verify_otp(
     let update_user = DB::update(COLLECTION_USERS)
         .filter(vec![is("_id", session_user_object_id)])
         .set(doc! {
-            "last_logged_in":DateTime::now()
+            "last_logged_in":DateTime::now(),
+            "status":USER_STATUS_ACTIVE
         })
         .execute_with_session(&state.db, &mut session)
         .await;
@@ -453,11 +455,11 @@ pub async fn resend_otp(
         return ApiResponse::un_authorized(&i18n.translate("resend_otp.max_attempt"));
     }
 
-    let current_time = Local::now().naive_local();
-    let duration = session_otp_at - current_time;
+    let current_time = Local::now().naive_local().and_utc();
+    let duration = current_time - session_otp_at;
     if duration.num_minutes() <= 2 {
-        info!(target:"resend_otp","duration less than 3 minutes otp at: {:?}",session_otp_at);
-        return ApiResponse::un_authorized(&i18n.translate("resend_otp.expired"));
+        info!(target:"resend_otp","duration less than 3 minutes duration: {:?} minutes",duration.num_minutes());
+        return ApiResponse::un_authorized(&i18n.translate("resend_otp.waiting"));
     }
 
     //make sure the session is from previous auth otp
@@ -467,7 +469,14 @@ pub async fn resend_otp(
     }
 
     let generate_new_otp = generate_otp();
-    let created_at = chrono::Local::now().timestamp();
+    let created_at = chrono::Local::now().naive_local().and_utc().timestamp();
+
+    let send_otp = wa::send_otp(session_phone_number, generate_new_otp.clone()).await;
+
+    if let Err(why) = send_otp {
+        info!(target:"resend_otp","failed to send otp {:?}",why);
+        return ApiResponse::un_authorized(&i18n.translate("sign_in_otp.otp_not_sent"));
+    }
 
     let update_otp_session = state.redis.set_session_otp(
         &claims.sub,
@@ -480,11 +489,6 @@ pub async fn resend_otp(
         info!(target:"resend_otp","failed to update otp {}",why);
         return ApiResponse::un_authorized(&i18n.translate("resend_otp.user_not_updated"));
     }
-    let send_otp = wa::send_otp(session_phone_number, generate_new_otp).await;
-
-    if let Err(why) = send_otp {
-        info!(target:"sign_up_otp","failed to send otp {:?}",why);
-        return ApiResponse::un_authorized(&i18n.translate("sign_in_otp.otp_not_sent"));
-    }
+    info!(target:"resend_otp","success");
     ApiResponse::ok("OK".to_string(), &i18n.translate("resend_otp.success"))
 }

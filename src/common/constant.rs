@@ -13,6 +13,8 @@ pub const PROVIDER_GOOGLE: &str = "GOOGLE";
 pub const BUCKET_THREAD: &str = "thread";
 pub const BUCKET_PROFILE_PICTURE: &str = "thread";
 
+pub const PATH_PROFILE_PICTURE: &str = "profile";
+
 pub const REDIS_KEY_USER_TOKEN: &str = "token";
 pub const REDIS_KEY_OTP: &str = "otp";
 pub const REDIS_KEY_OTP_AT: &str = "otp_at";
@@ -36,7 +38,7 @@ pub const USER_STATUS_INACTIVE: &str = "INACTIVE";
 pub const DEFAULT_ID_NON_MEMBER: &str = "6742c74a15e68b0e7ee06145";
 
 pub const COLLECTION_USERS: &str = "users";
-pub const COLLECTION_FOLLOWER: &str = "mutuals";
+pub const COLLECTION_MUTUALS: &str = "mutuals";
 pub const COLLECTION_USER_PROFILE: &str = "user-profile";
 pub const COLLECTION_THREAD: &str = "thread";
 pub const COLLECTION_THREAD_VOTE: &str = "thread-vote";

@@ -1,7 +1,9 @@
 use bson::{DateTime, oid::ObjectId};
 use serde::{Deserialize, Serialize};
 
-use super::{profile_picture::ProfilePicture, user_metadata::UserMetaData};
+use crate::dto::profile_picture_dto::ProfilePictureDTO;
+
+use super::user_metadata::UserMetaData;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct User {
@@ -13,7 +15,7 @@ pub struct User {
     pub password: Option<String>,
     pub app_meta_data: Option<serde_json::Value>,
     pub user_meta_data: Option<UserMetaData>,
-    pub profile_picture: Option<ProfilePicture>,
+    pub profile_picture: Option<ProfilePictureDTO>,
     pub last_logged_in: Option<DateTime>,
     pub status: Option<String>,
     pub created_at: DateTime,

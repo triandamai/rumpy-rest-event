@@ -34,26 +34,15 @@ pub fn init_routes(state: AppState) -> Router {
         .route("/user/profile", get(feature::user::get_my_profile))
         .route("/user/public-profile", get(feature::user::get_user_profile))
         .route(
-            "/user/{user_id}/follower",
-            get(feature::user::get_list_follower),
-        )
-        .route(
-            "/user/{user_id}/following",
-            get(feature::user::get_list_following),
-        )
-        .route("/user/{user_id}/follow", get(feature::user::follow_user))
-        .route(
-            "/user/{user_id}/unfollow",
-            get(feature::user::unfollow_user),
-        )
-        .route(
             "/user/update-profile-picture",
             put(feature::user::update_profile_picture),
         )
+        //MUTUALS
         .route(
-            "/user/change-password",
-            post(feature::user::change_password),
+            "/user/{user_id}/mutuals",
+            get(feature::user::get_list_mutuals),
         )
+        //NOTIFICATION
         .route(
             "/notification/me",
             get(feature::notification::get_notification_list),

@@ -5,13 +5,11 @@ use log::info;
 
 use crate::{
     common::{
-        self,
         api_response::{ApiResponse, PaginationRequest, PagingResponse},
         app_state::AppState,
-        i18n,
         jwt::AuthContext,
-        lang::{self, Lang},
-        mongo::{filter::is, lookup::one, DB},
+        lang::Lang,
+        mongo::{DB, filter::is, lookup::one},
         utils::create_object_id_option,
     },
     dto::notification_log_dto::NotificationLogDTO,

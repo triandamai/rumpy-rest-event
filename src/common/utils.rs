@@ -174,20 +174,20 @@ pub fn to_hashmap<Id: Eq + Hash, T: Copy>(data: Vec<T>, id: fn(T) -> Id) -> Hash
 
 pub fn generate_otp() -> String {
     let mut rng = rand::rng();
-    let otp: u32 = rng.gen_range(100_000..1_000_000); // ensures a 6-digit number
+    let otp: u32 = rng.random_range(100_000..1_000_000); // ensures a 6-digit number
     otp.to_string()
 }
 
 //hashmap
-pub fn get_naive_date_time(session: Option<&String>) -> NaiveDateTime {
+pub fn get_naive_date_time(session: Option<&String>) -> chrono::DateTime<chrono::Utc> {
     session.map_or_else(
-        || Local::now().naive_local(),
+        || Local::now().naive_local().and_utc(),
         |value| match value.parse::<i64>() {
-            Ok(timestamp) => match chrono::DateTime::from_timestamp_millis(timestamp) {
-                Some(date) => date.naive_local(),
-                None => Local::now().naive_local(),
+            Ok(timestamp) => match chrono::DateTime::from_timestamp(timestamp,0) {
+                Some(date) => date,
+                None => Local::now().naive_local().and_utc(),
             },
-            Err(_) => Local::now().naive_local(),
+            Err(_) => Local::now().naive_local().and_utc(),
         },
     )
 }
