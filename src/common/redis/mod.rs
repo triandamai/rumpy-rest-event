@@ -3,7 +3,7 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use rand::{rng, Rng};
+use rand::{Rng, rng};
 use redis::{Client, Commands, RedisResult};
 
 #[derive(Clone, Debug)]
@@ -19,6 +19,9 @@ impl RedisClient {
             mode,
         }
     }
+    pub fn create_key_otp_session(&self, session_id: &str) -> String {
+        format!("{}:session:otp:{}", self.mode, session_id)
+    }
     pub fn create_key_permission_session(&self, session_id: &str) -> String {
         format!("{}:session:permission:{}", self.mode, session_id)
     }
@@ -31,6 +34,24 @@ impl RedisClient {
     pub fn create_key_reset_password_session(&self, session_id: &str) -> String {
         format!("{}:session:reset_password:{}", self.mode, session_id)
     }
+
+    //SESSION OTP
+    pub fn set_session_otp(
+        &mut self,
+        session_id: &str,
+        items: &[(&str, String)],
+    ) -> RedisResult<String> {
+        let key = self.create_key_otp_session(session_id);
+        let saved: RedisResult<String> = self.client.hset_multiple(key.clone(), items);
+        let _: RedisResult<String> = self.client.expire(key, 3600);
+        saved
+    }
+
+    pub fn get_session_otp(&mut self, session_id: &str) -> RedisResult<HashMap<String, String>> {
+        let key = self.create_key_otp_session(session_id);
+        self.client.hgetall(key)
+    }
+    //END OTP
 
     //SET PERMISSION
     pub fn set_session_permission(
@@ -119,6 +140,10 @@ impl RedisClient {
     ) -> RedisResult<HashMap<String, String>> {
         let key = self.create_key_reset_password_session(session_id);
         self.client.hgetall(key)
+    }
+    pub fn delete_session_otp(&mut self, session_id: &str) -> RedisResult<String> {
+        let key = self.create_key_otp_session(session_id);
+        self.client.del(key)
     }
     //DELETE SESSION
     pub fn delete_session_sign_up(&mut self, session_id: &str) -> RedisResult<String> {

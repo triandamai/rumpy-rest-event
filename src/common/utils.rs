@@ -1,7 +1,8 @@
 use bson::oid::ObjectId;
-use chrono::NaiveDate;
+use chrono::{Local, NaiveDate, NaiveDateTime};
 use log::info;
 use mime::Mime;
+use rand::Rng;
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::fmt::Debug;
@@ -169,4 +170,37 @@ pub fn to_hashmap<Id: Eq + Hash, T: Copy>(data: Vec<T>, id: fn(T) -> Id) -> Hash
         }
     }
     hash
+}
+
+pub fn generate_otp() -> String {
+    let mut rng = rand::rng();
+    let otp: u32 = rng.gen_range(100_000..1_000_000); // ensures a 6-digit number
+    otp.to_string()
+}
+
+//hashmap
+pub fn get_naive_date_time(session: Option<&String>) -> NaiveDateTime {
+    session.map_or_else(
+        || Local::now().naive_local(),
+        |value| match value.parse::<i64>() {
+            Ok(timestamp) => match chrono::DateTime::from_timestamp_millis(timestamp) {
+                Some(date) => date.naive_local(),
+                None => Local::now().naive_local(),
+            },
+            Err(_) => Local::now().naive_local(),
+        },
+    )
+}
+
+pub fn get_string_with_default(session: Option<&String>) -> String {
+    let default_string = String::new();
+    session.map_or_else(|| default_string, |value| value.clone())
+}
+
+pub fn get_i64_with_default(session: Option<&String>) -> i64 {
+    let default_string = String::new();
+    session
+        .unwrap_or(&default_string)
+        .parse::<i64>()
+        .unwrap_or_else(|_| 0)
 }

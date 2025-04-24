@@ -3,15 +3,15 @@ use std::convert::Infallible;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use axum::response::sse::{Event, KeepAlive};
 use axum::response::Sse;
+use axum::response::sse::{Event, KeepAlive};
 use futures::Stream;
 use tokio::spawn;
-use tokio::sync::mpsc::Sender;
 use tokio::sync::mpsc;
+use tokio::sync::mpsc::Sender;
 use tokio::time::interval;
-use tokio_stream::wrappers::ReceiverStream;
 use tokio_stream::StreamExt;
+use tokio_stream::wrappers::ReceiverStream;
 
 use crate::common::api_response::ApiResponse;
 use crate::common::sse::sse_builder::SseBuilder;
@@ -79,11 +79,11 @@ impl SseBroadcaster {
         self.inner.lock().unwrap().clients = ok_client;
     }
 
-    pub async fn new_client(
+    pub async fn new_client<'a>(
         &self,
         user_id: String,
         device_id: String,
-    ) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
+    ) -> Sse<impl Stream<Item = Result<Event, Infallible>> + use<'a>> {
         let (tx, rx) = mpsc::channel(10);
         let event = Event::default()
             .event("connected")

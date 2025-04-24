@@ -4,12 +4,15 @@ use validator::Validate;
 use crate::dto::user_dto::UserDTO;
 
 #[derive(Serialize, Deserialize, Validate, Debug, Clone)]
-pub struct SignUpRequest {
-    pub full_name: String,
-    #[validate(email)]
-    pub email: String,
-    #[validate(length(min = 1))]
-    pub password: String,
+pub struct AuthOTPRequest {
+    #[validate(length(min = 4))]
+    pub phone_number: String,
+}
+
+#[derive(Serialize, Deserialize, Validate, Debug, Clone)]
+pub struct VerifyOTPRequest {
+    #[validate(length(min = 4))]
+    pub otp: String,
 }
 
 #[derive(Serialize, Deserialize, Validate, Debug, Clone)]
@@ -27,7 +30,7 @@ pub struct ResetPasswordRequest {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct SignUpResponse {
+pub struct AuthOTPResponse {
     pub token: String,
 }
 
@@ -42,8 +45,9 @@ pub struct SetNewPasswordRequest {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct SignInResponse {
+pub struct VerifyOTPResponse {
     pub token: String,
     pub storage_token: String,
     pub account: UserDTO,
+    pub auth_type:String
 }

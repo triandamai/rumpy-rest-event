@@ -1,11 +1,9 @@
-use crate::entity::notification::NotificationContent;
+use crate::common::bson::*;
 use crate::entity::notification_log::NotificationLog;
-use crate::{common::bson::*, entity::notification::Notification};
-use bson::{oid::ObjectId, DateTime};
+use bson::{DateTime, oid::ObjectId};
 use serde::{Deserialize, Serialize};
 
 use super::notification_dto::NotificationDTO;
-use super::thread_dto::ThreadDTO;
 use super::user_dto::UserDTO;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -18,7 +16,7 @@ pub struct NotificationLogDTO {
     )]
     pub _id: Option<ObjectId>,
     #[serde(
-        rename = "_id",
+        rename = "_notification_id",
         skip_serializing_if = "Option::is_none",
         serialize_with = "serialize_object_id",
         deserialize_with = "deserialize_object_id"
@@ -32,7 +30,6 @@ pub struct NotificationLogDTO {
         deserialize_with = "deserialize_object_id"
     )]
     pub ref_id: Option<ObjectId>,
-    pub thread: Option<ThreadDTO>,
     #[serde(
         rename = "user_id",
         skip_serializing_if = "Option::is_none",
@@ -60,7 +57,6 @@ impl Into<NotificationLogDTO> for NotificationLog {
             is_read: self.is_read,
             created_at: self.created_at,
             updated_at: self.updated_at,
-            thread: None,
         }
     }
 }

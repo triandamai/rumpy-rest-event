@@ -1,27 +1,27 @@
 use axum::extract::{Path, Query, State};
 use bcrypt::DEFAULT_COST;
 use bson::oid::ObjectId;
-use bson::{doc, DateTime, Document};
+use bson::{DateTime, Document, doc};
 use log::info;
 use validator::Validate;
 
 use crate::common::api_response::{PaginationRequest, PagingResponse};
 use crate::common::constant::{
-    BUCKET_PROFILE_PICTURE, COLLECTION_FOLLOWER, COLLECTION_USER, COLLECTION_USER_PROFILE,
-    PROVIDER_BASIC, REDIS_KEY_USER_ID,
+    BUCKET_PROFILE_PICTURE, COLLECTION_FOLLOWER, COLLECTION_USER_PROFILE, COLLECTION_USERS,
+    PROVIDER_BASIC,
 };
 use crate::common::middleware::Json;
 use crate::common::minio::MinIO;
+use crate::common::mongo::DB;
 use crate::common::mongo::filter::{equal, is};
 use crate::common::mongo::lookup::one;
-use crate::common::mongo::DB;
 use crate::common::multipart_file::SingleFileExtractor;
 use crate::common::utils::create_object_id_option;
 use crate::dto::following_dto::FollowingDTO;
 use crate::dto::user_dto::UserDTO;
 use crate::entity::following::Following;
 use crate::entity::user_metadata::UserMetaData;
-use crate::feature::user::user_model::{ChangePasswordRequest, UserWithProfiledResponse};
+use crate::feature::user::user_model::ChangePasswordRequest;
 use crate::{
     common::{
         api_response::ApiResponse, app_state::AppState, constant::REDIS_KEY_USER_EMAIL,
@@ -44,7 +44,7 @@ pub async fn get_my_profile(
         .get(REDIS_KEY_USER_EMAIL)
         .map_or_else(|| "".to_string(), |v| v.clone());
 
-    let find_user = DB::get(COLLECTION_USER)
+    let find_user = DB::get(COLLECTION_USERS)
         .filter(vec![equal("email", &user_email)])
         .get_one::<UserDTO>(&state.db)
         .await;
@@ -88,7 +88,7 @@ pub async fn change_password(
 
     let user_email = user_email.unwrap();
 
-    let find_user = DB::get(COLLECTION_USER)
+    let find_user = DB::get(COLLECTION_USERS)
         .filter(vec![equal("email", &user_email)])
         .get_one::<User>(&state.db)
         .await;
@@ -137,7 +137,7 @@ pub async fn change_password(
         return ApiResponse::failed(i18n.translate("user.change-password.user.invalid").as_str());
     }
 
-    let update_password = DB::update(COLLECTION_USER)
+    let update_password = DB::update(COLLECTION_USERS)
         .set(doc! {
             "password":create_password.unwrap(),
             "updated_at":DateTime::now()
@@ -175,7 +175,7 @@ pub async fn update_profile_picture(
         );
     }
     let user_email = user_email.unwrap();
-    let find_user = DB::get(COLLECTION_USER)
+    let find_user = DB::get(COLLECTION_USERS)
         .filter(vec![equal("email", &user_email)])
         .get_one::<User>(&state.db)
         .await;
@@ -210,14 +210,11 @@ pub async fn update_profile_picture(
     let _remove = form_data.remove_file();
 
     let profile_picture = ProfilePicture {
-        id: Some(ObjectId::new()),
         mime_type: upload_file.mime_type.clone(),
         file_name: part_file_name.clone(),
-        bucket_name: BUCKET_PROFILE_PICTURE.to_string(),
-        created_at: DateTime::now(),
-        updated_at: DateTime::now(),
+        bucket: BUCKET_PROFILE_PICTURE.to_string(),
     };
-    let insert_profile_picture = DB::update(COLLECTION_USER)
+    let insert_profile_picture = DB::update(COLLECTION_USERS)
         .set(doc! {
             "profile_picture":bson::to_document(&profile_picture).unwrap_or(Document::new()),
             "updated_at":DateTime::now()
@@ -257,7 +254,7 @@ pub async fn get_user_profile(
         return ApiResponse::failed(i18n.translate("user.profile.not-found").as_str());
     }
 
-    let data = DB::get(COLLECTION_USER)
+    let data = DB::get(COLLECTION_USERS)
         .lookup(&[one("user-profile", "_id", "_id", "profile")])
         .filter(vec![is("_id", create_user_id.unwrap())])
         .get_one::<UserDTO>(&state.db)
@@ -368,7 +365,7 @@ pub async fn follow_user(
         return ApiResponse::failed(i18n.translate("user.profile.not-found").as_str());
     }
 
-    let find_user = DB::get(COLLECTION_USER)
+    let find_user = DB::get(COLLECTION_USERS)
         .filter(vec![
             is("user_id", create_user_id.unwrap()),
             is("follower_id", current_user_id.unwrap()),
@@ -457,7 +454,7 @@ pub async fn unfollow_user(
         return ApiResponse::failed(i18n.translate("user.profile.not-found").as_str());
     }
 
-    let find_user = DB::get(COLLECTION_USER)
+    let find_user = DB::get(COLLECTION_USERS)
         .filter(vec![
             is("user_id", create_user_id.unwrap()),
             is("follower_id", current_user_id.unwrap()),

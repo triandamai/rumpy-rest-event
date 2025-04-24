@@ -6,11 +6,14 @@ pub struct EnvConfig {
     pub database_url: String,
     pub base_url: String,
     pub redis_url: String,
+    pub wa_url: String,
+    pub wa_token: String,
     pub jwt_secret: String,
     pub minio_url: String,
     pub minio_access_key: String,
     pub minio_secret_key: String,
     pub mode: String,
+    pub google_client_id: String,
 }
 
 impl EnvConfig {
@@ -20,7 +23,10 @@ impl EnvConfig {
         let env_mode = std::env::var("MODE").unwrap_or("DEV".to_string());
 
         let database_env_key = format!("DATABASE_URL_{}", env_mode);
+        let database_env_key = format!("DATABASE_URL_{}", env_mode);
         let redis_env_key = format!("REDIS_URL_{}", env_mode);
+        let wa_env_key = format!("WA_API_URL_{}", env_mode);
+        let wa_env_token_key = format!("WA_API_KEY_{}", env_mode);
         let minio_env_key = format!("MINIO_URL_{}", env_mode);
         let minio_env_access_key = format!("MINIO_ACCESS_KEY_{}", env_mode);
         let minio_env_secret_key = format!("MINIO_SECRET_KEY_{}", env_mode);
@@ -30,6 +36,8 @@ impl EnvConfig {
         let env_base_url = std::env::var(base_url_key.clone());
         let env_database = std::env::var(database_env_key.clone());
         let env_redis = std::env::var(redis_env_key.clone());
+        let env_wa = std::env::var(wa_env_key.clone());
+        let env_wa_token = std::env::var(wa_env_token_key.clone());
         let env_minio = std::env::var(minio_env_key.clone());
         let env_minio_access_key = std::env::var(minio_env_access_key.clone());
         let env_minio_secret_key = std::env::var(minio_env_secret_key.clone());
@@ -53,6 +61,21 @@ impl EnvConfig {
         if env_redis.is_err() {
             panic!(
                 "Cannot load env redis {} mode, error={}",
+                redis_env_key,
+                env_redis.unwrap_err().to_string()
+            )
+        }
+        if env_wa.is_err() {
+            panic!(
+                "Cannot load env wa {} mode, error={}",
+                redis_env_key,
+                env_redis.unwrap_err().to_string()
+            )
+        }
+
+        if env_wa_token.is_err() {
+            panic!(
+                "Cannot load env wa token {} mode, error={}",
                 redis_env_key,
                 env_redis.unwrap_err().to_string()
             )
@@ -91,11 +114,14 @@ impl EnvConfig {
             database_url: env_database.unwrap(),
             base_url: env_base_url.unwrap(),
             redis_url: env_redis.unwrap(),
+            wa_url: env_wa.unwrap(),
+            wa_token: env_wa_token.unwrap(),
             minio_url: env_minio.unwrap(),
             minio_access_key: env_minio_access_key.unwrap(),
             minio_secret_key: env_minio_secret_key.unwrap(),
             jwt_secret: env_jwt.unwrap(),
             mode: env_mode,
+            google_client_id: "".to_string(),
         })
     }
 }

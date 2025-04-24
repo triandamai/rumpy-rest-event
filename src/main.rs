@@ -23,32 +23,14 @@ pub mod routes;
 async fn main() -> Result<(), ()> {
     let _ = tracing_subscriber::fmt().init();
     let app_state = AppState::init().await;
-    let _i18n = I18n::sync_locales(&["auth", "thread", "thread-vote", "topic"]).await;
+    let _i18n = I18n::sync_locales(&["auth"]).await;
     let _init_seeder = init_seeder(&app_state.db).await;
-
-    let pre_image = FullDocumentBeforeChangeType::Required;
-
-    let coll = app_state
-        .db
-        .database(&get_db_name())
-        .collection::<NotificationDTO>("notification")
-        .watch()
-        .full_document_before_change(pre_image)
-        .await;
-
-    if let Ok(mut event) = coll {
-        while let Some(stream) = event.next().await {
-            info!(target:"event-triggered","{:?}",stream);
-            if let Ok(data) = stream {
-                
-            }
-        }
-    }
 
     let app = init_routes(app_state);
 
     let tcp_listener = tokio::net::TcpListener::bind("0.0.0.0:8000").await.unwrap();
 
     let _app = axum::serve(tcp_listener, app).await;
+
     Ok(())
 }

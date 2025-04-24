@@ -1,13 +1,11 @@
-use std::collections::HashMap;
-
-use bson::{oid::ObjectId, DateTime};
+use bson::{DateTime, oid::ObjectId};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct NotificationLog {
     #[serde(rename = "_id", skip_serializing_if = "Option::is_none")]
     pub _id: Option<ObjectId>,
-    #[serde(rename = "_id", skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "notification_id", skip_serializing_if = "Option::is_none")]
     pub notification_id: Option<ObjectId>,
     #[serde(rename = "ref_id", skip_serializing_if = "Option::is_none")]
     pub ref_id: Option<ObjectId>,

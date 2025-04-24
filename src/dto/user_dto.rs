@@ -1,9 +1,8 @@
-use bson::{oid::ObjectId, DateTime};
+use bson::{DateTime, oid::ObjectId};
 use serde::{Deserialize, Serialize};
 
 use crate::common::bson::*;
 use crate::common::serialize::serialize_to_redact_password;
-use crate::dto::user_profile_dto::UserProfileDTO;
 use crate::entity::user::User;
 
 use super::profile_picture_dto::ProfilePictureDTO;
@@ -19,13 +18,14 @@ pub struct UserDTO {
     pub id: Option<ObjectId>,
     pub display_name: String,
     pub email: String,
-    pub phone_number: Option<String>,
+    pub phone_number: String,
     #[serde(serialize_with = "serialize_to_redact_password")]
     pub password: Option<String>,
     pub app_meta_data: Option<serde_json::Value>,
     pub user_meta_data: Option<UserMetaDataDTO>,
     pub profile_picture: Option<ProfilePictureDTO>,
-    pub profile: Option<UserProfileDTO>,
+    pub last_logged_in: Option<DateTime>,
+    pub status: Option<String>,
     #[serde(serialize_with = "serialize_datetime")]
     pub created_at: DateTime,
     #[serde(serialize_with = "serialize_datetime")]
@@ -49,11 +49,12 @@ impl Into<UserDTO> for User {
             profile_picture: self
                 .profile_picture
                 .map_or_else(|| None, |value| Some(value.into())),
+            last_logged_in: self.last_logged_in,
+            status: self.status,
             created_at: self.created_at,
             updated_at: self.updated_at,
             confirmation_at: self.confirmation_at,
             confirmation_sent_at: self.confirmation_sent_at,
-            profile: None,
         }
     }
 }

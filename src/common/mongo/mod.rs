@@ -1,11 +1,11 @@
 use crate::common::api_response::PagingResponse;
 use crate::common::mongo::delete::Delete;
-use crate::common::mongo::filter::{search, Filter, FilterGroup};
+use crate::common::mongo::filter::{Filter, FilterGroup, search};
 use crate::common::mongo::insert::Insert;
 use crate::common::mongo::lookup::Lookup;
 use crate::common::mongo::update::Update;
 use crate::common::mongo::upsert::Upsert;
-use bson::{doc, Bson, Document};
+use bson::{Bson, Document, doc};
 use log::info;
 use mongodb::{Client, Collection};
 use serde::de::DeserializeOwned;
@@ -410,5 +410,5 @@ impl DB {
 
 pub fn get_db_name() -> String {
     let env = EnvConfig::init();
-    format!("RUMPY-{}", env.mode).to_lowercase()
+    format!("RUMPY-EVENT-{}", env.mode).to_lowercase()
 }

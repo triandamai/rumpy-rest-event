@@ -29,6 +29,7 @@ pub struct JwtUtil {
 pub struct JwtClaims {
     pub iss: String,
     pub sub: String,
+    pub provider:String,
     pub iat: i64,
     pub exp: i64,
 }
@@ -51,13 +52,14 @@ pub enum AuthError {
 const ISS: &str = "strong-teams.id";
 
 impl JwtUtil {
-    pub fn encode(sub: String) -> Option<String> {
+    pub fn encode(sub: String,provider:String) -> Option<String> {
         // info!(target:"app::Jwt","encode");
         let secret = EnvConfig::init();
         let exp = Local::now().add(Duration::hours(12)).timestamp();
         let claims = JwtClaims {
             iss: ISS.to_string(),
             sub,
+            provider:provider,
             iat: Local::now().timestamp(),
             exp,
         };
@@ -68,7 +70,7 @@ impl JwtUtil {
             &EncodingKey::from_secret(secret.jwt_secret.as_ref()),
         ) {
             Ok(token) => {
-                //    info!(target:"app::Jwt","encode {}",token);
+                info!(target:"app::Jwt","token encoded");
                 Some(token)
             }
             Err(why) => {

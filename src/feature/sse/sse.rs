@@ -1,21 +1,24 @@
 use std::convert::Infallible;
 
+use axum::Json;
 use axum::extract::{Query, State};
 use axum::response::sse::Event;
 use axum::response::{IntoResponse, Sse};
-use axum::Json;
 use futures::Stream;
 
 use crate::common::api_response::ApiResponse;
 use crate::common::app_state::AppState;
 use crate::common::jwt::JwtClaims;
 use crate::common::sse::sse_builder::{SseBuilder, SseTarget};
-use crate::feature::sse::sse_model::{RegisterSse, SendBroadcastRequest, SendToUserChannel, SendToUserRequest, SubscribeToTopicRequest};
+use crate::feature::sse::sse_model::{
+    RegisterSse, SendBroadcastRequest, SendToUserChannel, SendToUserRequest,
+    SubscribeToTopicRequest,
+};
 
 pub async fn send_to_user(
     state: State<AppState>,
     Json(body): Json<SendToUserChannel>,
-) -> ApiResponse<String>  {
+) -> ApiResponse<String> {
     let _ = state
         .sse
         .send(SseBuilder::new(
@@ -32,7 +35,7 @@ pub async fn send_to_user(
 pub async fn send_to_user_device(
     state: State<AppState>,
     Json(body): Json<SendToUserRequest>,
-) -> ApiResponse<String>  {
+) -> ApiResponse<String> {
     state
         .sse
         .send(SseBuilder::new(
@@ -50,7 +53,7 @@ pub async fn send_to_user_device(
 pub async fn send_broadcast(
     state: State<AppState>,
     Json(body): Json<SendBroadcastRequest>,
-) -> ApiResponse<String>  {
+) -> ApiResponse<String> {
     state
         .sse
         .send(SseBuilder::new(
@@ -65,7 +68,7 @@ pub async fn send_broadcast(
 pub async fn register_sse(
     state: State<AppState>,
     query: Query<RegisterSse>,
-) -> Sse<impl Stream<Item=Result<Event, Infallible>>> {
+) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
     state
         .sse
         .new_client(query.user_id.clone(), query.device_id.clone())
@@ -74,28 +77,30 @@ pub async fn register_sse(
 
 pub async fn subscribe_to_topic(
     mut state: State<AppState>,
-    body:Json<SubscribeToTopicRequest>
-)->ApiResponse<String>{
-
+    body: Json<SubscribeToTopicRequest>,
+) -> ApiResponse<String> {
     let subscribe = state
         .redis
-        .subscribe_to_topic(body.topic.clone(),body.user_id.clone());
+        .subscribe_to_topic(body.topic.clone(), body.user_id.clone());
 
-    subscribe.map_or_else(|e|ApiResponse::failed(e.as_str()),|message|ApiResponse::ok(message,"Berhasil subscribe ke topic"))
-
+    subscribe.map_or_else(
+        |e| ApiResponse::failed(e.as_str()),
+        |message| ApiResponse::ok(message, "Berhasil subscribe ke topic"),
+    )
 }
 
 pub async fn unsubscribe_to_topic(
     mut state: State<AppState>,
-    body:Json<SubscribeToTopicRequest>
-)->ApiResponse<String>{
-
+    body: Json<SubscribeToTopicRequest>,
+) -> ApiResponse<String> {
     let subscribe = state
         .redis
-        .subscribe_to_topic(body.topic.clone(),body.user_id.clone());
+        .subscribe_to_topic(body.topic.clone(), body.user_id.clone());
 
-    subscribe.map_or_else(|e| ApiResponse::failed(e.as_str()), |message|ApiResponse::ok(message,"Berhasil unsubscribe ke topic"))
-
+    subscribe.map_or_else(
+        |e| ApiResponse::failed(e.as_str()),
+        |message| ApiResponse::ok(message, "Berhasil unsubscribe ke topic"),
+    )
 }
 
 pub async fn get_active_subscriber(state: State<AppState>, _: JwtClaims) -> impl IntoResponse {

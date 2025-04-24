@@ -1,5 +1,4 @@
 use crate::dto::user_dto::UserDTO;
-use crate::dto::user_profile_dto::UserProfileDTO;
 use serde::{Deserialize, Serialize};
 use validator::Validate;
 
@@ -11,9 +10,7 @@ pub struct ChangePasswordRequest {
     pub new_password: String,
 }
 
-
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct UserWithProfiledResponse {
-    pub user:Option<UserDTO>,
-    pub profile:Option<UserProfileDTO>,
+    pub user: Option<UserDTO>,
 }
