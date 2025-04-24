@@ -1,5 +1,5 @@
 use bson::oid::ObjectId;
-use chrono::{Local, NaiveDate, NaiveDateTime};
+use chrono::{Local, NaiveDate};
 use log::info;
 use mime::Mime;
 use rand::Rng;
@@ -183,7 +183,7 @@ pub fn get_naive_date_time(session: Option<&String>) -> chrono::DateTime<chrono:
     session.map_or_else(
         || Local::now().naive_local().and_utc(),
         |value| match value.parse::<i64>() {
-            Ok(timestamp) => match chrono::DateTime::from_timestamp(timestamp,0) {
+            Ok(timestamp) => match chrono::DateTime::from_timestamp(timestamp, 0) {
                 Some(date) => date,
                 None => Local::now().naive_local().and_utc(),
             },

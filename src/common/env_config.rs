@@ -23,7 +23,6 @@ impl EnvConfig {
         let env_mode = std::env::var("MODE").unwrap_or("DEV".to_string());
 
         let database_env_key = format!("DATABASE_URL_{}", env_mode);
-        let database_env_key = format!("DATABASE_URL_{}", env_mode);
         let redis_env_key = format!("REDIS_URL_{}", env_mode);
         let wa_env_key = format!("WA_API_URL_{}", env_mode);
         let wa_env_token_key = format!("WA_API_KEY_{}", env_mode);

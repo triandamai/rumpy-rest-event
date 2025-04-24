@@ -1,11 +1,5 @@
 use common::i18n::I18n;
-use common::mongo::get_db_name;
 use common::seeder::init_seeder;
-use dto::notification_dto::NotificationDTO;
-use entity::notification::Notification;
-use futures::StreamExt;
-use log::info;
-use mongodb::options::FullDocumentBeforeChangeType;
 use tokio::{self, main};
 
 use crate::common::app_state::AppState;

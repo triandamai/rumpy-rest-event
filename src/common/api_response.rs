@@ -1,7 +1,7 @@
+use axum::Json;
 use axum::extract::rejection::JsonRejection;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
-use axum::Json;
 use bson::doc;
 use serde::{Deserialize, Serialize};
 use validator::ValidationErrors;
@@ -54,12 +54,11 @@ impl PaginationRequest {
             let field = split.get(0);
             let group = split.get(1);
             if field.is_some() {
-                let mut order: String = String::new();
-                if group.is_some() {
-                    order = split[1].to_string();
+                let order = if group.is_some() {
+                    split[1].to_string()
                 } else {
-                    order = "DESC".to_string();
-                }
+                    "DESC".to_string()
+                };
                 return Some((column, order));
             }
         }

@@ -5,8 +5,7 @@ use log::info;
 
 use crate::common::api_response::{PaginationRequest, PagingResponse};
 use crate::common::constant::{
-    BUCKET_PROFILE_PICTURE, COLLECTION_MUTUALS, COLLECTION_USER_PROFILE, COLLECTION_USERS,
-    PATH_PROFILE_PICTURE,
+    BUCKET_PROFILE_PICTURE, COLLECTION_MUTUALS, COLLECTION_USERS, PATH_PROFILE_PICTURE,
 };
 use crate::common::minio::MinIO;
 use crate::common::mongo::DB;
@@ -16,14 +15,13 @@ use crate::common::multipart_file::SingleFileExtractor;
 use crate::common::utils::create_object_id_option;
 use crate::dto::following_dto::FollowingDTO;
 use crate::dto::profile_picture_dto::ProfilePictureDTO;
+
 use crate::dto::user_dto::UserDTO;
-use crate::entity::following::Following;
 use crate::{
     common::{
         api_response::ApiResponse, app_state::AppState, constant::REDIS_KEY_USER_EMAIL,
         jwt::AuthContext, lang::Lang,
     },
-    entity::user::User,
     i18n,
 };
 
