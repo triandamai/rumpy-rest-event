@@ -25,6 +25,7 @@ pub struct PaginationRequest {
     pub page: Option<i64>,
     pub size: Option<i64>,
     pub q: Option<String>,
+    pub filter: Option<String>,
     pub sort: Option<String>,
 }
 
@@ -46,7 +47,7 @@ impl PaginationRequest {
         page
     }
 
-    pub fn get_sorted(self) -> Option<(String, String)> {
+    pub fn get_sorted(self) -> Option<(String, i32)> {
         let column: String = String::new();
         let ordering = self.sort.unwrap_or("".to_string());
         if !ordering.is_empty() {
@@ -59,6 +60,8 @@ impl PaginationRequest {
                 } else {
                     "DESC".to_string()
                 };
+
+                let order = if order == "DESC".to_string() { -1 } else { 1 };
                 return Some((column, order));
             }
         }

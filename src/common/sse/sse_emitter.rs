@@ -128,19 +128,23 @@ impl SseBroadcaster {
     pub async fn send<T: serde::Serialize>(&self, builder: SseBuilder<T>) {
         let target = builder.get_target();
         if target.is_broadcast() {
-            self.broadcast(&target.even_name(), &builder.data).await;
+            let _send = self.broadcast(&target.even_name(), &builder.data).await;
         } else {
             if target.is_to_device() {
-                self.send_to_user_device(
-                    target.user_id(),
-                    target.device_id(),
-                    &target.even_name(),
-                    &builder.data,
-                )
-                .await;
+                for user in target.user_id() {
+                    let _send = self.send_to_user_device(
+                        &user,
+                        target.device_id(),
+                        &target.even_name(),
+                        &builder.data,
+                    )
+                        .await;
+                }
             } else {
-                self.send_to_user(target.user_id(), &target.even_name(), &builder.data)
-                    .await;
+                for user in target.user_id() {
+                    let _send =self.send_to_user(&user, &target.even_name(), &builder.data)
+                        .await;
+                }
             }
         }
     }

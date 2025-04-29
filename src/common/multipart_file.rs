@@ -1,4 +1,4 @@
-use crate::common::utils::get_extension_from_mime;
+use crate::common::utils::{create_object_id_option, get_extension_from_mime};
 use axum::extract::multipart::Field;
 use axum::extract::Multipart;
 use bson::oid::ObjectId;
@@ -137,6 +137,10 @@ impl SingleFileExtractor {
             is_error: self.is_error,
             error_message: self.error_message,
         }
+    }
+
+    pub fn ref_id_to_object(&self)->Option<ObjectId>{
+        create_object_id_option(&self.ref_id.clone())
     }
 
     pub fn validate_body(&self) -> Result<bool, ValidationErrors> {

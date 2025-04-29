@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::io::Write;
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default,Clone)]
 pub struct I18n {
     pub languages: HashMap<String, HashMap<String, String>>,
     pub locale: String,
@@ -53,9 +53,9 @@ impl I18n {
         }
     }
 
-    pub fn translate_with_args(self, name: &str, params: HashMap<String, String>) -> String {
+    pub fn translate_with_args(&self, name: &str, params: HashMap<String, String>) -> String {
         if let Some(locale) = self.languages.get(name) {
-            if let Some(greeting) = locale.get(&self.locale) {
+            if let Some(greeting) = locale.get(&self.locale.clone()) {
                 let mut str = greeting.to_string();
                 info!(target: "i18n::translating","{}",name);
                 for (key, value) in params {
@@ -71,9 +71,9 @@ impl I18n {
         }
     }
 
-    pub fn translate(self, name: &str) -> String {
+    pub fn translate(&self, name: &str) -> String {
         if let Some(locale) = self.languages.get(name) {
-            if let Some(greeting) = locale.get(&self.locale) {
+            if let Some(greeting) = locale.get(&self.locale.clone()) {
                 let str = greeting.to_string();
                 info!(target: "i18n::translating","{}",name);
                 str

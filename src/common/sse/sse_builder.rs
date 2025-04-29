@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SseTarget {
-    user_id: String,
+    user_id: Vec<String>,
     device_id: String,
     event_name: String,
     is_broadcast: bool,
@@ -20,7 +20,7 @@ pub struct SseBuilder<T> {
 impl SseTarget {
     pub fn create() -> Self {
         SseTarget {
-            user_id: "".to_string(),
+            user_id: vec![],
             device_id: "".to_string(),
             event_name: "".to_string(),
             is_broadcast: false,
@@ -30,7 +30,7 @@ impl SseTarget {
 
     pub fn broadcast(event_name: String) -> Self {
         SseTarget {
-            user_id: "".to_string(),
+            user_id: vec![],
             device_id: "".to_string(),
             event_name: event_name,
             is_broadcast: true,
@@ -44,7 +44,12 @@ impl SseTarget {
     }
 
     pub fn set_user_id(mut self, user_id: String) -> Self {
-        self.user_id = user_id;
+        self.user_id = vec![user_id];
+        self
+    }
+
+    pub fn set_user_ids(mut self, user_ids: Vec<String>) -> Self {
+        self.user_id = user_ids;
         self
     }
 
@@ -60,7 +65,7 @@ impl SseTarget {
     pub fn even_name(&self) -> &String {
         &self.event_name
     }
-    pub fn user_id(&self) -> &String {
+    pub fn user_id(&self) -> &Vec<String> {
         &self.user_id
     }
 

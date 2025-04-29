@@ -65,10 +65,10 @@ pub async fn auth_otp(
 
     if let Ok(user) = find_duplicate_phone_number {
         info!(target:"auth_otp","phone number already exist signing...");
-        return sign_in_otp(state, i18n, user, body).await;
+        sign_in_otp(state, i18n, user, body).await
     } else {
         info!(target:"auth_otp","account doesn't exist registering new account...");
-        return sign_up_otp(state, i18n, body).await;
+        sign_up_otp(state, i18n, body).await
     }
 }
 

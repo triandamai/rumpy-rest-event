@@ -37,10 +37,38 @@ pub fn init_routes(state: AppState) -> Router {
             "/user/update-profile-picture",
             put(feature::user::update_profile_picture),
         )
+        //EVENT
+        .route("/event/hosted", get(feature::event::get_hosted_events))
+        .route("/event/get-host",get(feature::event::get_event_host))
+        .route("/event/get-guest",get(feature::event::get_event_guest))
+        .route("/event/create", post(feature::event::create_new_event))
+        .route(
+            "/event/upload-image",
+            post(feature::event::upload_event_image),
+        )
+        .route(
+            "/event/update-event-data",
+            post(feature::event::update_event_data),
+        )
+        .route(
+            "/event/update-event-config",
+            post(feature::event::update_event_config),
+        )
+        .route(
+            "/event/update-event-venue",
+            post(feature::event::update_event_venue),
+        )
+        .route(
+            "/event/update-event-guest",
+            post(feature::event::update_event_guest),
+        )
+        .route("/event/delete", delete(feature::event::delete_event))
+        .route("/event/create-invitation-link",post(feature::invitation::create_invitation_link))
+        .route("/event/send-invitation",post(feature::invitation::send_invitation))
         //MUTUALS
         .route(
-            "/user/{user_id}/mutuals",
-            get(feature::user::get_list_mutuals),
+            "/user/{user_id}/mutual",
+            get(feature::user::get_list_mutual),
         )
         //NOTIFICATION
         .route(

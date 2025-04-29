@@ -1,6 +1,12 @@
-pub mod following_dto;
+pub mod event_config_dto;
+pub mod event_dto;
+pub mod mutual_dto;
 pub mod notification_dto;
 pub mod notification_log_dto;
 pub mod profile_picture_dto;
 pub mod user_dto;
 pub mod user_metadata_dto;
+pub mod venue_location_dto;
+pub mod theme_dto;
+pub mod event_guest_dto;
+pub mod event_invitation_dto;

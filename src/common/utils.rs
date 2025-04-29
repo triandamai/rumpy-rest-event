@@ -1,5 +1,7 @@
+use super::multipart_file::{MultiFileExtractor, SingleFileExtractor};
+use crate::common::api_response::ApiResponse;
 use bson::oid::ObjectId;
-use chrono::{Local, NaiveDate};
+use chrono::{Local, NaiveDate, TimeZone, Utc};
 use log::info;
 use mime::Mime;
 use rand::Rng;
@@ -11,8 +13,6 @@ use std::str::FromStr;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 use validator::ValidationError;
-
-use super::multipart_file::{MultiFileExtractor, SingleFileExtractor};
 
 pub const QUERY_LOWEST: &str = "lowest";
 pub const QUERY_HIGHEST: &str = "highest";
@@ -183,10 +183,8 @@ pub fn get_naive_date_time(session: Option<&String>) -> chrono::DateTime<chrono:
     session.map_or_else(
         || Local::now().naive_local().and_utc(),
         |value| match value.parse::<i64>() {
-            Ok(timestamp) => match chrono::DateTime::from_timestamp(timestamp, 0) {
-                Some(date) => date,
-                None => Local::now().naive_local().and_utc(),
-            },
+            Ok(timestamp) => chrono::DateTime::from_timestamp(timestamp, 0)
+                .unwrap_or_else(|| Local::now().naive_local().and_utc()),
             Err(_) => Local::now().naive_local().and_utc(),
         },
     )
@@ -203,4 +201,34 @@ pub fn get_i64_with_default(session: Option<&String>) -> i64 {
         .unwrap_or(&default_string)
         .parse::<i64>()
         .unwrap_or_else(|_| 0)
+}
+
+pub fn string_to_bson_datetime(date: String) -> Result<bson::DateTime, String> {
+    let chrono_date = string_to_chrono_datetime(&date);
+    if let Err(why) = chrono_date {
+        return Err(why);
+    }
+    let chrono_date = chrono_date.unwrap();
+    let date = bson::datetime::DateTime::from_chrono(chrono_date);
+    Ok(date)
+}
+
+pub fn string_to_chrono_datetime(date: &str) -> Result<chrono::DateTime<Utc>, String> {
+    // Step 1: Parse as NaiveDate (date without time)
+    let naive_date = NaiveDate::parse_from_str(date, "%Y-%m-%d");
+    if naive_date.is_err() {
+        info!(target:"daily::report::err","{:?}",naive_date.unwrap_err());
+        return Err(format!("{:?}", naive_date.unwrap_err()));
+    }
+    let naive_dt = naive_date.unwrap();
+    // Step 2: Convert to NaiveDateTime by adding time 00:00:00
+    let naive_dt = naive_dt.and_hms_opt(0, 0, 0).unwrap();
+
+    let datetime = chrono::Utc.from_local_datetime(&naive_dt).single();
+    // Step 3: Convert to DateTime<Utc>
+    if datetime.is_none() {
+        info!(target:"daily::report::err","Can't get datetime");
+        return Err(format!("{:?}", naive_date.unwrap_err()));
+    }
+    Ok(datetime.unwrap())
 }

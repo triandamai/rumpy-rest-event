@@ -22,7 +22,7 @@ pub struct NotificationDTO {
 impl Into<NotificationDTO> for Notification {
     fn into(self) -> NotificationDTO {
         NotificationDTO {
-            _id: self._id,
+            _id: self.id,
             ref_id: self.ref_id,
             kind: self.kind,
             title: self.title,

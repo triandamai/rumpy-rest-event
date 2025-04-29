@@ -5,7 +5,7 @@ use log::info;
 
 use crate::common::api_response::{PaginationRequest, PagingResponse};
 use crate::common::constant::{
-    BUCKET_PROFILE_PICTURE, COLLECTION_MUTUALS, COLLECTION_USERS, PATH_PROFILE_PICTURE,
+    BUCKET_PROFILE_PICTURE, COLLECTION_MUTUAL, COLLECTION_USERS, PATH_PROFILE_PICTURE,
 };
 use crate::common::minio::MinIO;
 use crate::common::mongo::DB;
@@ -13,7 +13,7 @@ use crate::common::mongo::filter::{equal, is};
 use crate::common::mongo::lookup::one;
 use crate::common::multipart_file::SingleFileExtractor;
 use crate::common::utils::create_object_id_option;
-use crate::dto::following_dto::FollowingDTO;
+use crate::dto::mutual_dto::MutualDTO;
 use crate::dto::profile_picture_dto::ProfilePictureDTO;
 
 use crate::dto::user_dto::UserDTO;
@@ -178,13 +178,13 @@ pub async fn get_user_profile(
     ApiResponse::ok(data.unwrap(), &i18n.translate(""))
 }
 
-pub async fn get_list_mutuals(
+pub async fn get_list_mutual(
     state: State<AppState>,
     lang: Lang,
     auth_context: AuthContext,
     Path(user_id): Path<String>,
     Query(query): Query<PaginationRequest>,
-) -> ApiResponse<PagingResponse<FollowingDTO>> {
+) -> ApiResponse<PagingResponse<MutualDTO>> {
     let i18n = i18n!("user", lang);
 
     if let None = auth_context.get_user_id() {
@@ -197,7 +197,7 @@ pub async fn get_list_mutuals(
         info!(target:"user::profile-picture::failed","session not found");
         return ApiResponse::failed(i18n.translate("user.profile.not-found").as_str());
     }
-    let mut data = DB::get(COLLECTION_MUTUALS);
+    let mut data = DB::get(COLLECTION_MUTUAL);
 
     if let Some(q) = query.q {
         data = data.text(q);
@@ -206,8 +206,8 @@ pub async fn get_list_mutuals(
     let data = data
         .lookup(&[one(COLLECTION_USERS, "user_id", "_id", "follower")])
         .filter(vec![is("user_id", create_user_id.unwrap())])
-        .sort(vec![("mutuals.display_name", 1)])
-        .get_per_page::<FollowingDTO>(query.page.unwrap_or(1), query.size.unwrap_or(10), &state.db)
+        .sort(vec![("mutual.display_name", 1)])
+        .get_per_page::<MutualDTO>(query.page.unwrap_or(1), query.size.unwrap_or(10), &state.db)
         .await;
 
     if let Err(why) = data {

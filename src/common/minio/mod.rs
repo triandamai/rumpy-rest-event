@@ -68,9 +68,9 @@ impl MinIO {
 
     pub async fn upload_file(
         &self,
-        file_path: String,
+        file_temp_location: String,
         bucket_name: String,
-        file_name: String,
+        file_path: String,
     ) -> Result<String, String> {
         let credentials = Credentials::new(
             Some(self.access_key.clone().as_str()),
@@ -96,12 +96,12 @@ impl MinIO {
         }
         let bucket = bucket.unwrap().with_path_style();
 
-        let file = tokio::fs::read(file_path).await;
+        let file = tokio::fs::read(file_temp_location).await;
         if file.is_err() {
             return Err(file.unwrap_err().to_string());
         }
         let file = file.unwrap();
-        let upload = bucket.put_object(file_name.as_str(), &file).await;
+        let upload = bucket.put_object(file_path.as_str(), &file).await;
         match upload {
             Ok(_) => Ok("Successfully uploaded file".to_string()),
             Err(e) => Err(format!("Error uploading file: {}", e)),

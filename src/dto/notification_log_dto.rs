@@ -48,7 +48,7 @@ pub struct NotificationLogDTO {
 impl Into<NotificationLogDTO> for NotificationLog {
     fn into(self) -> NotificationLogDTO {
         NotificationLogDTO {
-            _id: self._id,
+            _id: self.id,
             notification_id: self.notification_id,
             notification: None,
             ref_id: self.ref_id,

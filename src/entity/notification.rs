@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Notification {
     #[serde(rename = "_id", skip_serializing_if = "Option::is_none")]
-    pub _id: Option<ObjectId>,
+    pub id: Option<ObjectId>,
     #[serde(rename = "ref_id", skip_serializing_if = "Option::is_none")]
     pub ref_id: Option<ObjectId>,
     pub kind: String,

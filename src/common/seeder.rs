@@ -1,4 +1,4 @@
-use crate::common::constant::COLLECTION_USERS;
+use crate::common::constant::{COLLECTION_EVENTS, COLLECTION_USERS};
 use crate::common::mongo::get_db_name;
 use crate::common::utils::create_object_id_option;
 use bson::{Document, doc};
@@ -41,6 +41,22 @@ pub async fn init_seeder(db_client: &Client) {
                     IndexOptions::builder()
                         .name("user-index-phone-number".to_string())
                         .unique(true)
+                        .build(),
+                )
+                .build(),
+        )
+        .await;
+
+    let _index_fts_event = &db_client
+        .database(&get_db_name())
+        .collection::<Document>(COLLECTION_EVENTS)
+        .create_index(
+            IndexModel::builder()
+                .keys(doc! { "event_name": "text","event_description":"text" })
+                .options(
+                    IndexOptions::builder()
+                        .name("event-index-fulltext".to_string())
+                        .unique(false)
                         .build(),
                 )
                 .build(),
