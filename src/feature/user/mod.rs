@@ -204,7 +204,7 @@ pub async fn get_list_mutual(
     }
 
     let data = data
-        .lookup(&[one(COLLECTION_USERS, "user_id", "_id", "follower")])
+        .lookup(&[one(COLLECTION_USERS, "user_id", "_id", "mutual")])
         .filter(vec![is("user_id", create_user_id.unwrap())])
         .sort(vec![("mutual.display_name", 1)])
         .get_per_page::<MutualDTO>(query.page.unwrap_or(1), query.size.unwrap_or(10), &state.db)
