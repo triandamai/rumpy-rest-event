@@ -55,7 +55,7 @@ pub async fn create_invitation_link(
         .filter(vec![
             is("event_id", create_event_id.unwrap()),
             is("user_id", auth_context.get_user_id().unwrap()),
-            is_in("role", [EVENT_GUEST_ROLE_HOST, EVENT_GUEST_ROLE_CO_HOST]),
+            is_in("role", vec![EVENT_GUEST_ROLE_HOST, EVENT_GUEST_ROLE_CO_HOST]),
         ])
         .lookup(&[
             one(COLLECTION_EVENTS, "event_id", "_id", "event"),
@@ -162,6 +162,7 @@ pub async fn send_invitation(
 
             let log = NotificationLog {
                 id: Some(ObjectId::new()),
+                ref_id: Some(create_invitation_id.clone()),
                 notification_id: notification.id.clone(),
                 user_id: create_user_id.clone(),
                 is_read: false,
@@ -192,7 +193,7 @@ pub async fn send_invitation(
     let _ = session.start_transaction().await;
 
     let save_invitation = DB::insert(COLLECTION_EVENT_INVITATION)
-        .many_with_session(build_invitation.into_iter().map(|(_,_,invitation)|invitation).collect(), &state.db, &mut session)
+        .many_with_session(build_invitation.clone().into_iter().map(|(_,_,invitation)|invitation).collect(), &state.db, &mut session)
         .await;
 
     if let Err(why) = save_invitation {

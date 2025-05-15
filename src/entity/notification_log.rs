@@ -7,6 +7,8 @@ pub struct NotificationLog {
     pub id: Option<ObjectId>,
     #[serde(rename = "notification_id", skip_serializing_if = "Option::is_none")]
     pub notification_id: Option<ObjectId>,
+    #[serde(rename = "ref_id", skip_serializing_if = "Option::is_none")]
+    pub ref_id: Option<ObjectId>,
     #[serde(rename = "user_id", skip_serializing_if = "Option::is_none")]
     pub user_id: Option<ObjectId>,
     pub is_read: bool,

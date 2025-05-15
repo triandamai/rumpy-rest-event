@@ -2,7 +2,7 @@
 .env
 ./env
 .env.prod
-./.env.prod
+/.env.prod
 
 Cargo.lock
 .idea/

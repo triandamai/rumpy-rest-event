@@ -1,9 +1,16 @@
-use crate::common::constant::{BUCKET_EVENT, BUCKET_THREAD, COLLECTION_EVENT_GUEST, EVENT_GUEST_ROLE_CO_HOST, EVENT_GUEST_ROLE_HOST, EVENT_STATUS_DRAFT, SSE_EVENT_UPDATE_EVENT_CONFIG, SSE_EVENT_UPDATE_EVENT_DATA, SSE_EVENT_UPDATE_EVENT_HOST, SSE_EVENT_UPDATE_EVENT_IMAGE, SSE_EVENT_UPDATE_EVENT_VENUE};
+use crate::common::constant::{
+    BUCKET_EVENT, BUCKET_THREAD, COLLECTION_EVENT_GUEST, EVENT_GUEST_ROLE_CO_HOST,
+    EVENT_GUEST_ROLE_HOST, EVENT_STATUS_DRAFT, SSE_EVENT_UPDATE_EVENT_CONFIG,
+    SSE_EVENT_UPDATE_EVENT_DATA, SSE_EVENT_UPDATE_EVENT_HOST, SSE_EVENT_UPDATE_EVENT_IMAGE,
+    SSE_EVENT_UPDATE_EVENT_VENUE,
+};
 use crate::common::minio::MinIO;
+use crate::common::mongo::filter::is_in;
 use crate::common::multipart_file::SingleFileExtractor;
 use crate::common::sse::sse_builder::{SseBuilder, SseTarget};
 use crate::common::utils::create_object_id_option;
 use crate::dto::event_guest_dto::EventGuestDTO;
+use crate::dto::mutual_dto::MutualDTO;
 use crate::dto::venue_location_dto::VenueLocationDTO;
 use crate::entity::event_guest::EventGuest;
 use crate::entity::event_image::EventImage;
@@ -34,8 +41,6 @@ use event_model::CreateNewEventRequest;
 use log::info;
 use serde_json::{Error, from_value};
 use validator::Validate;
-use crate::common::mongo::filter::is_in;
-use crate::dto::mutual_dto::MutualDTO;
 
 pub mod event_model;
 
@@ -645,15 +650,14 @@ pub async fn update_event_venue(
     }
 
     if let Some(map_details) = body.map_details {
-        if let Ok(map) = from_value(map_details) {
-            location.map_details = Some(map.clone());
-        }
+        location.map_details = Some(map_details.clone());
     }
 
+    let bson = bson::to_bson(&location).unwrap();
     let update = DB::update(COLLECTION_EVENTS)
         .filter(vec![is("_id", create_event_id.unwrap())])
         .set(doc! {
-            "venue_location":location.clone()
+            "venue_location":bson
         })
         .execute_with_session(&state.db, &mut session)
         .await;
@@ -685,7 +689,7 @@ pub async fn update_event_venue(
 }
 
 pub async fn update_event_guest(
-    state: State<AppState>,
+    mut state: State<AppState>,
     lang: Lang,
     auth_context: AuthContext,
     Json(body): Json<UpdateEventHostRequest>,
@@ -761,7 +765,7 @@ pub async fn update_event_guest(
         };
 
         let save = DB::insert(COLLECTION_EVENT_GUEST)
-            .one_with_session(host,&state.db,&mut session)
+            .one_with_session(host, &state.db, &mut session)
             .await;
         if let Err(why) = save {
             info!(target:"add_event_host","{:?}", why);
@@ -770,10 +774,9 @@ pub async fn update_event_guest(
         }
     }
 
-
     let _commit = session.commit_transaction().await;
     info!(target:"add_event_host","sending sse");
-    let find_subscriber = state
+    let find_subscriber = &state
         .redis
         .get_list_subscriber(body.event_id)
         .into_iter()
@@ -783,7 +786,7 @@ pub async fn update_event_guest(
     let sse = SseBuilder::new(
         SseTarget::create()
             .set_event_name(SSE_EVENT_UPDATE_EVENT_HOST.to_string())
-            .set_user_ids(find_subscriber),
+            .set_user_ids(find_subscriber.into_iter().map(|id| id.clone()).collect()),
         host.clone(),
     );
     let _send = state.sse.send(sse);
@@ -867,8 +870,8 @@ pub async fn get_event_guest(
     lang: Lang,
     auth_context: AuthContext,
     Path(event_id): Path<String>,
-    Query(query):Query<PaginationRequest>
-)->ApiResponse<PagingResponse<EventGuestDTO>>{
+    Query(query): Query<PaginationRequest>,
+) -> ApiResponse<PagingResponse<EventGuestDTO>> {
     let i18n = i18n!("event", lang);
 
     if let None = auth_context.get_user_id() {
@@ -878,29 +881,21 @@ pub async fn get_event_guest(
     let create_event = create_object_id_option(&event_id);
 
     let find_host = DB::get(COLLECTION_EVENT_GUEST)
-        .filter(vec![
-            is("event_id", create_event.unwrap()),
-        ])
+        .filter(vec![is("event_id", create_event.unwrap())])
         .lookup(&[
             one(COLLECTION_USERS, "user_id", "_id", "user"),
             one(COLLECTION_EVENTS, "event_id", "_id", "event"),
         ])
-        .sort(vec![("created_at",-1)])
-        .get_per_page::<EventGuestDTO>(
-            query.page.unwrap_or(0),
-            query.size.unwrap_or(50),
-            &state.db
-        ).await;
+        .sort(vec![("created_at", -1)])
+        .get_per_page::<EventGuestDTO>(query.page.unwrap_or(0), query.size.unwrap_or(50), &state.db)
+        .await;
 
     if let Err(why) = find_host {
         info!(target:"add_event_host","{:?}",why);
         return ApiResponse::failed(&i18n.translate("add_event_host.event_not_found"));
     }
 
-    ApiResponse::ok(
-        find_host.unwrap(),
-        &i18n.translate("find_host.event_guest"),
-    )
+    ApiResponse::ok(find_host.unwrap(), &i18n.translate("find_host.event_guest"))
 }
 
 pub async fn get_event_host(
@@ -908,8 +903,8 @@ pub async fn get_event_host(
     lang: Lang,
     auth_context: AuthContext,
     Path(event_id): Path<String>,
-    Query(query):Query<PaginationRequest>
-)->ApiResponse<PagingResponse<EventGuestDTO>>{
+    Query(query): Query<PaginationRequest>,
+) -> ApiResponse<PagingResponse<EventGuestDTO>> {
     let i18n = i18n!("event", lang);
 
     if let None = auth_context.get_user_id() {
@@ -921,26 +916,23 @@ pub async fn get_event_host(
     let find_host = DB::get(COLLECTION_EVENT_GUEST)
         .filter(vec![
             is("event_id", create_event.unwrap()),
-            is_in("role",[EVENT_GUEST_ROLE_CO_HOST,EVENT_GUEST_ROLE_HOST])
+            is_in(
+                "role",
+                vec![EVENT_GUEST_ROLE_CO_HOST, EVENT_GUEST_ROLE_HOST],
+            ),
         ])
         .lookup(&[
             one(COLLECTION_USERS, "user_id", "_id", "user"),
             one(COLLECTION_EVENTS, "event_id", "_id", "event"),
         ])
-        .sort(vec![("created_at",-1)])
-        .get_per_page::<EventGuestDTO>(
-            query.page.unwrap_or(0),
-            query.size.unwrap_or(50),
-            &state.db
-        ).await;
+        .sort(vec![("created_at", -1)])
+        .get_per_page::<EventGuestDTO>(query.page.unwrap_or(0), query.size.unwrap_or(50), &state.db)
+        .await;
 
     if let Err(why) = find_host {
         info!(target:"add_event_host","{:?}",why);
         return ApiResponse::failed(&i18n.translate("add_event_host.event_not_found"));
     }
 
-    ApiResponse::ok(
-        find_host.unwrap(),
-        &i18n.translate("find_host.event_guest"),
-    )
+    ApiResponse::ok(find_host.unwrap(), &i18n.translate("find_host.event_guest"))
 }
