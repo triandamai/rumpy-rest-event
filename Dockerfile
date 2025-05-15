@@ -26,8 +26,8 @@ RUN apt update  \
 
 WORKDIR /usr/local/bin
 
-COPY --from=builder /app/target/release/rumpy-rest /usr/local/bin
+COPY --from=builder /app/target/release/rumpy-rest-event /usr/local/bin
 COPY --from=builder /app/locales/ /usr/local/bin/locales
 COPY --from=builder /app/uploads/ /usr/local/bin/uploads
 
-ENTRYPOINT ["/usr/local/bin/rumpy-rest"]
+ENTRYPOINT ["/usr/local/bin/rumpy-rest-event"]
