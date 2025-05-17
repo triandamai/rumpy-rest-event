@@ -5,7 +5,7 @@ use crate::common::constant::{
     SSE_EVENT_UPDATE_EVENT_VENUE,
 };
 use crate::common::minio::MinIO;
-use crate::common::mongo::filter::is_in;
+use crate::common::mongo::filter::{equal, is_in};
 use crate::common::multipart_file::SingleFileExtractor;
 use crate::common::sse::sse_builder::{SseBuilder, SseTarget};
 use crate::common::utils::create_object_id_option;
@@ -41,6 +41,7 @@ use event_model::CreateNewEventRequest;
 use log::info;
 use serde_json::{Error, from_value};
 use validator::Validate;
+use crate::common::mongo::lookup::raw;
 
 pub mod event_model;
 
@@ -86,6 +87,56 @@ pub async fn get_hosted_events(
     ApiResponse::ok(
         find_hosted_events.unwrap(),
         &i18n.translate("get_hosted_events.ok"),
+    )
+}
+
+pub async fn get_invited_event(
+    state: State<AppState>,
+    lang: Lang,
+    auth_context: AuthContext,
+    Query(query): Query<PaginationRequest>,
+)->ApiResponse<PagingResponse<EventDTO>>{
+
+    info!(target:"get_invited_event","Starting...");
+    let i18n = i18n!("event", lang);
+
+    if let None = auth_context.get_user_id() {
+        info!(target:"get_invited_event","user id not found or session doesn;t exist");
+        return ApiResponse::failed(&i18n.translate("get_hosted_event.user_id_not_exist"));
+    }
+    let current_user_id = auth_context.get_user_id().unwrap();
+
+    let mut data = DB::get(COLLECTION_EVENTS);
+
+    if let Some(q) = query.q.clone() {
+        data = data.text(q);
+    }
+
+    if let Some((col, order)) = query.clone().get_sorted() {
+        data = data.sort(vec![(&col, order)]);
+    }
+
+    let find_hosted_events = data
+        .filter(vec![is("host_id", current_user_id)])
+        .lookup(&[
+            one(COLLECTION_USERS, "host_id", "_id", "host"),
+            one(COLLECTION_USERS, "_id", "event_id", "guest"),
+            one(COLLECTION_EVENT_IMAGES, "image_id", "_id", "image"),
+            one(COLLECTION_EVENT_THEMES, "theme_id", "_id", "theme"),
+        ])
+        .filter(
+            vec![equal("guest",doc! {"$exists": true})] //filter guest should exist
+        )
+        .get_per_page::<EventDTO>(query.page.unwrap_or(0), query.size.unwrap_or(50), &state.db)
+        .await;
+    if let Err(why) = find_hosted_events {
+        info!(target:"get_invited_event","cannot find events {}",why);
+        return ApiResponse::failed(&i18n.translate("get_invited_event.user_id_not_exist"));
+    }
+
+    ApiResponse::ok(
+        find_hosted_events.unwrap(),
+        &i18n.translate("get_invited_event.ok"),
     )
 }
 

@@ -12,6 +12,7 @@ pub fn init_routes(state: AppState) -> Router {
         //SSE
         .route("/sse/list", get(feature::sse::sse::get_active_subscriber))
         .route("/sse/register", get(feature::sse::sse::register_sse))
+        .route("/sse/register/public", get(feature::sse::sse::register_public_sse))
         .route("/sse/send-to-user", post(feature::sse::sse::send_to_user))
         .route(
             "/sse/send-to-user-device",
@@ -39,6 +40,7 @@ pub fn init_routes(state: AppState) -> Router {
         )
         //EVENT
         .route("/event/hosted", get(feature::event::get_hosted_events))
+        .route("/event/invited", get(feature::event::get_invited_event))
         .route("/event/get-host",get(feature::event::get_event_host))
         .route("/event/get-guest",get(feature::event::get_event_guest))
         .route("/event/create", post(feature::event::create_new_event))

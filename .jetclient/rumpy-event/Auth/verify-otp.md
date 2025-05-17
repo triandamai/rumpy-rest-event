@@ -13,7 +13,7 @@ token = '{{session_token}}'
 type = 'JSON'
 raw = '''
 {
-    "otp":"691580"
+    "otp":"607902"
 }'''
 ```
 

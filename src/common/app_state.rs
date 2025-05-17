@@ -27,7 +27,7 @@ impl AppState {
         let opt = ClientOptions::parse(env.database_url.as_str()).await;
 
         if opt.is_err() {
-            panic!("{}", opt.unwrap_err());
+            panic!("{:?}", opt.err());
         }
         let mut opt = opt.unwrap();
         opt.retry_writes = Some(false);

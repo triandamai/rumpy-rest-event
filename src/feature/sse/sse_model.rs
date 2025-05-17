@@ -4,6 +4,12 @@ use validator::Validate;
 #[derive(Debug, Clone, Serialize, Deserialize, Validate)]
 pub struct RegisterSse {
     #[validate(length(min = 1))]
+    pub device_id: String
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Validate)]
+pub struct RegisterPublicSse {
+    #[validate(length(min = 1))]
     pub device_id: String,
     #[validate(length(min = 1))]
     pub user_id: String,

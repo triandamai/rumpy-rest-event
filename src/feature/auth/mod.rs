@@ -390,6 +390,7 @@ pub async fn verify_otp(
     ApiResponse::ok(
         VerifyOTPResponse {
             token: create_token.unwrap(),
+            refresh_token: "".to_string(),
             storage_token: "".to_string(),
             account: user,
             auth_type: claims.provider,

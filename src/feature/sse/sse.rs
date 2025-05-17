@@ -8,12 +8,9 @@ use futures::Stream;
 
 use crate::common::api_response::ApiResponse;
 use crate::common::app_state::AppState;
-use crate::common::jwt::JwtClaims;
+use crate::common::jwt::{AuthContext, JwtClaims};
 use crate::common::sse::sse_builder::{SseBuilder, SseTarget};
-use crate::feature::sse::sse_model::{
-    RegisterSse, SendBroadcastRequest, SendToUserChannel, SendToUserRequest,
-    SubscribeToTopicRequest,
-};
+use crate::feature::sse::sse_model::{RegisterPublicSse, RegisterSse, SendBroadcastRequest, SendToUserChannel, SendToUserRequest, SubscribeToTopicRequest};
 
 pub async fn send_to_user(
     state: State<AppState>,
@@ -67,7 +64,20 @@ pub async fn send_broadcast(
 
 pub async fn register_sse(
     state: State<AppState>,
+    auth_context: AuthContext,
     query: Query<RegisterSse>,
+) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
+    let user_id = auth_context.get_user_id_as_string();
+
+    state
+        .sse
+        .new_client(user_id, query.device_id.clone())
+        .await
+}
+
+pub async fn register_public_sse(
+    state: State<AppState>,
+    query: Query<RegisterPublicSse>,
 ) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
     state
         .sse

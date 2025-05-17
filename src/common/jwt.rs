@@ -2,14 +2,14 @@ use std::collections::HashMap;
 use std::ops::Add;
 use std::string::ToString;
 
+use axum::RequestPartsExt;
 use axum::extract::{FromRef, FromRequestParts};
 use axum::http::request::Parts;
 use axum::response::{IntoResponse, Response};
-use axum::RequestPartsExt;
 use bson::oid::ObjectId;
 use chrono::{Duration, Local};
 use jsonwebtoken::{
-    errors::Error as JwtError, Algorithm, DecodingKey, EncodingKey, Header, TokenData, Validation,
+    Algorithm, DecodingKey, EncodingKey, Header, TokenData, Validation, errors::Error as JwtError,
 };
 use log::info;
 use serde::{Deserialize, Serialize};
@@ -29,7 +29,7 @@ pub struct JwtUtil {
 pub struct JwtClaims {
     pub iss: String,
     pub sub: String,
-    pub provider:String,
+    pub provider: String,
     pub iat: i64,
     pub exp: i64,
 }
@@ -52,14 +52,14 @@ pub enum AuthError {
 const ISS: &str = "strong-teams.id";
 
 impl JwtUtil {
-    pub fn encode(sub: String,provider:String) -> Option<String> {
+    pub fn encode(sub: String, provider: String) -> Option<String> {
         // info!(target:"app::Jwt","encode");
         let secret = EnvConfig::init();
         let exp = Local::now().add(Duration::hours(12)).timestamp();
         let claims = JwtClaims {
             iss: ISS.to_string(),
             sub,
-            provider:provider,
+            provider: provider,
             iat: Local::now().timestamp(),
             exp,
         };
@@ -109,6 +109,10 @@ impl AuthContext {
             .map_or_else(|| None, |id| create_object_id_option(id))
     }
 
+    pub fn get_user_id_as_string(&self) -> String {
+        self.get(REDIS_KEY_USER_ID)
+            .map_or_else(|| ObjectId::new().to_string(), |id| id.clone())
+    }
     pub fn authorize_multiple(&self, permissions: Vec<&str>) -> bool {
         if self.permissions.contains_key(app::admin::ALL) {
             return true;
@@ -190,6 +194,10 @@ where
                     let session = &session.unwrap();
 
                     if session.is_empty() {
+                        return Err(AuthError::MissingCredentials);
+                    }
+
+                    if let None = session.get(REDIS_KEY_USER_ID) {
                         return Err(AuthError::MissingCredentials);
                     }
 

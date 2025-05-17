@@ -24,6 +24,7 @@ pub struct UserDTO {
     pub app_meta_data: Option<serde_json::Value>,
     pub user_meta_data: Option<UserMetaDataDTO>,
     pub profile_picture: Option<ProfilePictureDTO>,
+    #[serde(serialize_with = "serialize_option_datetime")]
     pub last_logged_in: Option<DateTime>,
     pub status: Option<String>,
     #[serde(serialize_with = "serialize_datetime")]

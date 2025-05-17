@@ -17,13 +17,11 @@ raw = '''
 #### Post-response Script
 
 ```js
-let body = JSON.parse(jc.response.text())
-if(jc.response.code >= 200 && jc.response.code <= 209){
-    jc.environment.set("session_token",body.data.token)
-    jc.variables.set("session_token",body.data.token)
-}
-
-jc.test(`${jc.response.code} tes`,()=>{
-
+jc.test(`${jc.response.code} set variable`,()=>{
+    let body = JSON.parse(jc.response.text())
+    if(jc.response.code >= 200 && jc.response.code <= 209){
+        jc.environment.set("session_token",body.data.token)
+        jc.variables.set("session_token",body.data.token)
+    }
 })
 ```

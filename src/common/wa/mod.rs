@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-
+use log::info;
 use super::env_config::EnvConfig;
 
 pub async fn send_otp(phone: String, otp: String) -> Result<String, String> {
@@ -30,6 +30,7 @@ pub async fn send_otp(phone: String, otp: String) -> Result<String, String> {
             Err(why) => Err(format!("{:?}", why)),
         }
     }else {
+        info!(target:"wa::api","Skip during test number  otp:{}", otp);
         Ok(format!("Skip during test number  otp:{}", otp))
     }
 }
